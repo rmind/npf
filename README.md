@@ -1,4 +1,6 @@
-# NPF -- NetBSD packet filter (standalone)
+**INFO**: The standalone port of NPF is a work-in-progress -- 19 February 2015
+
+# NPF -- NetBSD packet filter (standalone version)
 
 NPF is a layer 3 packet filter, supporting IPv4 and IPv6 as well as layer
 4 protocols such as TCP, UDP, and ICMP.  It was designed with a focus on
@@ -7,7 +9,7 @@ high performance, scalability, and modularity.
 NPF was written from scratch in 2009 and is distributed under the
 2-clause BSD license.
 
-This repository contains a *standalone* version of NPF.
+This repository contains a **standalone** version of NPF.
 
 ## Features
 
@@ -27,19 +29,19 @@ Rule procedures and a framework for NPF extensions.
 For a full set features and their description, see the NPF documentation
 and other manual pages.
 
-## Documentation:
+## Documentation
 
 http://www.netbsd.org/~rmind/npf/
 
-## Source structure
+## Source code structure
 
-    src/		- root directory of the standalone NPF
+    src/                - root directory of the standalone NPF
 
-        kern/		- the kernel component
-			  http://nxr.netbsd.org/xref/src/sys/net/npf/
+        kern/           - the kernel component
+                          http://nxr.netbsd.org/xref/src/sys/net/npf/
 
-        libnpf/		- library to manage the kernel component
-			  http://nxr.netbsd.org/xref/src/lib/libnpf/
+        libnpf/         - library to manage the kernel component
+                          http://nxr.netbsd.org/xref/src/lib/libnpf/
 
-        npfctl/		- command line user interface to control NPF
-			  http://nxr.netbsd.org/xref/src/usr.sbin/npf/npfctl/
+        npfctl/         - command line user interface to control NPF
+                          http://nxr.netbsd.org/xref/src/usr.sbin/npf/npfctl/
