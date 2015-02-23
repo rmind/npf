@@ -366,7 +366,7 @@ npf_table_create(const char *name, u_int tid, int type,
 		t->t_cdb = cdbr_open_mem(blob, size, CDBR_DEFAULT, NULL, NULL);
 		if (t->t_cdb == NULL) {
 			kmem_free(t, sizeof(npf_table_t));
-			free(blob, M_TEMP);
+			kfree(blob, M_TEMP);
 			return NULL;
 		}
 		t->t_nitems = cdbr_entries(t->t_cdb);
@@ -400,7 +400,7 @@ npf_table_destroy(npf_table_t *t)
 		break;
 	case NPF_TABLE_CDB:
 		cdbr_close(t->t_cdb);
-		free(t->t_blob, M_TEMP);
+		kfree(t->t_blob, M_TEMP);
 		break;
 	default:
 		KASSERT(false);
@@ -616,7 +616,8 @@ npf_table_lookup(npf_table_t *t, const int alen, const npf_addr_t *addr)
 		break;
 	case NPF_TABLE_CDB:
 		if (cdbr_find(t->t_cdb, addr, alen, &data, &dlen) == 0) {
-			found = dlen == alen && memcmp(addr, data, dlen) == 0;
+			found = dlen == (u_int)alen &&
+			    memcmp(addr, data, dlen) == 0;
 		} else {
 			found = false;
 		}

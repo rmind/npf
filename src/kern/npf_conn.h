@@ -32,7 +32,7 @@
 #ifndef _NPF_CONN_H_
 #define _NPF_CONN_H_
 
-#if !defined(_KERNEL)
+#if !defined(_KERNEL) && !defined(_NPF_STANDALONE)
 #error "kernel-level header only"
 #endif
 

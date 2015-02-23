@@ -383,7 +383,7 @@ npf_conn_lookup(const npf_cache_t *npc, const int di, bool *forw)
 		atomic_dec_uint(&con->c_refcnt);
 		return NULL;
 	}
-	pforw = (flags & PFIL_ALL) == di;
+	pforw = (flags & PFIL_ALL) == (u_int)di;
 	if (__predict_false(*forw != pforw)) {
 		atomic_dec_uint(&con->c_refcnt);
 		return NULL;
@@ -713,7 +713,7 @@ npf_nat_t *
 npf_conn_getnat(npf_conn_t *con, const int di, bool *forw)
 {
 	KASSERT(con->c_refcnt > 0);
-	*forw = (con->c_flags & PFIL_ALL) == di;
+	*forw = (con->c_flags & PFIL_ALL) == (u_int)di;
 	return con->c_nat;
 }
 

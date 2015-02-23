@@ -47,12 +47,27 @@
 
 #define	NPF_VERSION		17
 
+#if defined(_NPF_STANDALONE)
+#include "npf_stand.h"
+#endif
+
 /*
  * Public declarations and definitions.
  */
 
 /* Storage of address (both for IPv4 and IPv6) and netmask */
+#ifdef _KERNEL
 typedef struct in6_addr		npf_addr_t;
+#else
+#undef s6_addr
+#undef s6_addr16
+#undef s6_addr32
+typedef union {
+	uint8_t			s6_addr[16];
+	uint16_t		s6_addr16[8];
+	uint32_t		s6_addr32[4];
+} npf_addr_t;
+#endif
 typedef uint8_t			npf_netmask_t;
 
 #define	NPF_MAX_NETMASK		(128)
@@ -70,7 +85,7 @@ typedef uint8_t			npf_netmask_t;
 /* The number of words used. */
 #define	NPF_BPF_NWORDS		3
 
-#if defined(_KERNEL)
+#if defined(_KERNEL) || defined(_NPF_STANDALONE)
 
 #define	NPF_DECISION_BLOCK	0
 #define	NPF_DECISION_PASS	1

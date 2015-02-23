@@ -37,7 +37,7 @@
 #ifndef _NPF_IMPL_H_
 #define _NPF_IMPL_H_
 
-#if !defined(_KERNEL)
+#if !defined(_KERNEL) && !defined(_NPF_STANDALONE)
 #error "Kernel-level header only"
 #endif
 

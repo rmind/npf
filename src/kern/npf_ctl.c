@@ -515,7 +515,7 @@ npfctl_load(u_long cmd, void *data)
 	int error;
 
 	/* Retrieve the dictionary. */
-#ifndef _NPF_TESTING
+#if !defined(_NPF_TESTING) && !defined(_NPF_STANDALONE)
 	error = prop_dictionary_copyin_ioctl(pref, cmd, &npf_dict);
 	if (error)
 		return error;
@@ -629,7 +629,7 @@ fail:
 	prop_object_release(npf_dict);
 
 	/* Error report. */
-#ifndef _NPF_TESTING
+#if !defined(_NPF_TESTING) && !defined(_NPF_STANDALONE)
 	prop_dictionary_set_int32(errdict, "errno", error);
 	prop_dictionary_copyout_ioctl(pref, cmd, errdict);
 	prop_object_release(errdict);
@@ -692,7 +692,12 @@ npfctl_save(u_long cmd, void *data)
 	prop_dictionary_set_and_rel(npf_dict, "rprocs", rprocs);
 	prop_dictionary_set_and_rel(npf_dict, "conn-list", conlist);
 	prop_dictionary_set_bool(npf_dict, "active", npf_pfil_registered_p());
+#if !defined(_NPF_STANDALONE)
 	error = prop_dictionary_copyout_ioctl(pref, cmd, npf_dict);
+#else
+	/* Userspace: just copy the pointer of the dictionary. */
+	memcpy(data, npf_dict, sizeof(prop_dictionary_t));
+#endif
 out:
 	npf_config_exit();
 
@@ -703,7 +708,9 @@ out:
 		prop_object_release(rprocs);
 		prop_object_release(conlist);
 	} else {
+#if !defined(_NPF_STANDALONE)
 		prop_object_release(npf_dict);
+#endif
 	}
 	return error;
 }
@@ -720,12 +727,16 @@ npfctl_rule(u_long cmd, void *data)
 	npf_rule_t *rl = NULL;
 	const char *ruleset_name;
 	uint32_t rcmd = 0;
-	int error;
+	int error = 0;
 
+#if !defined(_NPF_STANDALONE)
 	error = prop_dictionary_copyin_ioctl(pref, cmd, &npf_rule);
 	if (error) {
 		return error;
 	}
+#else
+	npf_rule = (prop_dictionary_t)pref;
+#endif
 	prop_dictionary_get_uint32(npf_rule, "command", &rcmd);
 	if (!prop_dictionary_get_cstring_nocopy(npf_rule,
 	    "ruleset-name", &ruleset_name)) {
@@ -802,8 +813,12 @@ npfctl_rule(u_long cmd, void *data)
 out:
 	if (retdict) {
 		prop_object_release(npf_rule);
+#if !defined(_NPF_STANDALONE)
 		prop_dictionary_copyout_ioctl(pref, cmd, retdict);
 		prop_object_release(retdict);
+#else
+		memcpy(data, npf_rule, sizeof(prop_dictionary_t));
+#endif
 	}
 	return error;
 }

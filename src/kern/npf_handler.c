@@ -310,6 +310,7 @@ out:
 	return error;
 }
 
+#ifdef _KERNEL
 /*
  * npf_pfil_register: register pfil(9) hooks.
  */
@@ -401,3 +402,4 @@ npf_pfil_registered_p(void)
 {
 	return pfil_registered;
 }
+#endif

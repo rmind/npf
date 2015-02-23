@@ -48,7 +48,6 @@ __KERNEL_RCSID(0, "$NetBSD: npf.c,v 1.22 2014/07/25 08:10:40 dholland Exp $");
 #include <sys/percpu.h>
 #include <sys/rwlock.h>
 #include <sys/socketvar.h>
-#include <sys/sysctl.h>
 #include <sys/uio.h>
 
 #include "npf_impl.h"
@@ -59,19 +58,19 @@ __KERNEL_RCSID(0, "$NetBSD: npf.c,v 1.22 2014/07/25 08:10:40 dholland Exp $");
  */
 MODULE(MODULE_CLASS_DRIVER, npf, NULL);
 
-void		npfattach(int);
-
+static int	npf_init(void);
 static int	npf_fini(void);
+static int	npfctl_stats(void *);
+
+static percpu_t *		npf_stats_percpu	__read_mostly;
+
+#ifdef _KERNEL
+void		npfattach(int);
 static int	npf_dev_open(dev_t, int, int, lwp_t *);
 static int	npf_dev_close(dev_t, int, int, lwp_t *);
 static int	npf_dev_ioctl(dev_t, u_long, void *, int, lwp_t *);
 static int	npf_dev_poll(dev_t, int, lwp_t *);
 static int	npf_dev_read(dev_t, struct uio *, int);
-
-static int	npfctl_stats(void *);
-
-static percpu_t *		npf_stats_percpu	__read_mostly;
-static struct sysctllog *	npf_sysctl		__read_mostly;
 
 const struct cdevsw npf_cdevsw = {
 	.d_open = npf_dev_open,
@@ -87,6 +86,7 @@ const struct cdevsw npf_cdevsw = {
 	.d_discard = nodiscard,
 	.d_flag = D_OTHER | D_MPSAFE
 };
+#endif
 
 static int
 npf_init(void)
@@ -97,7 +97,6 @@ npf_init(void)
 	int error = 0;
 
 	npf_stats_percpu = percpu_alloc(NPF_STATS_SIZE);
-	npf_sysctl = NULL;
 
 	npf_bpf_sysinit();
 	npf_worker_sysinit();
@@ -142,14 +141,12 @@ npf_fini(void)
 
 	/* Note: worker is the last. */
 	npf_worker_sysfini();
-
-	if (npf_sysctl) {
-		sysctl_teardown(&npf_sysctl);
-	}
 	percpu_free(npf_stats_percpu, NPF_STATS_SIZE);
 
 	return 0;
 }
+
+#ifdef _KERNEL
 
 /*
  * Module interface.
@@ -260,6 +257,8 @@ npf_autounload_p(void)
 {
 	return !npf_pfil_registered_p() && npf_default_pass();
 }
+
+#endif
 
 /*
  * NPF statistics interface.
