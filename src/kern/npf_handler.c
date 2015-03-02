@@ -65,27 +65,6 @@ static pfil_head_t *	npf_ph_inet6 = NULL;
 #define ip6_reass_packet(x, y)	ENOTSUP
 #endif
 
-/*
- * npf_ifhook: hook handling interface changes.
- */
-static int
-npf_ifhook(void *arg, struct mbuf **mp, ifnet_t *ifp, int di)
-{
-	u_long cmd = (u_long)mp;
-
-	if (di == PFIL_IFNET) {
-		switch (cmd) {
-		case PFIL_IFNET_ATTACH:
-			npf_ifmap_attach(ifp);
-			break;
-		case PFIL_IFNET_DETACH:
-			npf_ifmap_detach(ifp);
-			break;
-		}
-	}
-	return 0;
-}
-
 static int
 npf_reassembly(npf_cache_t *npc, struct mbuf **mp)
 {
@@ -311,6 +290,27 @@ out:
 }
 
 #ifdef _KERNEL
+/*
+ * npf_ifhook: hook handling interface changes.
+ */
+static int
+npf_ifhook(void *arg, struct mbuf **mp, ifnet_t *ifp, int di)
+{
+	u_long cmd = (u_long)mp;
+
+	if (di == PFIL_IFNET) {
+		switch (cmd) {
+		case PFIL_IFNET_ATTACH:
+			npf_ifmap_attach(ifp);
+			break;
+		case PFIL_IFNET_DETACH:
+			npf_ifmap_detach(ifp);
+			break;
+		}
+	}
+	return 0;
+}
+
 /*
  * npf_pfil_register: register pfil(9) hooks.
  */

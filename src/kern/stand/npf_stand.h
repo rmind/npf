@@ -45,6 +45,10 @@
 #include <errno.h>
 #include <assert.h>
 
+#include <netinet/udp.h>
+#include <netinet/tcp.h>
+#include <arpa/inet.h>
+
 #include "cext.h"
 
 #include "sys/ptree.h"
@@ -105,6 +109,15 @@ typedef int pserialize_t;
 #define	pserialize_read_exit(s)	assert(s == 0x5050505)
 
 /*
+ * Atomic operations and memory barriers.
+ */
+
+#define	membar_sync()		__sync_synchronize()
+#define	atomic_inc_uint(x)	__sync_fetch_and_add(x, 1)
+#define	atomic_dec_uint(x)	__sync_fetch_and_add(x, -1)
+#define	atomic_dec_uint_nv(x)	__sync_fetch_and_add(x, -1)
+
+/*
  * Threads.
  */
 
@@ -161,6 +174,7 @@ npfkern_pool_cache_init(size_t size)
 #define	kmem_zalloc(len, flags)		calloc(1, len)
 #define	kmem_alloc(len, flags)		malloc(len)
 #define	kmem_free(ptr, len)		free(ptr)
+#define	kmem_intr_zalloc(len, flags)	kmem_zalloc(len, flags)
 #define	kmem_intr_free(ptr, len)	kmem_free(ptr, len)
 
 #define	kfree(ptr, type)		free(ptr)
@@ -230,6 +244,8 @@ npfkern_kpause(const char *wmesg, bool intr, int timo, kmutex_t *mtx)
 #define PFIL_IFADDR	0x00000008
 #define PFIL_IFNET	0x00000010
 
+#define	pfil_head_t	void
+
 #ifndef tcp_seq
 typedef uint32_t	tcp_seq;
 #endif
@@ -255,6 +271,13 @@ typedef struct {
 #define	ip_defttl		64
 #define	max_linkhdr		0
 
+struct mbuf {
+	unsigned	m_flags;
+};
+
+#ifndef M_CANFASTFWD
+#define	M_CANFASTFWD		0x00400
+#endif
 #define	m_gethdr(x, y)		calloc(1, 512)
 #define	m_freem			free
 #define	m_length(m)		0
@@ -270,6 +293,7 @@ typedef struct {
 #define	__read_mostly
 #define	__cacheline_aligned
 #define	__diagused
+#define	__dead
 
 #define	KASSERT			assert
 #define	KASSERTMSG(e, m, ...)	assert(e)
@@ -287,7 +311,24 @@ typedef struct {
 #define	EPROGMISMATCH		ENOTSUP
 #endif
 
+#ifndef HASH32_BUF_INIT
+#define	HASH32_BUF_INIT		5381
+#define	hash32_buf(b, l, s)	murmurhash2(b, l, s)
+#endif
+
 struct cpu_info { unsigned id; };
+
+#ifndef strlcpy
+static inline size_t
+strlcpy(char *dst, const char *src, size_t len)
+{
+	char *p;
+
+	p = stpncpy(dst, src, len);
+	dst[len - 1] = '\0';
+	return MIN((size_t)(p - dst), len - 1);
+}
+#endif
 
 #ifdef __NetBSD__
 #include <cdbr.h>

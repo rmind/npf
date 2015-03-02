@@ -90,7 +90,7 @@ struct npf_rule {
 	npf_rproc_t *		r_rproc;
 
 	/* Rule priority: (highest) 1, 2 ... n (lowest). */
-	pri_t			r_priority;
+	int			r_priority;
 
 	/*
 	 * Dynamic group: subset queue and a dynamic group list entry.
@@ -223,7 +223,7 @@ int
 npf_ruleset_add(npf_ruleset_t *rlset, const char *rname, npf_rule_t *rl)
 {
 	npf_rule_t *rg, *it;
-	pri_t priocmd;
+	int priocmd;
 
 	rg = npf_ruleset_lookup(rlset, rname);
 	if (rg == NULL) {

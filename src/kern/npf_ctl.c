@@ -696,7 +696,8 @@ npfctl_save(u_long cmd, void *data)
 	error = prop_dictionary_copyout_ioctl(pref, cmd, npf_dict);
 #else
 	/* Userspace: just copy the pointer of the dictionary. */
-	memcpy(data, npf_dict, sizeof(prop_dictionary_t));
+	CTASSERT(sizeof(prop_dictionary_t) == sizeof(void *));
+	memcpy(data, npf_dict, sizeof(void *));
 #endif
 out:
 	npf_config_exit();
@@ -817,7 +818,8 @@ out:
 		prop_dictionary_copyout_ioctl(pref, cmd, retdict);
 		prop_object_release(retdict);
 #else
-		memcpy(data, npf_rule, sizeof(prop_dictionary_t));
+		CTASSERT(sizeof(prop_dictionary_t) == sizeof(void *));
+		memcpy(data, npf_rule, sizeof(void *));
 #endif
 	}
 	return error;

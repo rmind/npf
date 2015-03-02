@@ -71,6 +71,14 @@
 #define	__UNCONST(a)		((void*)(const void*)a)
 #endif
 
+#ifndef __noinline
+#ifdef __GNUC__
+#define	__noinline		__attribute__((__noinline__))
+#else
+#define	__noinline
+#endif
+#endif
+
 /*
  * C++ compatibility and DSO visibility.
  */
