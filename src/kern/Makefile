@@ -3,7 +3,7 @@
 # This file is in the Public Domain.
 #
 
-CFLAGS=		-std=gnu99 -O2 -flto -Wall -Wextra #-Werror
+CFLAGS=		-std=gnu99 -O2 -flto -Wall -Wextra -Werror
 CFLAGS+=        -Wstrict-prototypes -Wmissing-prototypes -Wpointer-arith
 CFLAGS+=	-fvisibility=hidden -I stand -D_NPF_STANDALONE
 CFLAGS+=        -D__RCSID\(x\)=
@@ -15,9 +15,10 @@ ifeq ($(DEBUG),1)
 CFLAGS+=	-g -O1 -DDEBUG -fno-omit-frame-pointer
 else
 CFLAGS+=	-DNDEBUG
+LDFLAGS=	-flto
 endif
 
-LDFLAGS=	-flto -lpthread -lpcap -lprop
+LDFLAGS=	-lpthread -lpcap -lcdb -lprop
 
 SYSNAME:=	$(shell uname -s)
 
@@ -30,7 +31,8 @@ OBJS=		$(shell grep ^file files.npf | cut -f2 | \
 		    sed 's/\(.*\)net\/npf\/\(.*\).c/\2.o/g' | \
 		    grep -v npf_ext_ | grep -v if_npflog)
 
-OBJS+=		stand/bpf.o
+OBJS+=		stand/bpf_filter.o
+
 OBJS+=		stand/rb.o stand/ptree.o
 OBJS+=		stand/murmurhash.o stand/subr_hash.o
 

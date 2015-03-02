@@ -59,6 +59,7 @@ __KERNEL_RCSID(0, "$NetBSD: npf_ctl.c,v 1.40 2014/08/24 20:36:30 rmind Exp $");
 #define	NPF_ERR_DEBUG(e)
 #endif
 
+#ifdef _KERNEL
 /*
  * npfctl_switch: enable or disable packet inspection.
  */
@@ -78,6 +79,7 @@ npfctl_switch(void *data)
 	}
 	return error;
 }
+#endif
 
 static int __noinline
 npf_mk_table_entries(npf_table_t *t, prop_array_t entries)
@@ -693,10 +695,11 @@ npfctl_save(u_long cmd, void *data)
 	prop_dictionary_set_and_rel(npf_dict, "tables", tables);
 	prop_dictionary_set_and_rel(npf_dict, "rprocs", rprocs);
 	prop_dictionary_set_and_rel(npf_dict, "conn-list", conlist);
-	prop_dictionary_set_bool(npf_dict, "active", npf_pfil_registered_p());
 #if !defined(_NPF_STANDALONE)
+	prop_dictionary_set_bool(npf_dict, "active", npf_pfil_registered_p());
 	error = prop_dictionary_copyout_ioctl(pref, cmd, npf_dict);
 #else
+	prop_dictionary_set_bool(npf_dict, "active", true);
 	/* Userspace: just copy the pointer of the dictionary. */
 	CTASSERT(sizeof(prop_dictionary_t) == sizeof(void *));
 	memcpy(data, npf_dict, sizeof(void *));

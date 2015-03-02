@@ -289,6 +289,8 @@ npfkern_kpause(const char *wmesg, bool intr, int timo, kmutex_t *mtx)
 
 #define	pfil_head_t	void
 
+#define	MAX_TCPOPTLEN	40
+
 /*
  * FIXME/TODO: To be implemented ..
  */
@@ -324,6 +326,7 @@ struct mbuf {
 
 #define	M_UNWRITABLE(m, l)	false
 #define	M_NOWAIT		0x00001
+#define M_PKTHDR		0x00002
 #ifndef M_CANFASTFWD
 #define	M_CANFASTFWD		0x00400
 #endif
@@ -332,7 +335,7 @@ struct mbuf {
 
 #define	m_gethdr(x, y)		calloc(1, 512)
 #define	m_freem			free
-#define	m_length(m)		0
+#define	m_length(m)		(m)->m_len
 #define	m_makewritable(a,b,c,d)	false
 #define	m_ensure_contig(m, l)	false
 #define	mtod(m, t)		((t)((m)->m_data))

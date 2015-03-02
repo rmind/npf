@@ -88,7 +88,6 @@ const struct cdevsw npf_cdevsw = {
 	.d_discard = nodiscard,
 	.d_flag = D_OTHER | D_MPSAFE
 };
-#endif
 
 static int
 npf_init(void)
@@ -147,8 +146,6 @@ npf_fini(void)
 
 	return 0;
 }
-
-#ifdef _KERNEL
 
 /*
  * Module interface.

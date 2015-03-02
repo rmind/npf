@@ -244,10 +244,10 @@ nbuf_ensure_writable(nbuf_t *nbuf, size_t len)
 	return nbuf->nb_nptr;
 }
 
-#ifdef _KERNEL
 bool
 nbuf_cksum_barrier(nbuf_t *nbuf, int di)
 {
+#ifdef _KERNEL
 	struct mbuf *m;
 
 	if (di != PFIL_OUT) {
@@ -261,9 +261,13 @@ nbuf_cksum_barrier(nbuf_t *nbuf, int di)
 		m->m_pkthdr.csum_flags &= ~(M_CSUM_TCPv4 | M_CSUM_UDPv4);
 		return true;
 	}
+#else
+	(void)nbuf; (void)di;
+#endif
 	return false;
 }
 
+#ifdef _KERNEL
 /*
  * nbuf_add_tag: add a tag to specified network buffer.
  *

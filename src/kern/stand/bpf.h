@@ -49,6 +49,11 @@ typedef struct bpf_args {
 } bpf_args_t;
 
 #define	BPF_MAX_MEMWORDS	30
+#define	BPF_MEMWORD_INIT(k)	(UINT32_C(1) << (k))
+#define	BPF_MAXINSNS		512
+
+#define	BPF_COP			0x20
+#define	BPF_COPX		0x40
 
 typedef uint32_t	bpf_memword_init_t;
 typedef struct bpf_ctx	bpf_ctx_t;
