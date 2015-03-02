@@ -37,6 +37,8 @@
 #ifndef _NPF_BPF_H_
 #define _NPF_BPF_H_
 
+#include <pcap/bpf.h>
+
 typedef struct bpf_args {
 	const uint8_t *	pkt;
 	size_t		wirelen;

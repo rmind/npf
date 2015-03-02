@@ -39,7 +39,6 @@
 #include <inttypes.h>
 #endif
 #include <sys/queue.h>
-#include <sys/endian.h>
 
 __BEGIN_DECLS
 

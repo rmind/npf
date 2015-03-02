@@ -22,7 +22,7 @@ LDFLAGS=	-flto -lpthread -lpcap -lprop
 SYSNAME:=	$(shell uname -s)
 
 ifeq ($(SYSNAME),Linux)
-CFLAGS+=	-D_POSIX_C_SOURCE=200112L -D_GNU_SOURCE
+CFLAGS+=	#-D_POSIX_C_SOURCE=200112L # -D_GNU_SOURCE
 endif
 
 OBJS=		$(shell grep ^file files.npf | cut -f2 | \
@@ -39,4 +39,4 @@ test: $(OBJS) main.o
 	# $(CC) $^ -o npf $(LDFLAGS)
 
 clean:
-	rm -f *.o
+	rm -f *.o stand/*.o

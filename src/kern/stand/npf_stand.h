@@ -47,9 +47,9 @@
 
 #include "cext.h"
 
+#include "sys/ptree.h"
+#include "sys/rbtree.h"
 #include "bpf.h"
-#include "ptree.h"
-#include "rbtree.h"
 
 /*
  * Synchronisation primitives (mutex, condvar, etc).
@@ -230,6 +230,10 @@ npfkern_kpause(const char *wmesg, bool intr, int timo, kmutex_t *mtx)
 #define PFIL_IFADDR	0x00000008
 #define PFIL_IFNET	0x00000010
 
+#ifndef tcp_seq
+typedef uint32_t	tcp_seq;
+#endif
+
 /*
  * FIXME/TODO: To be implemented ..
  */
@@ -278,6 +282,12 @@ typedef struct {
 #define	module_autoload(n, c)	ENOTSUP
 
 #define	kauth_authorize_network(c, a, r, a1, a2, a3)	0
+
+#ifndef EPROGMISMATCH
+#define	EPROGMISMATCH		ENOTSUP
+#endif
+
+struct cpu_info { unsigned id; };
 
 #ifdef __NetBSD__
 #include <cdbr.h>
