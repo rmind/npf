@@ -33,6 +33,7 @@
  * NPF ALG for ICMP and traceroute translations.
  */
 
+#ifdef _KERNEL
 #include <sys/cdefs.h>
 __KERNEL_RCSID(0, "$NetBSD: npf_alg_icmp.c,v 1.23 2014/07/20 00:37:41 rmind Exp $");
 
@@ -47,6 +48,7 @@ __KERNEL_RCSID(0, "$NetBSD: npf_alg_icmp.c,v 1.23 2014/07/20 00:37:41 rmind Exp 
 #include <netinet/ip_icmp.h>
 #include <netinet/icmp6.h>
 #include <net/pfil.h>
+#endif
 
 #include "npf_impl.h"
 #include "npf_conn.h"

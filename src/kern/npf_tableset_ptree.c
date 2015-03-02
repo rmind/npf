@@ -33,6 +33,7 @@
  * Patricia/RADIX tree comparators for NPF tables.
  */
 
+#ifdef _KERNEL
 #include <sys/cdefs.h>
 __KERNEL_RCSID(0, "$NetBSD: npf_tableset_ptree.c,v 1.1 2012/07/15 00:23:01 rmind Exp $");
 
@@ -41,6 +42,7 @@ __KERNEL_RCSID(0, "$NetBSD: npf_tableset_ptree.c,v 1.1 2012/07/15 00:23:01 rmind
 
 #include <sys/bitops.h>
 #include <sys/ptree.h>
+#endif
 
 #include "npf_impl.h"
 

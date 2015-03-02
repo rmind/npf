@@ -33,6 +33,7 @@
  * NPF interface for the Application Level Gateways (ALGs).
  */
 
+#ifdef _KERNEL
 #include <sys/cdefs.h>
 __KERNEL_RCSID(0, "$NetBSD: npf_alg.c,v 1.15 2014/08/11 23:48:01 rmind Exp $");
 
@@ -44,6 +45,7 @@ __KERNEL_RCSID(0, "$NetBSD: npf_alg.c,v 1.15 2014/08/11 23:48:01 rmind Exp $");
 #include <sys/mutex.h>
 #include <net/pfil.h>
 #include <sys/module.h>
+#endif
 
 #include "npf_impl.h"
 

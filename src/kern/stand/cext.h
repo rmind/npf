@@ -164,7 +164,7 @@
 
 #ifndef flsl
 #define	flsl(x)		(__predict_true(x) ? \
-    (sizeof(unsigned long) * CHAR_BIT) - __builtin_clzll(x) : 0)
+    (sizeof(unsigned long) * CHAR_BIT) - __builtin_clzl(x) : 0)
 #endif
 #ifndef flsll
 #define	flsll(x)	(__predict_true(x) ? \

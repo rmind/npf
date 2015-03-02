@@ -33,6 +33,7 @@
  * NPF connection storage.
  */
 
+#ifdef _KERNEL
 #include <sys/cdefs.h>
 __KERNEL_RCSID(0, "$NetBSD: npf_conndb.c,v 1.2 2014/07/23 01:25:34 rmind Exp $");
 
@@ -43,6 +44,7 @@ __KERNEL_RCSID(0, "$NetBSD: npf_conndb.c,v 1.2 2014/07/23 01:25:34 rmind Exp $")
 #include <sys/cprng.h>
 #include <sys/hash.h>
 #include <sys/kmem.h>
+#endif
 
 #define __NPF_CONN_PRIVATE
 #include "npf_conn.h"

@@ -6,7 +6,6 @@
 CFLAGS=		-std=gnu99 -O2 -flto -Wall -Wextra #-Werror
 CFLAGS+=        -Wstrict-prototypes -Wmissing-prototypes -Wpointer-arith
 CFLAGS+=	-fvisibility=hidden -I stand -D_NPF_STANDALONE
-CFLAGS+=	-D__KERNEL_RCSID\(x,y\)=
 
 CFLAGS+=	-Wno-unused-parameter -Wno-unused-variable -Wno-unused-function
 CFLAGS+=	-Wno-unused

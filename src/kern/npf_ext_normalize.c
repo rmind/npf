@@ -26,6 +26,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
+#ifdef _KERNEL
 #include <sys/cdefs.h>
 __KERNEL_RCSID(0, "$NetBSD: npf_ext_normalize.c,v 1.3 2014/07/20 00:37:41 rmind Exp $");
 
@@ -37,6 +38,7 @@ __KERNEL_RCSID(0, "$NetBSD: npf_ext_normalize.c,v 1.3 2014/07/20 00:37:41 rmind 
 #include <netinet/in_systm.h>
 #include <netinet/in.h>
 #include <netinet/in_var.h>
+#endif
 
 #include "npf.h"
 #include "npf_impl.h"

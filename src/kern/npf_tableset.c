@@ -40,6 +40,7 @@
  *	entries are protected by a read-write lock.
  */
 
+#ifdef _KERNEL
 #include <sys/cdefs.h>
 __KERNEL_RCSID(0, "$NetBSD: npf_tableset.c,v 1.22 2014/08/11 01:54:12 rmind Exp $");
 
@@ -56,6 +57,7 @@ __KERNEL_RCSID(0, "$NetBSD: npf_tableset.c,v 1.22 2014/08/11 01:54:12 rmind Exp 
 #include <sys/rwlock.h>
 #include <sys/systm.h>
 #include <sys/types.h>
+#endif
 
 #include "npf_impl.h"
 

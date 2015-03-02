@@ -36,6 +36,7 @@
  * NPF proplib(9) dictionary consumer.
  */
 
+#ifdef _KERNEL
 #include <sys/cdefs.h>
 __KERNEL_RCSID(0, "$NetBSD: npf_ctl.c,v 1.40 2014/08/24 20:36:30 rmind Exp $");
 
@@ -45,6 +46,7 @@ __KERNEL_RCSID(0, "$NetBSD: npf_ctl.c,v 1.40 2014/08/24 20:36:30 rmind Exp $");
 #include <net/bpf.h>
 
 #include <prop/proplib.h>
+#endif
 
 #include "npf_impl.h"
 #include "npf_conn.h"

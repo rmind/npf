@@ -47,6 +47,7 @@
 #include "opt_inet6.h"
 #endif
 
+#ifdef _KERNEL
 #include <sys/types.h>
 #include <sys/queue.h>
 #include <sys/ptree.h>
@@ -54,6 +55,7 @@
 #include <net/bpf.h>
 #include <net/bpfjit.h>
 #include <net/if.h>
+#endif
 
 #include "npf.h"
 

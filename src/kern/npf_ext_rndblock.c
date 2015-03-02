@@ -31,6 +31,7 @@
  * This is also a demo extension.
  */
 
+#ifdef _KERNEL
 #include <sys/cdefs.h>
 __KERNEL_RCSID(0, "$NetBSD: npf_ext_rndblock.c,v 1.5 2014/07/20 00:37:41 rmind Exp $");
 
@@ -39,6 +40,7 @@ __KERNEL_RCSID(0, "$NetBSD: npf_ext_rndblock.c,v 1.5 2014/07/20 00:37:41 rmind E
 #include <sys/atomic.h>
 #include <sys/module.h>
 #include <sys/kmem.h>
+#endif
 
 #include "npf.h"
 

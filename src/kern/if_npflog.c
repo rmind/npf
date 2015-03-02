@@ -33,6 +33,7 @@
  * NPF logging extension.
  */
 
+#ifdef _KERNEL
 #include <sys/cdefs.h>
 __KERNEL_RCSID(0, "$NetBSD: if_npflog.c,v 1.3 2013/03/13 13:15:47 christos Exp $");
 
@@ -49,6 +50,9 @@ __KERNEL_RCSID(0, "$NetBSD: if_npflog.c,v 1.3 2013/03/13 13:15:47 christos Exp $
 #include <net/if.h>
 #include <net/if_types.h>
 #include <net/bpf.h>
+#endif
+
+#include "npf_impl.h"
 
 MODULE(MODULE_CLASS_DRIVER, if_npflog, NULL);
 

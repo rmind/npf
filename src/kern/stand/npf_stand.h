@@ -49,10 +49,12 @@
 #include <netinet/tcp.h>
 #include <arpa/inet.h>
 
+#include <prop/proplib.h>
+
 #include "cext.h"
 
-#include "sys/ptree.h"
-#include "sys/rbtree.h"
+#include "ptree.h"
+#include "rbtree.h"
 #include "bpf.h"
 
 /*
@@ -111,11 +113,13 @@ typedef int pserialize_t;
 /*
  * Atomic operations and memory barriers.
  */
-
 #define	membar_sync()		__sync_synchronize()
 #define	atomic_inc_uint(x)	__sync_fetch_and_add(x, 1)
 #define	atomic_dec_uint(x)	__sync_fetch_and_add(x, -1)
 #define	atomic_dec_uint_nv(x)	__sync_fetch_and_add(x, -1)
+#define	atomic_or_uint(x, v)	__sync_fetch_and_or(x, v)
+#define	atomic_cas_32(p, o, n)	__sync_val_compare_and_swap(p, o, n)
+#define	atomic_cas_ptr(p, o, n)	__sync_val_compare_and_swap(p, o, n)
 
 /*
  * Threads.
@@ -256,12 +260,13 @@ typedef uint32_t	tcp_seq;
 #define	ifunit(name)	NULL
 #define	IFNET_FOREACH(ifp)	if (0)
 
-#ifndef __NetBSD__
+#define	IFNAMSIZ	8
+
 typedef struct {
-	void *	if_pf_kif;
-	void *	next;
+	char		if_xname[IFNAMSIZ];
+	void *		if_pf_kif;
+	void *		next;
 } ifnet_t;
-#endif
 
 #define	ip_reass_packet(p, h)		ENOTSUP
 #define	ip_output(m, a, b, c, d, e)	ENOTSUP
@@ -273,6 +278,12 @@ typedef struct {
 
 struct mbuf {
 	unsigned	m_flags;
+	int		m_len;
+	struct {
+		int	len;
+	} m_pkthdr;
+	uint8_t *	m_data;
+	uint8_t		m_data0[512];
 };
 
 #ifndef M_CANFASTFWD
@@ -281,6 +292,7 @@ struct mbuf {
 #define	m_gethdr(x, y)		calloc(1, 512)
 #define	m_freem			free
 #define	m_length(m)		0
+#define	mtod(m, t)		((t)((m)->m_data))
 
 /*
  * Misc.
@@ -293,7 +305,9 @@ struct mbuf {
 #define	__read_mostly
 #define	__cacheline_aligned
 #define	__diagused
+#ifndef	__dead
 #define	__dead
+#endif
 
 #define	KASSERT			assert
 #define	KASSERTMSG(e, m, ...)	assert(e)
@@ -304,6 +318,13 @@ struct mbuf {
 
 #define	MODULE(c, m, d)
 #define	module_autoload(n, c)	ENOTSUP
+
+#define	MODULE_CMD_INIT		1
+#define	MODULE_CMD_FINI		2
+#define	MODULE_CMD_AUTOLOAD	3
+#define	MODULE_CMD_AUTOUNLOAD	4
+
+typedef int modcmd_t;
 
 #define	kauth_authorize_network(c, a, r, a1, a2, a3)	0
 
@@ -316,17 +337,18 @@ struct mbuf {
 #define	hash32_buf(b, l, s)	murmurhash2(b, l, s)
 #endif
 
+#define	ffs32(x)		ffs(x)
+#define	fls32(x)		flsl((unsigned long)(x))
+
 struct cpu_info { unsigned id; };
 
-#ifndef strlcpy
+#ifdef __linux__
 static inline size_t
 strlcpy(char *dst, const char *src, size_t len)
 {
-	char *p;
-
-	p = stpncpy(dst, src, len);
+	char *p = stpncpy(dst, src, len);
 	dst[len - 1] = '\0';
-	return MIN((size_t)(p - dst), len - 1);
+	return strlen(src);
 }
 #endif
 

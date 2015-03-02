@@ -33,6 +33,7 @@
  * NPF extension and rule procedure interface.
  */
 
+#ifdef _KERNEL
 #include <sys/cdefs.h>
 __KERNEL_RCSID(0, "$NetBSD");
 
@@ -43,6 +44,7 @@ __KERNEL_RCSID(0, "$NetBSD");
 #include <sys/kmem.h>
 #include <sys/mutex.h>
 #include <sys/module.h>
+#endif
 
 #include "npf_impl.h"
 

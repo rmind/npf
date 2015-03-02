@@ -33,6 +33,7 @@
  * NPF byte-code processing.
  */
 
+#ifdef _KERNEL
 #include <sys/cdefs.h>
 __KERNEL_RCSID(0, "$NetBSD: npf_bpf.c,v 1.11 2014/07/20 00:37:41 rmind Exp $");
 
@@ -42,6 +43,7 @@ __KERNEL_RCSID(0, "$NetBSD: npf_bpf.c,v 1.11 2014/07/20 00:37:41 rmind Exp $");
 #include <sys/bitops.h>
 #include <sys/mbuf.h>
 #include <net/bpf.h>
+#endif
 
 #define NPF_BPFCOP
 #include "npf_impl.h"

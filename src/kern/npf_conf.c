@@ -47,6 +47,7 @@
  *	necessary writer-side barrier of the passive serialisation.
  */
 
+#ifdef _KERNEL
 #include <sys/cdefs.h>
 __KERNEL_RCSID(0, "$NetBSD: npf_conf.c,v 1.9 2014/11/30 01:37:53 rmind Exp $");
 
@@ -57,6 +58,7 @@ __KERNEL_RCSID(0, "$NetBSD: npf_conf.c,v 1.9 2014/11/30 01:37:53 rmind Exp $");
 #include <sys/kmem.h>
 #include <sys/pserialize.h>
 #include <sys/mutex.h>
+#endif
 
 #include "npf_impl.h"
 #include "npf_conn.h"

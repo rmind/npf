@@ -36,11 +36,13 @@
  * abstracted within this source.
  */
 
+#ifdef _KERNEL
 #include <sys/cdefs.h>
 __KERNEL_RCSID(0, "$NetBSD: npf_mbuf.c,v 1.13 2014/08/10 19:09:43 rmind Exp $");
 
 #include <sys/param.h>
 #include <sys/mbuf.h>
+#endif
 
 #include "npf_impl.h"
 

@@ -60,11 +60,7 @@ __RCSID("$NetBSD: ptree.c,v 1.10 2012/10/06 22:15:09 matt Exp $");
 #include "namespace.h"
 #endif
 
-#ifdef PTTEST
 #include "ptree.h"
-#else
-#include <sys/ptree.h>
-#endif
 
 /*
  * This is an implementation of a radix / PATRICIA tree.  As in a traditional

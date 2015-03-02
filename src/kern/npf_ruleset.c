@@ -33,6 +33,7 @@
  * NPF ruleset module.
  */
 
+#ifdef _KERNEL
 #include <sys/cdefs.h>
 __KERNEL_RCSID(0, "$NetBSD: npf_ruleset.c,v 1.41 2015/02/02 00:31:39 rmind Exp $");
 
@@ -49,6 +50,7 @@ __KERNEL_RCSID(0, "$NetBSD: npf_ruleset.c,v 1.41 2015/02/02 00:31:39 rmind Exp $
 #include <net/bpfjit.h>
 #include <net/pfil.h>
 #include <net/if.h>
+#endif
 
 #include "npf_impl.h"
 

@@ -33,6 +33,7 @@
  * NPF TCP state engine for connection tracking.
  */
 
+#ifdef _KERNEL
 #include <sys/cdefs.h>
 __KERNEL_RCSID(0, "$NetBSD: npf_state_tcp.c,v 1.16 2014/07/25 20:07:32 rmind Exp $");
 
@@ -42,6 +43,7 @@ __KERNEL_RCSID(0, "$NetBSD: npf_state_tcp.c,v 1.16 2014/07/25 20:07:32 rmind Exp
 #include <netinet/in.h>
 #include <netinet/tcp.h>
 #include <netinet/tcp_seq.h>
+#endif
 
 #include "npf_impl.h"
 

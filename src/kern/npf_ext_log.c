@@ -33,6 +33,7 @@
  * NPF logging extension.
  */
 
+#ifdef _KERNEL
 #include <sys/cdefs.h>
 __KERNEL_RCSID(0, "$NetBSD: npf_ext_log.c,v 1.8 2014/07/20 00:37:41 rmind Exp $");
 
@@ -48,6 +49,7 @@ __KERNEL_RCSID(0, "$NetBSD: npf_ext_log.c,v 1.8 2014/07/20 00:37:41 rmind Exp $"
 #include <net/if.h>
 #include <net/if_types.h>
 #include <net/bpf.h>
+#endif
 
 #include "npf_impl.h"
 

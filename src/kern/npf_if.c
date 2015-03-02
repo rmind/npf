@@ -41,6 +41,7 @@
  * monitored using pfil(9) hooks.
  */
 
+#ifdef _KERNEL
 #include <sys/cdefs.h>
 __KERNEL_RCSID(0, "$NetBSD: npf_if.c,v 1.4 2014/08/10 19:09:43 rmind Exp $");
 
@@ -54,8 +55,8 @@ __KERNEL_RCSID(0, "$NetBSD: npf_if.c,v 1.4 2014/08/10 19:09:43 rmind Exp $");
 #include <sys/param.h>
 #include <sys/types.h>
 #include <sys/kmem.h>
-
 #include <net/if.h>
+#endif
 
 #include "npf_impl.h"
 

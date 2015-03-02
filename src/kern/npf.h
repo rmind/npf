@@ -39,35 +39,30 @@
 #include <sys/param.h>
 #include <sys/types.h>
 
-#include <sys/ioctl.h>
-#include <prop/proplib.h>
-
-#include <netinet/in_systm.h>
-#include <netinet/in.h>
-
 #define	NPF_VERSION		17
 
 #if defined(_NPF_STANDALONE)
 #include "npf_stand.h"
+#else
+#include <sys/ioctl.h>
+#include <prop/proplib.h>
+#include <netinet/in_systm.h>
+#include <netinet/in.h>
 #endif
 
 /*
  * Public declarations and definitions.
  */
 
-/* Storage of address (both for IPv4 and IPv6) and netmask */
-#ifdef _KERNEL
-typedef struct in6_addr		npf_addr_t;
-#else
-#undef s6_addr
-#undef s6_addr16
-#undef s6_addr32
+/*
+ * Storage of address (both for IPv4 and IPv6) and netmask.
+ */
 typedef union {
-	uint8_t			s6_addr[16];
-	uint16_t		s6_addr16[8];
-	uint32_t		s6_addr32[4];
+	uint8_t			word8[16];
+	uint16_t		word16[8];
+	uint32_t		word32[4];
 } npf_addr_t;
-#endif
+
 typedef uint8_t			npf_netmask_t;
 
 #define	NPF_MAX_NETMASK		(128)
@@ -93,7 +88,6 @@ typedef uint8_t			npf_netmask_t;
 #define	NPF_EXT_MODULE(name, req)	\
     MODULE(MODULE_CLASS_MISC, name, (sizeof(req) - 1) ? ("npf," req) : "npf")
 
-#include <net/if.h>
 #include <netinet/ip.h>
 #include <netinet/ip6.h>
 #include <netinet/tcp.h>

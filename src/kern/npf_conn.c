@@ -98,6 +98,7 @@
  *			npf_conn_t::c_lock
  */
 
+#ifdef _KERNEL
 #include <sys/cdefs.h>
 __KERNEL_RCSID(0, "$NetBSD: npf_conn.c,v 1.16 2015/02/05 22:04:03 rmind Exp $");
 
@@ -116,6 +117,7 @@ __KERNEL_RCSID(0, "$NetBSD: npf_conn.c,v 1.16 2015/02/05 22:04:03 rmind Exp $");
 #include <sys/pool.h>
 #include <sys/queue.h>
 #include <sys/systm.h>
+#endif
 
 #define __NPF_CONN_PRIVATE
 #include "npf_conn.h"
@@ -310,8 +312,8 @@ npf_conn_conkey(const npf_cache_t *npc, npf_connkey_t *key, const bool forw)
 	key->ck_key[1] = ((uint32_t)id[isrc] << 16) | id[idst];
 
 	if (__predict_true(alen == sizeof(in_addr_t))) {
-		key->ck_key[2] = npc->npc_ips[isrc]->s6_addr32[0];
-		key->ck_key[3] = npc->npc_ips[idst]->s6_addr32[0];
+		key->ck_key[2] = npc->npc_ips[isrc]->word32[0];
+		key->ck_key[3] = npc->npc_ips[idst]->word32[0];
 		keylen = 4 * sizeof(uint32_t);
 	} else {
 		const u_int nwords = alen >> 2;

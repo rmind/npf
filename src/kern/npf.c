@@ -33,6 +33,7 @@
  * NPF main: dynamic load/initialisation and unload routines.
  */
 
+#ifdef _KERNEL
 #include <sys/cdefs.h>
 __KERNEL_RCSID(0, "$NetBSD: npf.c,v 1.22 2014/07/25 08:10:40 dholland Exp $");
 
@@ -49,6 +50,7 @@ __KERNEL_RCSID(0, "$NetBSD: npf.c,v 1.22 2014/07/25 08:10:40 dholland Exp $");
 #include <sys/rwlock.h>
 #include <sys/socketvar.h>
 #include <sys/uio.h>
+#endif
 
 #include "npf_impl.h"
 #include "npf_conn.h"

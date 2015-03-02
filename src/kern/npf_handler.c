@@ -35,6 +35,7 @@
  * Note: pfil(9) hooks are currently locked by softnet_lock and kernel-lock.
  */
 
+#ifdef _KERNEL
 #include <sys/cdefs.h>
 __KERNEL_RCSID(0, "$NetBSD: npf_handler.c,v 1.33 2014/07/23 01:25:34 rmind Exp $");
 
@@ -52,6 +53,7 @@ __KERNEL_RCSID(0, "$NetBSD: npf_handler.c,v 1.33 2014/07/23 01:25:34 rmind Exp $
 #include <netinet/ip_var.h>
 #include <netinet/ip6.h>
 #include <netinet6/ip6_var.h>
+#endif
 
 #include "npf_impl.h"
 #include "npf_conn.h"

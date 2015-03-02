@@ -70,6 +70,7 @@
  *	port map and NAT entry is destroyed when connection expires.
  */
 
+#ifdef _KERNEL
 #include <sys/cdefs.h>
 __KERNEL_RCSID(0, "$NetBSD: npf_nat.c,v 1.39 2014/12/30 19:11:44 christos Exp $");
 
@@ -87,6 +88,7 @@ __KERNEL_RCSID(0, "$NetBSD: npf_nat.c,v 1.39 2014/12/30 19:11:44 christos Exp $"
 
 #include <net/pfil.h>
 #include <netinet/in.h>
+#endif
 
 #include "npf_impl.h"
 #include "npf_conn.h"
