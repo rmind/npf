@@ -92,7 +92,7 @@ hashinit(u_int elements, enum hashtype htype, bool waitok, u_long *hashmask)
 
 	KASSERT(elements > 0);
 
-#define MAXELEMENTS (1U << ((sizeof(elements) * NBBY) - 1))
+#define MAXELEMENTS (1U << ((sizeof(elements) * CHAR_BIT) - 1))
 	if (elements > MAXELEMENTS)
 		elements = MAXELEMENTS;
 

@@ -44,8 +44,6 @@ typedef struct npf_connkey npf_connkey_t;
 
 #if defined(__NPF_CONN_PRIVATE)
 
-#include <sys/rbtree.h>
-
 /*
  * See npf_conn_conkey() function for the key layout description.
  */

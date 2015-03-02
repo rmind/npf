@@ -61,6 +61,7 @@ __RCSID("$NetBSD: ptree.c,v 1.10 2012/10/06 22:15:09 matt Exp $");
 #endif
 
 #include "ptree.h"
+#include "cext.h"
 
 /*
  * This is an implementation of a radix / PATRICIA tree.  As in a traditional

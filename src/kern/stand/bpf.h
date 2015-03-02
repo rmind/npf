@@ -37,6 +37,7 @@
 #ifndef _NPF_BPF_H_
 #define _NPF_BPF_H_
 
+#include <inttypes.h>
 #include <pcap/bpf.h>
 
 typedef struct bpf_args {

@@ -40,6 +40,9 @@
 #ifndef	_SYS_CEXT_H_
 #define	_SYS_CEXT_H_
 
+#include <sys/types.h>
+#include <limits.h>
+
 #ifndef __predict_true
 #define	__predict_true(x)	__builtin_expect((x) != 0, 1)
 #endif

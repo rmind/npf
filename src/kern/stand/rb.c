@@ -62,6 +62,7 @@ __weak_alias(rb_tree_depths, _rb_tree_depths)
 #endif
 
 #include "rbtree.h"
+#include "cext.h"
 
 static void rb_tree_insert_rebalance(struct rb_tree *, struct rb_node *);
 static void rb_tree_removal_rebalance(struct rb_tree *, struct rb_node *,

@@ -45,11 +45,13 @@
 #include <errno.h>
 #include <assert.h>
 
+#define	__FAVOR_BSD
 #include <netinet/udp.h>
 #include <netinet/tcp.h>
 #include <arpa/inet.h>
 
 #include <prop/proplib.h>
+#include <cdbr.h>
 
 #include "cext.h"
 
@@ -113,6 +115,23 @@ typedef int pserialize_t;
 /*
  * Atomic operations and memory barriers.
  */
+
+static inline void *
+npfkern_atomic_swap_ptr(volatile void *ptr, void *nval)
+{
+	/* Solaris/NetBSD API uses *ptr, but it represents **ptr. */
+	void * volatile *ptrp = (void * volatile *)ptr;
+	volatile void *ptrval;
+	void *oldval;
+
+	do {
+		ptrval = *ptrp;
+		oldval = __sync_val_compare_and_swap(ptrp, *ptrp, nval);
+	} while (oldval != ptrval);
+
+	return oldval;
+}
+
 #define	membar_sync()		__sync_synchronize()
 #define	atomic_inc_uint(x)	__sync_fetch_and_add(x, 1)
 #define	atomic_dec_uint(x)	__sync_fetch_and_add(x, -1)
@@ -120,6 +139,7 @@ typedef int pserialize_t;
 #define	atomic_or_uint(x, v)	__sync_fetch_and_or(x, v)
 #define	atomic_cas_32(p, o, n)	__sync_val_compare_and_swap(p, o, n)
 #define	atomic_cas_ptr(p, o, n)	__sync_val_compare_and_swap(p, o, n)
+#define atomic_swap_ptr(x, y)	npfkern_atomic_swap_ptr(x, y)
 
 /*
  * Threads.
@@ -238,9 +258,28 @@ npfkern_kpause(const char *wmesg, bool intr, int timo, kmutex_t *mtx)
 
 #define	kpause(w, s, t, l)	npfkern_kpause(w, s, t, l)
 
+#ifndef timespecsub
+#define	timespecsub(tsp, usp, vsp)					\
+	do {								\
+		(vsp)->tv_sec = (tsp)->tv_sec - (usp)->tv_sec;		\
+		(vsp)->tv_nsec = (tsp)->tv_nsec - (usp)->tv_nsec;	\
+		if ((vsp)->tv_nsec < 0) {				\
+			(vsp)->tv_sec--;				\
+			(vsp)->tv_nsec += 1000000000L;			\
+		}							\
+	} while (/* CONSTCOND */ 0)
+#endif
+
 /*
  * Networking.
  */
+
+#ifndef IPV6_VERSION
+#define IPV6_VERSION	0x60
+#endif
+#ifndef IPV6_DEFHLIM
+#define IPV6_DEFHLIM	64
+#endif
 
 #define PFIL_IN		0x00000001
 #define PFIL_OUT	0x00000002
@@ -249,10 +288,6 @@ npfkern_kpause(const char *wmesg, bool intr, int timo, kmutex_t *mtx)
 #define PFIL_IFNET	0x00000010
 
 #define	pfil_head_t	void
-
-#ifndef tcp_seq
-typedef uint32_t	tcp_seq;
-#endif
 
 /*
  * FIXME/TODO: To be implemented ..

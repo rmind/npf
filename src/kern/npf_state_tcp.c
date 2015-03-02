@@ -42,7 +42,6 @@ __KERNEL_RCSID(0, "$NetBSD: npf_state_tcp.c,v 1.16 2014/07/25 20:07:32 rmind Exp
 
 #include <netinet/in.h>
 #include <netinet/tcp.h>
-#include <netinet/tcp_seq.h>
 #endif
 
 #include "npf_impl.h"
@@ -94,6 +93,11 @@ static u_int npf_tcp_timeouts[] __read_mostly = {
 static bool npf_strict_order_rst __read_mostly = true;
 
 #define	NPF_TCP_MAXACKWIN	66000
+
+#define	SEQ_LT(a,b)		((int)((a)-(b)) < 0)
+#define	SEQ_LEQ(a,b)		((int)((a)-(b)) <= 0)
+#define	SEQ_GT(a,b)		((int)((a)-(b)) > 0)
+#define	SEQ_GEQ(a,b)		((int)((a)-(b)) >= 0)
 
 /*
  * List of TCP flag cases and conversion of flags to a case (index).

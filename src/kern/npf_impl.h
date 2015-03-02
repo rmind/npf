@@ -51,6 +51,7 @@
 #include <sys/types.h>
 #include <sys/queue.h>
 #include <sys/ptree.h>
+#include <sys/rbtree.h>
 
 #include <net/bpf.h>
 #include <net/bpfjit.h>

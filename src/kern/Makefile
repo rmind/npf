@@ -6,6 +6,7 @@
 CFLAGS=		-std=gnu99 -O2 -flto -Wall -Wextra #-Werror
 CFLAGS+=        -Wstrict-prototypes -Wmissing-prototypes -Wpointer-arith
 CFLAGS+=	-fvisibility=hidden -I stand -D_NPF_STANDALONE
+CFLAGS+=        -D__RCSID\(x\)=
 
 CFLAGS+=	-Wno-unused-parameter -Wno-unused-variable -Wno-unused-function
 CFLAGS+=	-Wno-unused
@@ -21,7 +22,8 @@ LDFLAGS=	-flto -lpthread -lpcap -lprop
 SYSNAME:=	$(shell uname -s)
 
 ifeq ($(SYSNAME),Linux)
-CFLAGS+=	-D_POSIX_C_SOURCE=200809L -D_BSD_SOURCE
+CFLAGS+=	-D_POSIX_C_SOURCE=200809L
+CFLAGS+=	-D_BSD_SOURCE -D__FAVOR_BSD=1
 endif
 
 OBJS=		$(shell grep ^file files.npf | cut -f2 | \
