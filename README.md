@@ -16,13 +16,15 @@ This repository contains a **standalone** version of NPF.
 NPF offers the traditional set of features provided by packet filters.
 Some key features are:
 - Stateful inspection (connection tracking).
-- Network address translation (NAT).  This includes static (stateless) and
-  dynamic (stateful) translation, port translation, bi-directional NAT, etc.
-- IPv6-to-IPv6 network prefix translation (NPTv6).
+- Network address translation (NAT):
+  - Static (stateless) and dynamic (stateful) translation.
+  - NAPT and other forms of port translation (e.g. port forwarding).
+  - Inbound and outbound NAT as well as bi-directional NAT.
+  - IPv6-to-IPv6 network prefix translation (NPTv6).
 - Tables for efficient IP sets.
 - Application Level Gateways (e.g., to support traceroute).
 - NPF uses BPF with just-in-time (JIT) compilation.
-Rule procedures and a framework for NPF extensions.
+- Rule procedures and a framework for NPF extensions.
 - Traffic normalization (extension).
 - Packet logging (extension).
 
