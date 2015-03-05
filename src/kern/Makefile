@@ -28,7 +28,7 @@ endif
 
 OBJS=		$(shell grep ^file files.npf | cut -f2 | \
 		    sed 's/\(.*\)net\/npf\/\(.*\).c/\2.o/g' | \
-		    grep -v npf_mbuf | grep -v npf_ext_ | grep -v if_npflog)
+		    grep -v npf_ext_ | grep -v if_npflog)
 
 OBJS+=		stand/bpf.o
 OBJS+=		stand/rb.o stand/ptree.o
@@ -36,8 +36,8 @@ OBJS+=		stand/murmurhash.o stand/subr_hash.o
 
 all: $(OBJS)
 
-test: $(OBJS) main.o
-	# $(CC) $^ -o npf $(LDFLAGS)
+test: $(OBJS) stand/test.o
+	$(CC) $^ -o npf $(LDFLAGS)
 
 clean:
 	rm -f *.o stand/*.o

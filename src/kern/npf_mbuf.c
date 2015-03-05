@@ -244,6 +244,7 @@ nbuf_ensure_writable(nbuf_t *nbuf, size_t len)
 	return nbuf->nb_nptr;
 }
 
+#ifdef _KERNEL
 bool
 nbuf_cksum_barrier(nbuf_t *nbuf, int di)
 {
@@ -307,3 +308,4 @@ nbuf_find_tag(nbuf_t *nbuf, uint32_t key, void **data)
 	*data = (void *)(mt + 1);
 	return 0;
 }
+#endif

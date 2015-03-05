@@ -313,7 +313,8 @@ typedef struct {
 
 struct mbuf {
 	unsigned	m_flags;
-	int		m_len;
+	unsigned	m_len;
+	void *		m_next;
 	struct {
 		int	len;
 	} m_pkthdr;
@@ -321,12 +322,19 @@ struct mbuf {
 	uint8_t		m_data0[512];
 };
 
+#define	M_UNWRITABLE(m, l)	false
+#define	M_NOWAIT		0x00001
 #ifndef M_CANFASTFWD
 #define	M_CANFASTFWD		0x00400
 #endif
+#define	M_CSUM_TCPv4		0x1
+#define	M_CSUM_UDPv4		0x2
+
 #define	m_gethdr(x, y)		calloc(1, 512)
 #define	m_freem			free
 #define	m_length(m)		0
+#define	m_makewritable(a,b,c,d)	false
+#define	m_ensure_contig(m, l)	false
 #define	mtod(m, t)		((t)((m)->m_data))
 
 /*
