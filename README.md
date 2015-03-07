@@ -47,3 +47,8 @@ http://www.netbsd.org/~rmind/npf/
 
         npfctl/         - command line user interface to control NPF
                           http://nxr.netbsd.org/xref/src/usr.sbin/npf/npfctl/
+
+        npftest/        - unit tests and utility to debug NPF
+                          http://nxr.netbsd.org/xref/src/usr.sbin/npf/npftest/
+
+    pkg/                - packaging files (e.g. RPM specs)
