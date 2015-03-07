@@ -20,12 +20,20 @@ endif
 
 LDFLAGS=	-lpthread -lpcap -lcdb -lprop
 
+#
+# System specific flags
+#
+
 SYSNAME:=	$(shell uname -s)
 
 ifeq ($(SYSNAME),Linux)
 CFLAGS+=	-D_POSIX_C_SOURCE=200809L
 CFLAGS+=	-D_BSD_SOURCE -D__FAVOR_BSD=1
 endif
+
+#
+# Objects to compile
+#
 
 OBJS=		$(shell grep ^file files.npf | cut -f2 | \
 		    sed 's/\(.*\)net\/npf\/\(.*\).c/\2.o/g' | \
@@ -36,10 +44,45 @@ OBJS+=		stand/bpf_filter.o
 OBJS+=		stand/rb.o stand/ptree.o
 OBJS+=		stand/murmurhash.o stand/subr_hash.o
 
-all: $(OBJS)
+#
+# Flags for the library target
+#
 
-test: $(OBJS) stand/test.o
+LIB=		libnpfkern
+INCS=
+MANS=		libnpfkern.3
+
+$(LIB).la:	LDFLAGS+=	-rpath $(LIBDIR)
+install/%.la:	ILIBDIR=	$(DESTDIR)/$(LIBDIR)
+install:	IINCDIR=	$(DESTDIR)/$(INCDIR)
+install:	IMANDIR=	$(DESTDIR)/$(MANDIR)/man3/
+
+#
+# Targets
+#
+
+all: $(OBJS) stand/test.o
 	$(CC) $^ -o npf $(LDFLAGS)
 
+lib: $(LIB).la
+
+%.lo: %.c
+	libtool --mode=compile --tag CC $(CC) $(CFLAGS) -c $<
+
+$(LIB).la: $(shell echo $(OBJS) | sed 's/\.o/\.lo/g')
+	libtool --mode=link --tag CC $(CC) $(LDFLAGS) -o $@ $(notdir $^)
+
+install/%.la: %.la
+	mkdir -p $(ILIBDIR)
+	libtool --mode=install install -c $(notdir $@) $(ILIBDIR)/$(notdir $@)
+
+install: $(addprefix install/,$(LIB).la)
+	libtool --mode=finish $(LIBDIR)
+	#mkdir -p $(IINCDIR) && install -c $(INCS) $(IINCDIR)
+	#mkdir -p $(IMANDIR) && install -c $(MANS) $(IMANDIR)
+
 clean:
-	rm -f *.o stand/*.o
+	libtool --mode=clean rm
+	rm -rf .libs *.{l,}o *.la stand/*.{l,}o stand/*.la
+
+.PHONY: all lib install clean

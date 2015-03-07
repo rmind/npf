@@ -1,5 +1,5 @@
 Name:		npf
-Version:	1.0
+Version:	0.1
 Release:	1%{?dist}
 Summary:	Standalone NPF package
 License:	BSD
@@ -31,10 +31,17 @@ make %{?_smp_mflags} LIBDIR=%{_libdir}
 
 
 %install
-make install DESTDIR=%{buildroot} LIBDIR=%{_libdir} INCDIR=%{_includedir}
+make install \
+    DESTDIR=%{buildroot} \
+    LIBDIR=%{_libdir} \
+    INCDIR=%{_includedir} \
+    MANDIR=%{_mandir} \
 
 
 %files
+%{_libdir}/*
+#%{_includedir}/*
+#%{_mandir}/*
 
 
 %changelog
