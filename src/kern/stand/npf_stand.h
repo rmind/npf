@@ -46,6 +46,7 @@
 #include <assert.h>
 
 #define	__FAVOR_BSD
+#include <netinet/in.h>
 #include <netinet/ip.h>
 #include <netinet/udp.h>
 #include <netinet/tcp.h>
