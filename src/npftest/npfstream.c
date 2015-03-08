@@ -16,6 +16,7 @@
 
 #include <arpa/inet.h>
 
+#if !defined(_NPF_STANDALONE)
 #include <net/if.h>
 #include <net/ethertypes.h>
 #include <net/if_ether.h>
@@ -25,6 +26,7 @@
 #include <netinet/tcp.h>
 
 #include <rump/rump.h>
+#endif
 
 #include "npftest.h"
 

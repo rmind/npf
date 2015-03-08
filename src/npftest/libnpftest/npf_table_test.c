@@ -6,8 +6,10 @@
  * Public Domain.
  */
 
+#ifdef _KERNEL
 #include <sys/types.h>
 #include <sys/malloc.h>
+#endif
 
 #include "npf_impl.h"
 #include "npf_test.h"
@@ -23,22 +25,30 @@ static const char *ip_list[] = {
 	"10.0.0.2",
 };
 
+#if __BYTE_ORDER == __BIG_ENDIAN
+#define	U16_TO_LE(x)	((((x) & 0xff) << 8) | (((x) & 0xff00) >> 8))
+#else
+#define	U16_TO_LE(x)	(x)
+#endif
+
 static const uint16_t ip6_list[][8] = {
 	{
-	    htons(0xfe80), 0x0, 0x0, 0x0,
-	    htons(0x2a0), htons(0xc0ff), htons(0xfe10), htons(0x1234)
+	    U16_TO_LE(0xfe80), 0x0, 0x0, 0x0,
+	    U16_TO_LE(0x2a0), U16_TO_LE(0xc0ff),
+	    U16_TO_LE(0xfe10), U16_TO_LE(0x1234)
 	},
 	{
-	    htons(0xfe80), 0x0, 0x0, 0x0,
-	    htons(0x2a0), htons(0xc0ff), 0x00, 0x0
+	    U16_TO_LE(0xfe80), 0x0, 0x0, 0x0,
+	    U16_TO_LE(0x2a0), U16_TO_LE(0xc0ff), 0x00, 0x0
 	},
 	{
-	    htons(0xfe80), 0x0, 0x0, 0x0,
+	    U16_TO_LE(0xfe80), 0x0, 0x0, 0x0,
 	    0x0, 0x0, 0x0, 0x0
 	},
 	{
-	    htons(0xfe80), 0x0, 0x0, 0x0,
-	    htons(0x2a0), htons(0xc0ff), htons(0xfe10), htons(0x1230)
+	    U16_TO_LE(0xfe80), 0x0, 0x0, 0x0,
+	    U16_TO_LE(0x2a0), U16_TO_LE(0xc0ff),
+	    U16_TO_LE(0xfe10), U16_TO_LE(0x1230)
 	}
 };
 
@@ -58,7 +68,7 @@ npf_table_test_fill4(npf_tableset_t *tblset, npf_addr_t *addr)
 		npf_table_t *t;
 		int error;
 
-		addr->s6_addr32[0] = inet_addr(ip_list[i]);
+		addr->word32[0] = inet_addr(ip_list[i]);
 
 		t = npf_tableset_getbyname(tblset, HASH_TID);
 		error = npf_table_insert(t, alen, addr, nm);
@@ -107,7 +117,7 @@ npf_table_test(bool verbose, void *blob, size_t size)
 	fail |= !(error == 0);
 
 	/* Table ID 3, using a CDB. */
-	cdb = malloc(size, M_TEMP, M_WAITOK);
+	cdb = kmalloc(size, M_TEMP, M_WAITOK);
 	memcpy(cdb, blob, size);
 
 	t3 = npf_table_create(CDB_TID, 2, NPF_TABLE_CDB, cdb, size);
@@ -116,7 +126,7 @@ npf_table_test(bool verbose, void *blob, size_t size)
 	fail |= !(error == 0);
 
 	/* Attempt to match non-existing entries - should fail. */
-	addr->s6_addr32[0] = inet_addr(ip_list[0]);
+	addr->word32[0] = inet_addr(ip_list[0]);
 	alen = sizeof(struct in_addr);
 
 	t = npf_tableset_getbyname(tblset, HASH_TID);
@@ -131,7 +141,7 @@ npf_table_test(bool verbose, void *blob, size_t size)
 	fail |= npf_table_test_fill4(tblset, addr);
 
 	/* Attempt to add duplicates - should fail. */
-	addr->s6_addr32[0] = inet_addr(ip_list[0]);
+	addr->word32[0] = inet_addr(ip_list[0]);
 	alen = sizeof(struct in_addr);
 
 	t = npf_tableset_getbyname(tblset, HASH_TID);
@@ -144,7 +154,7 @@ npf_table_test(bool verbose, void *blob, size_t size)
 
 	/* Match (validate) each IP entry. */
 	for (i = 0; i < __arraycount(ip_list); i++) {
-		addr->s6_addr32[0] = inet_addr(ip_list[i]);
+		addr->word32[0] = inet_addr(ip_list[i]);
 
 		t = npf_tableset_getbyname(tblset, HASH_TID);
 		error = npf_table_lookup(t, alen, addr);
@@ -222,7 +232,7 @@ npf_table_test(bool verbose, void *blob, size_t size)
 
 	/* Remove all IPv4 entries. */
 	for (i = 0; i < __arraycount(ip_list); i++) {
-		addr->s6_addr32[0] = inet_addr(ip_list[i]);
+		addr->word32[0] = inet_addr(ip_list[i]);
 
 		t = npf_tableset_getbyname(tblset, HASH_TID);
 		error = npf_table_remove(t, alen, addr, nm);
@@ -234,13 +244,13 @@ npf_table_test(bool verbose, void *blob, size_t size)
 	}
 
 	/* Test CDB. */
-	addr->s6_addr32[0] = inet_addr(ip_list[0]);
+	addr->word32[0] = inet_addr(ip_list[0]);
 	alen = sizeof(struct in_addr);
 	error = npf_table_lookup(t3, alen, addr);
 	fail |= !(error == 0);
 
 	for (i = 1; i < __arraycount(ip_list) - 1; i++) {
-		addr->s6_addr32[0] = inet_addr(ip_list[i]);
+		addr->word32[0] = inet_addr(ip_list[i]);
 		alen = sizeof(struct in_addr);
 		error = npf_table_lookup(t3, alen, addr);
 		fail |= !(error != 0);

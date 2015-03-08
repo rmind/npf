@@ -33,8 +33,10 @@
  * NPF test of BPF coprocessor.
  */
 
+#ifdef _KERNEL
 #include <sys/types.h>
 #include <sys/endian.h>
+#endif
 
 #define	NPF_BPFCOP
 #include "npf_impl.h"

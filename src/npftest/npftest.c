@@ -16,12 +16,15 @@
 #include <err.h>
 
 #include <sys/mman.h>
+#include <sys/stat.h>
+#if !defined(_NPF_STANDALONE)
 #include <sys/ioctl.h>
 #include <net/if.h>
 #include <arpa/inet.h>
 
 #include <rump/rump.h>
 #include <rump/rump_syscalls.h>
+#endif
 
 #include <cdbw.h>
 
@@ -30,7 +33,7 @@
 static bool verbose, quiet;
 
 __dead static void
-usage(void)
+usage(const char *progname)
 {
 	printf("usage:\n"
 	    "  %s [ -q | -v ] [ -c <config> ] "
@@ -47,7 +50,7 @@ usage(void)
 	    "\t-L: list testnames and description for -T\n"
 	    "\t-q: quiet mode\n"
 	    "\t-v: verbose mode\n",
-	    getprogname(), getprogname(), getprogname());
+	    progname, progname, progname);
 	exit(EXIT_FAILURE);
 }
 
@@ -224,14 +227,13 @@ main(int argc, char **argv)
 			/* Note: RUMP_NCPU must be high enough. */
 			if ((nthreads = atoi(optarg)) > 0 &&
 			    getenv("RUMP_NCPU") == NULL) {
-				char *val;
-				asprintf(&val, "%u", nthreads + 1);
-				setenv("RUMP_NCPU", val, 1);
-				free(val);
+				static char nthr[64];
+				sprintf(nthr, "%u", nthreads + 1);
+				setenv("RUMP_NCPU", nthr, 1);
 			}
 			break;
 		default:
-			usage();
+			usage(argv[0]);
 		}
 	}
 
@@ -241,20 +243,22 @@ main(int argc, char **argv)
 	 * config should be loaded.
 	 */
 	if ((benchmark != NULL) == test && (stream && !interface)) {
-		usage();
+		usage(argv[0]);
 	}
 	if (benchmark && (!config || !nthreads)) {
 		errx(EXIT_FAILURE, "missing config for the benchmark or "
 		    "invalid thread count");
 	}
-
+#if defined(_NPF_STANDALONE)
+#define	rump_unschedule()
+#else
 	/* XXX rn_init */
 	extern int rumpns_max_keylen;
 	rumpns_max_keylen = 1;
 
 	rump_init();
 	rump_schedule();
-
+#endif
 	rumpns_npf_test_init(inet_pton, inet_ntop, random);
 
 	if (config) {
@@ -268,12 +272,13 @@ main(int argc, char **argv)
 	fail = false;
 
 	if (test) {
+#if 0
 		if (!testname || strcmp("nbuf", testname) == 0) {
 			ok = rumpns_npf_nbuf_test(verbose);
 			fail |= result("nbuf", ok);
 			tname_matched = true;
 		}
-
+#endif
 		if (!testname || strcmp("bpf", testname) == 0) {
 			ok = rumpns_npf_bpf_test(verbose);
 			fail |= result("bpf", ok);

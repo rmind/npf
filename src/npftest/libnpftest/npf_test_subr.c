@@ -6,10 +6,12 @@
  * Public Domain.
  */
 
+#ifdef _KERNEL
 #include <sys/types.h>
 #include <sys/cprng.h>
 #include <net/if.h>
 #include <net/if_types.h>
+#endif
 
 #include "npf_impl.h"
 #include "npf_test.h"
@@ -137,6 +139,7 @@ npf_inet_ntop(int af, const void *src, char *dst, socklen_t size)
 	return _ntop_func(af, src, dst, size);
 }
 
+#ifdef _KERNEL
 /*
  * Need to override cprng_fast32() -- we need deterministic PRNG.
  */
@@ -145,3 +148,4 @@ cprng_fast32(void)
 {
 	return (uint32_t)(_random_func ? _random_func() : random());
 }
+#endif

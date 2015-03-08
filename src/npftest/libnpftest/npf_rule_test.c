@@ -6,7 +6,9 @@
  * Public Domain.
  */
 
+#ifdef _KERNEL
 #include <sys/types.h>
+#endif
 
 #include "npf_impl.h"
 #include "npf_test.h"

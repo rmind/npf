@@ -10,7 +10,23 @@
 #include <inttypes.h>
 #include <stdbool.h>
 
+#if !defined(_NPF_STANDALONE)
 #include <net/if.h>
+#else
+#include "npf_stand.h"
+#define	rumpns_npf_test_addif		npf_test_addif
+#define	rumpns_npf_test_load		npf_test_load
+#define	rumpns_npf_test_init		npf_test_init
+#define	rumpns_npf_test_getif		npf_test_getif
+#define	rumpns_npf_nbuf_test		npf_nbuf_test
+#define	rumpns_npf_bpf_test		npf_bpf_test
+#define	rumpns_npf_table_test		npf_table_test
+#define	rumpns_npf_state_test		npf_state_test
+#define	rumpns_npf_rule_test		npf_rule_test
+#define	rumpns_npf_nat_test		npf_nat_test
+#define	rumpns_npf_test_conc		npf_test_conc
+#define	rumpns_npf_test_statetrack	npf_test_statetrack
+#endif
 
 void		rumpns_npf_test_init(int (*)(int, const char *, void *),
 		    const char *(*)(int, const void *, char *, socklen_t),

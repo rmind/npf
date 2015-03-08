@@ -7,6 +7,7 @@
 #ifndef _LIB_NPF_TEST_H_
 #define _LIB_NPF_TEST_H_
 
+#ifdef _KERNEL
 #include <sys/types.h>
 #include <sys/mbuf.h>
 
@@ -23,6 +24,7 @@
 #include <net/if.h>
 #include <net/if_ether.h>
 #include <net/ethertypes.h>
+#endif
 
 /* Test interfaces and IP addresses. */
 #define	IFNAME_EXT	"npftest0"

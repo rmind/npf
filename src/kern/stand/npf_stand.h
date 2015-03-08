@@ -46,9 +46,13 @@
 #include <assert.h>
 
 #define	__FAVOR_BSD
+#include <netinet/ip.h>
 #include <netinet/udp.h>
 #include <netinet/tcp.h>
 #include <arpa/inet.h>
+#if defined(__linux__)
+#include <net/ethernet.h>
+#endif
 
 #include <prop/proplib.h>
 #include <cdbr.h>
@@ -134,8 +138,8 @@ npfkern_atomic_swap_ptr(volatile void *ptr, void *nval)
 
 #define	membar_sync()		__sync_synchronize()
 #define	atomic_inc_uint(x)	__sync_fetch_and_add(x, 1)
-#define	atomic_dec_uint(x)	__sync_fetch_and_add(x, -1)
-#define	atomic_dec_uint_nv(x)	__sync_fetch_and_add(x, -1)
+#define	atomic_dec_uint(x)	__sync_sub_and_fetch(x, 1)
+#define	atomic_dec_uint_nv(x)	__sync_sub_and_fetch(x, 1)
 #define	atomic_or_uint(x, v)	__sync_fetch_and_or(x, v)
 #define	atomic_cas_32(p, o, n)	__sync_val_compare_and_swap(p, o, n)
 #define	atomic_cas_ptr(p, o, n)	__sync_val_compare_and_swap(p, o, n)
@@ -201,6 +205,7 @@ npfkern_pool_cache_init(size_t size)
 #define	kmem_intr_zalloc(len, flags)	kmem_zalloc(len, flags)
 #define	kmem_intr_free(ptr, len)	kmem_free(ptr, len)
 
+#define	kmalloc(size, type, flags)	calloc(1, (size))
 #define	kfree(ptr, type)		free(ptr)
 
 /*
@@ -246,6 +251,7 @@ uint32_t	murmurhash2(const void *, size_t, uint32_t);
 #define	getnanouptime(ts)	clock_gettime(CLOCK_MONOTONIC, (ts))
 #undef	mstohz
 #define	mstohz(ms)		(ms)
+#define	hz			1
 
 static inline int
 npfkern_kpause(const char *wmesg, bool intr, int timo, kmutex_t *mtx)
@@ -294,13 +300,19 @@ npfkern_kpause(const char *wmesg, bool intr, int timo, kmutex_t *mtx)
 /*
  * FIXME/TODO: To be implemented ..
  */
+#define	if_alloc(x)	calloc(1, sizeof(ifnet_t))
+#define	if_alloc_sadl(x)
+#define	if_attach(x)
 #define	ifunit(name)	NULL
+#define	DLT_NULL	0
 #define	IFNET_FOREACH(ifp)	if (0)
 
 #define	IFNAMSIZ	8
 
 typedef struct {
 	char		if_xname[IFNAMSIZ];
+	unsigned	if_index;
+	unsigned	if_dlt;
 	void *		if_pf_kif;
 	void *		next;
 } ifnet_t;

@@ -6,12 +6,14 @@
  * Public Domain.
  */
 
+#ifdef _KERNEL
 #include <sys/types.h>
 #include <sys/param.h>
 
 #include <sys/kernel.h>
 #include <sys/kmem.h>
 #include <sys/kthread.h>
+#endif
 
 #include "npf_impl.h"
 #include "npf_test.h"
@@ -80,9 +82,9 @@ npf_test_conc(bool st, unsigned nthreads)
 	l = kmem_zalloc(sizeof(lwp_t *) * nthreads, KM_SLEEP);
 
 	for (unsigned i = 0; i < nthreads; i++) {
-		const int flags = KTHREAD_MUSTJOIN | KTHREAD_MPSAFE;
-		error = kthread_create(PRI_NONE, flags, NULL,
-		    worker, (void *)(uintptr_t)i, &l[i], "npfperf");
+		error = kthread_create(PRI_NONE, KTHREAD_MUSTJOIN |
+		    KTHREAD_MPSAFE, NULL, worker, (void *)(uintptr_t)i,
+		    &l[i], "npfperf");
 		KASSERT(error == 0);
 	}
 

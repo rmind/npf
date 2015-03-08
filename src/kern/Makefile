@@ -1,18 +1,21 @@
 #
-# Standalone NPF makefile
+# Standalone NPF makefile: the kernel component as a library.
 # This file is in the Public Domain.
 #
 
-CFLAGS=		-std=gnu99 -O2 -flto -Wall -Wextra -Werror
+CFLAGS=		-std=gnu99 -O2 -flto -g -Wall -Wextra -Werror
 CFLAGS+=        -Wstrict-prototypes -Wmissing-prototypes -Wpointer-arith
-CFLAGS+=	-fvisibility=hidden -I stand -D_NPF_STANDALONE
+#CFLAGS+=	-fvisibility=hidden
+CFLAGS+=	-I stand -D_NPF_STANDALONE
 CFLAGS+=        -D__RCSID\(x\)=
 
 CFLAGS+=	-Wno-unused-parameter -Wno-unused-variable -Wno-unused-function
 CFLAGS+=	-Wno-unused
 
+CFLAGS+=	-D_NPF_TESTING
+
 ifeq ($(DEBUG),1)
-CFLAGS+=	-g -O1 -DDEBUG -fno-omit-frame-pointer
+CFLAGS+=	-O1 -DDEBUG -fno-omit-frame-pointer
 else
 CFLAGS+=	-DNDEBUG
 LDFLAGS=	-flto
