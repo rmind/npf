@@ -5,7 +5,7 @@
 
 BIN=		npftest
 
-CFLAGS=		-std=gnu99 -O2 -Wall -Wextra -Werror
+CFLAGS=		-std=gnu99 -O2 -Wall -Wextra -Werror -g
 CFLAGS+=	-Wstrict-prototypes -Wmissing-prototypes -Wpointer-arith
 CFLAGS+=	-I ../kern -I ../kern/stand -D_NPF_STANDALONE
 CFLAGS+=	-D__RCSID\(x\)=
@@ -13,7 +13,7 @@ CFLAGS+=	-D__RCSID\(x\)=
 CFLAGS+=	-Wno-unused-parameter -Wno-unused-variable -Wno-unused-function
 CFLAGS+=	-Wno-unused
 
-LDFLAGS=	-lpthread -lpcap -lcdb -lprop -lnpfkern
+LDFLAGS=	-lpthread -lpcap -lcdb -lprop -lnpfkern-dbg
 
 SYSNAME:=	$(shell uname -s)
 
@@ -26,7 +26,7 @@ OBJS=		npftest.o npfstream.o
 
 OBJS+=		libnpftest/npf_bpf_test.o
 OBJS+=		libnpftest/npf_nat_test.o
-#OBJS+=		libnpftest/npf_nbuf_test.o
+OBJS+=		libnpftest/npf_nbuf_test.o
 OBJS+=		libnpftest/npf_perf_test.o
 OBJS+=		libnpftest/npf_rule_test.o
 OBJS+=		libnpftest/npf_state_test.o

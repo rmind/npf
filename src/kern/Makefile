@@ -4,19 +4,18 @@
 #
 
 CFLAGS=		-std=gnu99 -O2 -flto -g -Wall -Wextra -Werror
-CFLAGS+=        -Wstrict-prototypes -Wmissing-prototypes -Wpointer-arith
-#CFLAGS+=	-fvisibility=hidden
+CFLAGS+=	-Wstrict-prototypes -Wmissing-prototypes -Wpointer-arith
 CFLAGS+=	-I stand -D_NPF_STANDALONE
-CFLAGS+=        -D__RCSID\(x\)=
+CFLAGS+=	-D__RCSID\(x\)=
 
 CFLAGS+=	-Wno-unused-parameter -Wno-unused-variable -Wno-unused-function
 CFLAGS+=	-Wno-unused
 
-CFLAGS+=	-D_NPF_TESTING
-
 ifeq ($(DEBUG),1)
 CFLAGS+=	-O1 -DDEBUG -fno-omit-frame-pointer
+CFLAGS+=	-D_NPF_TESTING
 else
+CFLAGS+=	-fvisibility=hidden
 CFLAGS+=	-DNDEBUG
 LDFLAGS=	-flto
 endif
@@ -52,6 +51,10 @@ OBJS+=		stand/murmurhash.o stand/subr_hash.o
 #
 
 LIB=		libnpfkern
+ifeq ($(DEBUG),1)
+LIB=		libnpfkern-dbg
+endif
+
 INCS=
 MANS=		libnpfkern.3
 

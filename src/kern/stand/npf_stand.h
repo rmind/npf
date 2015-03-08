@@ -174,7 +174,7 @@ npfkern_pthread_create(lwp_t **lret, void (*func)(void *), void *arg)
 #define PR_NOWAIT	KM_NOSLEEP
 
 /*
- * FIXME/TODO: To be converted to use memory pool ..
+ * TODO: To be converted to use memory pool ..
  */
 struct pool_cache {
 	size_t		obj_size;
@@ -325,17 +325,21 @@ typedef struct {
 #define	ip_defttl		64
 #define	max_linkhdr		0
 
+#define	MLEN			512
+
 struct mbuf {
 	unsigned	m_flags;
+	int		m_type;
 	unsigned	m_len;
 	void *		m_next;
 	struct {
 		int	len;
 	} m_pkthdr;
-	uint8_t *	m_data;
-	uint8_t		m_data0[512];
+	char *		m_data;
+	char		m_data0[MLEN];
 };
 
+#define	MT_FREE			0
 #define	M_UNWRITABLE(m, l)	false
 #define	M_NOWAIT		0x00001
 #define M_PKTHDR		0x00002
@@ -345,9 +349,47 @@ struct mbuf {
 #define	M_CSUM_TCPv4		0x1
 #define	M_CSUM_UDPv4		0x2
 
-#define	m_gethdr(x, y)		calloc(1, 512)
-#define	m_freem			free
-#define	m_length(m)		(m)->m_len
+static inline struct mbuf *
+npfkern_m_get(int flags)
+{
+	struct mbuf *m;
+	m = calloc(1, sizeof(struct mbuf));
+	m->m_type = 1;
+	m->m_flags = flags;
+	m->m_data = m->m_data0;
+	return m;
+}
+
+static inline unsigned
+npfkern_m_length(const struct mbuf *m)
+{
+	const struct mbuf *m0;
+	unsigned pktlen = 0;
+
+	if ((m->m_flags & M_PKTHDR) != 0)
+		return m->m_pkthdr.len;
+	for (m0 = m; m0 != NULL; m0 = m0->m_next)
+		pktlen += m0->m_len;
+	return pktlen;
+}
+
+static inline void
+npfkern_m_freem(struct mbuf *m)
+{
+	struct mbuf *n;
+
+	do {
+		n = m->m_next;
+		m->m_type = MT_FREE;
+		free(m);
+		m = n;
+	} while (m);
+}
+
+#define	m_gethdr(x, y)		npfkern_m_get(M_PKTHDR)
+#define	m_get(x, y)		npfkern_m_get(0)
+#define	m_freem(m)		npfkern_m_freem(m)
+#define	m_length(m)		npfkern_m_length(m)
 #define	m_makewritable(a,b,c,d)	false
 #define	m_ensure_contig(m, l)	false
 #define	mtod(m, t)		((t)((m)->m_data))
@@ -408,10 +450,6 @@ strlcpy(char *dst, const char *src, size_t len)
 	dst[len - 1] = '\0';
 	return strlen(src);
 }
-#endif
-
-#ifdef __NetBSD__
-#include <cdbr.h>
 #endif
 
 #endif

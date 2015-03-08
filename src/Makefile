@@ -1,6 +1,5 @@
 all:
 	make -C kern lib
-	make -C npftest
 
 install:
 	make -C kern install

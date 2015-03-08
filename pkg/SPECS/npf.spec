@@ -27,11 +27,12 @@ This RPM package a standalone version of NPF.
 
 
 %build
-make %{?_smp_mflags} LIBDIR=%{_libdir}
+make %{?_smp_mflags} DEBUG=1 LIBDIR=%{_libdir}
 
 
 %install
 make install \
+    DEBUG=1 \
     DESTDIR=%{buildroot} \
     LIBDIR=%{_libdir} \
     INCDIR=%{_includedir} \

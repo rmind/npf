@@ -272,13 +272,12 @@ main(int argc, char **argv)
 	fail = false;
 
 	if (test) {
-#if 0
 		if (!testname || strcmp("nbuf", testname) == 0) {
 			ok = rumpns_npf_nbuf_test(verbose);
 			fail |= result("nbuf", ok);
 			tname_matched = true;
 		}
-#endif
+
 		if (!testname || strcmp("bpf", testname) == 0) {
 			ok = rumpns_npf_bpf_test(verbose);
 			fail |= result("bpf", ok);
