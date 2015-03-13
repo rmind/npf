@@ -215,7 +215,7 @@ npf_tableset_getbyid(npf_tableset_t *ts, u_int tid)
  * => The caller is responsible for providing synchronisation.
  */
 void
-npf_tableset_reload(npf_tableset_t *nts, npf_tableset_t *ots)
+npf_tableset_reload(npf_t *npf, npf_tableset_t *nts, npf_tableset_t *ots)
 {
 	for (u_int tid = 0; tid < nts->ts_nitems; tid++) {
 		npf_table_t *t, *ot;
@@ -249,7 +249,7 @@ npf_tableset_reload(npf_tableset_t *nts, npf_tableset_t *ots)
 		atomic_inc_uint(&ot->t_refcnt);
 		nts->ts_map[tid] = ot;
 
-		KASSERT(npf_config_locked_p());
+		KASSERT(npf_config_locked_p(npf));
 		ot->t_id = tid;
 
 		/* Destroy the new table (we hold the only reference). */
@@ -259,11 +259,11 @@ npf_tableset_reload(npf_tableset_t *nts, npf_tableset_t *ots)
 }
 
 int
-npf_tableset_export(const npf_tableset_t *ts, prop_array_t tables)
+npf_tableset_export(npf_t *npf, const npf_tableset_t *ts, prop_array_t tables)
 {
 	const npf_table_t *t;
 
-	KASSERT(npf_config_locked_p());
+	KASSERT(npf_config_locked_p(npf));
 
 	for (u_int tid = 0; tid < ts->ts_nitems; tid++) {
 		if ((t = ts->ts_map[tid]) == NULL) {

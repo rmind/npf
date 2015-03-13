@@ -412,13 +412,13 @@ npf_tcp_inwindow(npf_cache_t *npc, npf_state_t *nst, const int di)
 	 * that is, upper boundary for valid data (I).
 	 */
 	if (!SEQ_LEQ(end, fstate->nst_maxend)) {
-		npf_stats_inc(NPF_STAT_INVALID_STATE_TCP1);
+		npf_stats_inc(npc->npc_ctx, NPF_STAT_INVALID_STATE_TCP1);
 		return false;
 	}
 
 	/* Lower boundary (II), which is no more than one window back. */
 	if (!SEQ_GEQ(seq, fstate->nst_end - tstate->nst_maxwin)) {
-		npf_stats_inc(NPF_STAT_INVALID_STATE_TCP2);
+		npf_stats_inc(npc->npc_ctx, NPF_STAT_INVALID_STATE_TCP2);
 		return false;
 	}
 
@@ -429,7 +429,7 @@ npf_tcp_inwindow(npf_cache_t *npc, npf_state_t *nst, const int di)
 	ackskew = tstate->nst_end - ack;
 	if (ackskew < -NPF_TCP_MAXACKWIN ||
 	    ackskew > (NPF_TCP_MAXACKWIN << fstate->nst_wscale)) {
-		npf_stats_inc(NPF_STAT_INVALID_STATE_TCP3);
+		npf_stats_inc(npc->npc_ctx, NPF_STAT_INVALID_STATE_TCP3);
 		return false;
 	}
 

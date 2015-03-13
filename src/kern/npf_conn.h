@@ -96,10 +96,10 @@ struct npf_conn {
 /*
  * Connection tracking interface.
  */
-void		npf_conn_sysinit(void);
-void		npf_conn_sysfini(void);
-void		npf_conn_tracking(bool);
-void		npf_conn_load(npf_conndb_t *, bool);
+void		npf_conn_sysinit(npf_t *);
+void		npf_conn_sysfini(npf_t *);
+void		npf_conn_tracking(npf_t *, bool);
+void		npf_conn_load(npf_t *, npf_conndb_t *, bool);
 
 unsigned	npf_conn_conkey(const npf_cache_t *, npf_connkey_t *, bool);
 npf_conn_t *	npf_conn_lookup(const npf_cache_t *, const int, bool *);
@@ -112,10 +112,10 @@ void		npf_conn_setpass(npf_conn_t *, npf_rproc_t *);
 int		npf_conn_setnat(const npf_cache_t *, npf_conn_t *,
 		    npf_nat_t *, u_int);
 npf_nat_t *	npf_conn_getnat(npf_conn_t *, const int, bool *);
-void		npf_conn_gc(npf_conndb_t *, bool, bool);
-int		npf_conn_import(npf_conndb_t *, prop_dictionary_t,
+void		npf_conn_gc(npf_t *, npf_conndb_t *, bool, bool);
+int		npf_conn_import(npf_t *, npf_conndb_t *, prop_dictionary_t,
 		    npf_ruleset_t *);
-prop_dictionary_t npf_conn_export(const npf_conn_t *);
+prop_dictionary_t npf_conn_export(npf_t *, const npf_conn_t *);
 void		npf_conn_print(const npf_conn_t *);
 
 /*
@@ -135,6 +135,6 @@ void		npf_conndb_dequeue(npf_conndb_t *, npf_conn_t *,
 		    npf_conn_t *);
 npf_conn_t *	npf_conndb_getlist(npf_conndb_t *);
 void		npf_conndb_settail(npf_conndb_t *, npf_conn_t *);
-int		npf_conndb_export(prop_array_t);
+int		npf_conndb_export(npf_t *, prop_array_t);
 
 #endif	/* _NPF_CONN_H_ */

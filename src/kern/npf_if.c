@@ -76,9 +76,9 @@ static u_int		npf_ifmap_cnt			__read_mostly;
  */
 
 static u_int
-npf_ifmap_new(void)
+npf_ifmap_new(npf_t *npf)
 {
-	KASSERT(npf_config_locked_p());
+	KASSERT(npf_config_locked_p(npf));
 
 	for (u_int i = 0; i < npf_ifmap_cnt; i++)
 		if (npf_ifmap[i].n_ifname[0] == '\0')
@@ -92,9 +92,9 @@ npf_ifmap_new(void)
 }
 
 static u_int
-npf_ifmap_lookup(const char *ifname)
+npf_ifmap_lookup(npf_t *npf, const char *ifname)
 {
-	KASSERT(npf_config_locked_p());
+	KASSERT(npf_config_locked_p(npf));
 
 	for (u_int i = 0; i < npf_ifmap_cnt; i++) {
 		npf_ifmap_t *nim = &npf_ifmap[i];
@@ -106,17 +106,17 @@ npf_ifmap_lookup(const char *ifname)
 }
 
 u_int
-npf_ifmap_register(const char *ifname)
+npf_ifmap_register(npf_t *npf, const char *ifname)
 {
 	npf_ifmap_t *nim;
 	ifnet_t *ifp;
 	u_int i;
 
-	npf_config_enter();
-	if ((i = npf_ifmap_lookup(ifname)) != INACTIVE_ID) {
+	npf_config_enter(npf);
+	if ((i = npf_ifmap_lookup(npf, ifname)) != INACTIVE_ID) {
 		goto out;
 	}
-	if ((i = npf_ifmap_new()) == INACTIVE_ID) {
+	if ((i = npf_ifmap_new(npf)) == INACTIVE_ID) {
 		i = INACTIVE_ID;
 		goto out;
 	}
@@ -129,16 +129,16 @@ npf_ifmap_register(const char *ifname)
 	}
 	KERNEL_UNLOCK_ONE(NULL);
 out:
-	npf_config_exit();
+	npf_config_exit(npf);
 	return i;
 }
 
 void
-npf_ifmap_flush(void)
+npf_ifmap_flush(npf_t *npf)
 {
 	ifnet_t *ifp;
 
-	KASSERT(npf_config_locked_p());
+	KASSERT(npf_config_locked_p(npf));
 
 	for (u_int i = 0; i < npf_ifmap_cnt; i++) {
 		npf_ifmap[i].n_ifname[0] = '\0';
@@ -153,7 +153,7 @@ npf_ifmap_flush(void)
 }
 
 u_int
-npf_ifmap_getid(const ifnet_t *ifp)
+npf_ifmap_getid(npf_t *npf, const ifnet_t *ifp)
 {
 	const u_int i = (uintptr_t)ifp->if_pf_kif;
 
@@ -162,11 +162,11 @@ npf_ifmap_getid(const ifnet_t *ifp)
 }
 
 const char *
-npf_ifmap_getname(const u_int id)
+npf_ifmap_getname(npf_t *npf, const u_int id)
 {
 	const char *ifname;
 
-	KASSERT(npf_config_locked_p());
+	KASSERT(npf_config_locked_p(npf));
 	KASSERT(id > 0 && id <= npf_ifmap_cnt);
 
 	ifname = npf_ifmap[id - 1].n_ifname;
@@ -175,17 +175,17 @@ npf_ifmap_getname(const u_int id)
 }
 
 void
-npf_ifmap_attach(ifnet_t *ifp)
+npf_ifmap_attach(npf_t *npf, ifnet_t *ifp)
 {
-	npf_config_enter();
-	ifp->if_pf_kif = (void *)(uintptr_t)npf_ifmap_lookup(ifp->if_xname);
-	npf_config_exit();
+	npf_config_enter(npf);
+	ifp->if_pf_kif = (void *)(uintptr_t)npf_ifmap_lookup(npf, ifp->if_xname);
+	npf_config_exit(npf);
 }
 
 void
-npf_ifmap_detach(ifnet_t *ifp)
+npf_ifmap_detach(npf_t *npf, ifnet_t *ifp)
 {
-	npf_config_enter();
+	npf_config_enter(npf);
 	ifp->if_pf_kif = (void *)(uintptr_t)INACTIVE_ID; /* diagnostic */
-	npf_config_exit();
+	npf_config_exit(npf);
 }

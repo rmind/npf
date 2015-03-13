@@ -51,9 +51,9 @@ __KERNEL_RCSID(0, "$NetBSD: npf_mbuf.c,v 1.13 2014/08/10 19:09:43 rmind Exp $");
 #define	NBUF_ENSURE_ROUNDUP(x)	(((x) + NBUF_ENSURE_ALIGN) & ~NBUF_ENSURE_MASK)
 
 void
-nbuf_init(nbuf_t *nbuf, struct mbuf *m, const ifnet_t *ifp)
+nbuf_init(npf_t *npf, nbuf_t *nbuf, struct mbuf *m, const ifnet_t *ifp)
 {
-	u_int ifid = npf_ifmap_getid(ifp);
+	u_int ifid = npf_ifmap_getid(npf, ifp);
 
 	KASSERT((m->m_flags & M_PKTHDR) != 0);
 
@@ -177,7 +177,7 @@ nbuf_ensure_contig(nbuf_t *nbuf, size_t len)
 		size_t target;
 		bool success;
 
-		npf_stats_inc(NPF_STAT_NBUF_NONCONTIG);
+		//npf_stats_inc(NPF_STAT_NBUF_NONCONTIG);
 
 		/* Attempt to round-up to NBUF_ENSURE_ALIGN bytes. */
 		if ((target = NBUF_ENSURE_ROUNDUP(foff + len)) > plen) {
@@ -208,7 +208,7 @@ nbuf_ensure_contig(nbuf_t *nbuf, size_t len)
 		nbuf->nb_flags |= NBUF_DATAREF_RESET;
 
 		if (!success) {
-			npf_stats_inc(NPF_STAT_NBUF_CONTIG_FAIL);
+			//npf_stats_inc(NPF_STAT_NBUF_CONTIG_FAIL);
 			return NULL;
 		}
 	}

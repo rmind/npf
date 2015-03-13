@@ -13,7 +13,6 @@
 #if !defined(_NPF_STANDALONE)
 #include <net/if.h>
 #else
-#include "npf_stand.h"
 #define	rumpns_npf_test_addif		npf_test_addif
 #define	rumpns_npf_test_load		npf_test_load
 #define	rumpns_npf_test_init		npf_test_init
@@ -27,6 +26,10 @@
 #define	rumpns_npf_test_conc		npf_test_conc
 #define	rumpns_npf_test_statetrack	npf_test_statetrack
 #endif
+
+#include "npf.h"
+
+extern npf_t *	npf_kernel_ctx;
 
 void		rumpns_npf_test_init(int (*)(int, const char *, void *),
 		    const char *(*)(int, const void *, char *, socklen_t),

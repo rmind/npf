@@ -147,7 +147,7 @@ process_packet(const int i, npf_state_t *nst, bool *snew)
 		return true;
 	}
 
-	nbuf_init(&nbuf, construct_packet(p), dummy_ifp);
+	nbuf_init(npf_kernel_ctx, &nbuf, construct_packet(p), dummy_ifp);
 	npc.npc_nbuf = &nbuf;
 	ret = npf_cache_all(&npc);
 	KASSERT((ret & NPC_IPFRAG) == 0);

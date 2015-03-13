@@ -42,12 +42,13 @@ int
 npf_test_load(const void *xml)
 {
 	prop_dictionary_t npf_dict = prop_dictionary_internalize(xml);
-	return npfctl_load(0, npf_dict);
+	return npfctl_load(npf_kernel_ctx, 0, npf_dict);
 }
 
 ifnet_t *
 npf_test_addif(const char *ifname, bool reg, bool verbose)
 {
+	npf_t *npf = npf_kernel_ctx;
 	ifnet_t *ifp = if_alloc(IFT_OTHER);
 
 	/*
@@ -61,9 +62,9 @@ npf_test_addif(const char *ifname, bool reg, bool verbose)
 	if_attach(ifp);
 	if_alloc_sadl(ifp);
 
-	npf_ifmap_attach(ifp);
+	npf_ifmap_attach(npf, ifp);
 	if (reg) {
-		npf_ifmap_register(ifname);
+		npf_ifmap_register(npf, ifname);
 	}
 
 	if (verbose) {

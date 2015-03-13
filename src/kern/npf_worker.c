@@ -43,67 +43,58 @@ __KERNEL_RCSID(0, "$NetBSD: npf_worker.c,v 1.1 2013/06/02 02:20:04 rmind Exp $")
 
 #include "npf_impl.h"
 
-#define	NPF_MAX_WORKS		4
-#define	WORKER_INTERVAL		mstohz(5 * 1000)
-
-static kmutex_t		worker_lock;
-static kcondvar_t	worker_cv;
-static kcondvar_t	worker_event_cv;
-static lwp_t *		worker_lwp;
-static uint64_t		worker_loop;
-
-static npf_workfunc_t	work_funcs[NPF_MAX_WORKS];
+#define	W_INTERVAL		mstohz(5 * 1000)
 
 static void	npf_worker(void *) __dead;
 
 int
-npf_worker_sysinit(void)
+npf_worker_sysinit(npf_t *npf)
 {
-	mutex_init(&worker_lock, MUTEX_DEFAULT, IPL_SOFTNET);
-	cv_init(&worker_cv, "npfgccv");
-	cv_init(&worker_event_cv, "npfevcv");
-	worker_lwp = (lwp_t *)0xdeadbabe;
-	worker_loop = 1;
+	mutex_init(&npf->worker_lock, MUTEX_DEFAULT, IPL_SOFTNET);
+	cv_init(&npf->worker_cv, "npfgccv");
+	cv_init(&npf->worker_event_cv, "npfevcv");
+	npf->worker_lwp = (lwp_t *)0xdeadbabe;
+	npf->worker_loop = 1;
 
 	if (kthread_create(PRI_NONE, KTHREAD_MPSAFE | KTHREAD_MUSTJOIN, NULL,
-	    npf_worker, NULL, &worker_lwp, "npfgc")) {
+	    npf_worker, (void *)npf, &npf->worker_lwp, "npfgc")) {
 		return ENOMEM;
 	}
 	return 0;
 }
 
 void
-npf_worker_sysfini(void)
+npf_worker_sysfini(npf_t *npf)
 {
-	lwp_t *l = worker_lwp;
+	lwp_t *l = npf->worker_lwp;
 
 	/* Notify the worker and wait for the exit. */
-	mutex_enter(&worker_lock);
-	worker_lwp = NULL;
-	cv_broadcast(&worker_cv);
-	mutex_exit(&worker_lock);
+	mutex_enter(&npf->worker_lock);
+	npf->worker_lwp = NULL;
+	cv_broadcast(&npf->worker_cv);
+	mutex_exit(&npf->worker_lock);
 	kthread_join(l);
 
 	/* LWP has exited, destroy the structures. */
-	cv_destroy(&worker_cv);
-	cv_destroy(&worker_event_cv);
-	mutex_destroy(&worker_lock);
+	cv_destroy(&npf->worker_cv);
+	cv_destroy(&npf->worker_event_cv);
+	mutex_destroy(&npf->worker_lock);
 }
 
 void
-npf_worker_signal(void)
+npf_worker_signal(npf_t *npf)
 {
-	mutex_enter(&worker_lock);
-	cv_signal(&worker_cv);
-	mutex_exit(&worker_lock);
+	mutex_enter(&npf->worker_lock);
+	cv_signal(&npf->worker_cv);
+	mutex_exit(&npf->worker_lock);
 }
 
 static bool
-npf_worker_testset(npf_workfunc_t find, npf_workfunc_t set)
+npf_worker_testset(npf_t *npf, npf_workfunc_t find, npf_workfunc_t set)
 {
 	for (u_int i = 0; i < NPF_MAX_WORKS; i++) {
-		if (work_funcs[i] == find) {
-			work_funcs[i] = set;
+		if (npf->work_funcs[i] == find) {
+			npf->work_funcs[i] = set;
 			return true;
 		}
 	}
@@ -111,39 +102,41 @@ npf_worker_testset(npf_workfunc_t find, npf_workfunc_t set)
 }
 
 void
-npf_worker_register(npf_workfunc_t func)
+npf_worker_register(npf_t *npf, npf_workfunc_t func)
 {
-	mutex_enter(&worker_lock);
-	npf_worker_testset(NULL, func);
-	mutex_exit(&worker_lock);
+	mutex_enter(&npf->worker_lock);
+	npf_worker_testset(npf, NULL, func);
+	mutex_exit(&npf->worker_lock);
 }
 
 void
-npf_worker_unregister(npf_workfunc_t func)
+npf_worker_unregister(npf_t *npf, npf_workfunc_t func)
 {
-	uint64_t l = worker_loop;
+	uint64_t l = npf->worker_loop;
 
-	mutex_enter(&worker_lock);
-	npf_worker_testset(func, NULL);
-	while (worker_loop == l) {
-		cv_signal(&worker_cv);
-		cv_wait(&worker_event_cv, &worker_lock);
+	mutex_enter(&npf->worker_lock);
+	npf_worker_testset(npf, func, NULL);
+	while (npf->worker_loop == l) {
+		cv_signal(&npf->worker_cv);
+		cv_wait(&npf->worker_event_cv, &npf->worker_lock);
 	}
-	mutex_exit(&worker_lock);
+	mutex_exit(&npf->worker_lock);
 }
 
 static void
 npf_worker(void *arg)
 {
+	npf_t *npf = arg;
+
 	for (;;) {
-		const bool finish = (worker_lwp == NULL);
+		const bool finish = (npf->worker_lwp == NULL);
 		u_int i = NPF_MAX_WORKS;
 		npf_workfunc_t work;
 
 		/* Run the jobs. */
 		while (i--) {
-			if ((work = work_funcs[i]) != NULL) {
-				work();
+			if ((work = npf->work_funcs[i]) != NULL) {
+				work(npf);
 			}
 		}
 
@@ -153,11 +146,11 @@ npf_worker(void *arg)
 		}
 
 		/* Sleep and periodically wake up, unless we get notified. */
-		mutex_enter(&worker_lock);
-		worker_loop++;
-		cv_broadcast(&worker_event_cv);
-		cv_timedwait(&worker_cv, &worker_lock, WORKER_INTERVAL);
-		mutex_exit(&worker_lock);
+		mutex_enter(&npf->worker_lock);
+		npf->worker_loop++;
+		cv_broadcast(&npf->worker_event_cv);
+		cv_timedwait(&npf->worker_cv, &npf->worker_lock, W_INTERVAL);
+		mutex_exit(&npf->worker_lock);
 	}
 	kthread_exit(0);
 }

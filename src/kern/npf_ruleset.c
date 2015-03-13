@@ -120,7 +120,7 @@ struct npf_rule {
 #define	SKIPTO_ADJ_FLAG		(1U << 31)
 #define	SKIPTO_MASK		(SKIPTO_ADJ_FLAG - 1)
 
-static int	npf_rule_export(const npf_ruleset_t *,
+static int	npf_rule_export(npf_t *, const npf_ruleset_t *,
     const npf_rule_t *, prop_dictionary_t);
 
 /*
@@ -207,8 +207,6 @@ static npf_rule_t *
 npf_ruleset_lookup(npf_ruleset_t *rlset, const char *name)
 {
 	npf_rule_t *rl;
-
-	KASSERT(npf_config_locked_p());
 
 	LIST_FOREACH(rl, &rlset->rs_dynamic, r_dentry) {
 		KASSERT(NPF_DYNAMIC_GROUP_P(rl->r_attr));
@@ -335,13 +333,13 @@ npf_ruleset_remkey(npf_ruleset_t *rlset, const char *rname,
  * npf_ruleset_list: serialise and return the dynamic rules.
  */
 prop_dictionary_t
-npf_ruleset_list(npf_ruleset_t *rlset, const char *rname)
+npf_ruleset_list(npf_t *npf, npf_ruleset_t *rlset, const char *rname)
 {
 	prop_dictionary_t rgdict;
 	prop_array_t rules;
 	npf_rule_t *rg, *rl;
 
-	KASSERT(npf_config_locked_p());
+	KASSERT(npf_config_locked_p(npf));
 
 	if ((rg = npf_ruleset_lookup(rlset, rname)) == NULL) {
 		return NULL;
@@ -360,7 +358,7 @@ npf_ruleset_list(npf_ruleset_t *rlset, const char *rname)
 		rldict = prop_dictionary_create();
 		KASSERT(rl->r_parent == rg);
 
-		if (npf_rule_export(rlset, rl, rldict)) {
+		if (npf_rule_export(npf, rlset, rl, rldict)) {
 			prop_object_release(rldict);
 			prop_object_release(rules);
 			return NULL;
@@ -415,13 +413,13 @@ npf_ruleset_gc(npf_ruleset_t *rlset)
  * npf_ruleset_export: serialise and return the static rules.
  */
 int
-npf_ruleset_export(const npf_ruleset_t *rlset, prop_array_t rules)
+npf_ruleset_export(npf_t *npf, const npf_ruleset_t *rlset, prop_array_t rules)
 {
 	const u_int nitems = rlset->rs_nitems;
 	int error = 0;
 	u_int n = 0;
 
-	KASSERT(npf_config_locked_p());
+	KASSERT(npf_config_locked_p(npf));
 
 	while (n < nitems) {
 		const npf_rule_t *rl = rlset->rs_rules[n];
@@ -429,7 +427,7 @@ npf_ruleset_export(const npf_ruleset_t *rlset, prop_array_t rules)
 		prop_dictionary_t rldict;
 
 		rldict = prop_dictionary_create();
-		if ((error = npf_rule_export(rlset, rl, rldict)) != 0) {
+		if ((error = npf_rule_export(npf, rlset, rl, rldict)) != 0) {
 			prop_object_release(rldict);
 			break;
 		}
@@ -451,12 +449,13 @@ npf_ruleset_export(const npf_ruleset_t *rlset, prop_array_t rules)
  * => The active (old) ruleset should be exclusively locked.
  */
 void
-npf_ruleset_reload(npf_ruleset_t *newset, npf_ruleset_t *oldset, bool load)
+npf_ruleset_reload(npf_t *npf, npf_ruleset_t *newset,
+    npf_ruleset_t *oldset, bool load)
 {
 	npf_rule_t *rg, *rl;
 	uint64_t nid = 0;
 
-	KASSERT(npf_config_locked_p());
+	KASSERT(npf_config_locked_p(npf));
 
 	/*
 	 * Scan the dynamic rules and share (migrate) if needed.
@@ -608,7 +607,7 @@ npf_ruleset_freealg(npf_ruleset_t *rlset, npf_alg_t *alg)
  * npf_rule_alloc: allocate a rule and initialise it.
  */
 npf_rule_t *
-npf_rule_alloc(prop_dictionary_t rldict)
+npf_rule_alloc(npf_t *npf, prop_dictionary_t rldict)
 {
 	npf_rule_t *rl;
 	const char *rname;
@@ -632,7 +631,7 @@ npf_rule_alloc(prop_dictionary_t rldict)
 	rl->r_attr &= ~NPF_RULE_PRIVMASK;
 
 	if (prop_dictionary_get_cstring_nocopy(rldict, "ifname", &rname)) {
-		if ((rl->r_ifid = npf_ifmap_register(rname)) == 0) {
+		if ((rl->r_ifid = npf_ifmap_register(npf, rname)) == 0) {
 			kmem_free(rl, sizeof(npf_rule_t));
 			return NULL;
 		}
@@ -663,8 +662,8 @@ npf_rule_alloc(prop_dictionary_t rldict)
 }
 
 static int
-npf_rule_export(const npf_ruleset_t *rlset, const npf_rule_t *rl,
-    prop_dictionary_t rldict)
+npf_rule_export(npf_t *npf, const npf_ruleset_t *rlset,
+    const npf_rule_t *rl, prop_dictionary_t rldict)
 {
 	u_int skip_to = 0;
 	prop_data_t d;
@@ -682,7 +681,7 @@ npf_rule_export(const npf_ruleset_t *rlset, const npf_rule_t *rl,
 	}
 
 	if (rl->r_ifid) {
-		const char *ifname = npf_ifmap_getname(rl->r_ifid);
+		const char *ifname = npf_ifmap_getname(npf, rl->r_ifid);
 		prop_dictionary_set_cstring(rldict, "ifname", ifname);
 	}
 	prop_dictionary_set_uint64(rldict, "id", rl->r_id);
@@ -943,9 +942,9 @@ npf_rule_conclude(const npf_rule_t *rl, int *retfl)
 #if defined(DDB) || defined(_NPF_TESTING)
 
 void
-npf_ruleset_dump(const char *name)
+npf_ruleset_dump(npf_t *npf, const char *name)
 {
-	npf_ruleset_t *rlset = npf_config_ruleset();
+	npf_ruleset_t *rlset = npf_config_ruleset(npf);
 	npf_rule_t *rg, *rl;
 
 	LIST_FOREACH(rg, &rlset->rs_dynamic, r_dentry) {

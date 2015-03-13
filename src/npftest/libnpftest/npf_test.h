@@ -48,6 +48,8 @@
 #define	REMOTE_IP6	"2001:db8:fefe::1010"
 #define	EXPECTED_IP6	"2001:db8:1:d550::1234"
 
+extern npf_t *	npf_kernel_ctx;
+
 void		npf_test_init(int (*)(int, const char *, void *),
 		    const char *(*)(int, const void *, char *, socklen_t),
 		    long (*)(void));

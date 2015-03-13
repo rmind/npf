@@ -62,9 +62,52 @@ MODULE(MODULE_CLASS_DRIVER, npf, NULL);
 
 static int	npf_init(void);
 static int	npf_fini(void);
-static int	npfctl_stats(void *);
+static int	npfctl_stats(npf_t *, void *);
 
-static percpu_t *		npf_stats_percpu	__read_mostly;
+npf_t *		npf_kernel_ctx;
+
+npf_t *
+npf_create(void)
+{
+	npf_t *npf;
+
+	npf = kmem_zalloc(sizeof(npf_t), KM_SLEEP);
+	npf->stats_percpu = percpu_alloc(NPF_STATS_SIZE);
+
+	npf_bpf_sysinit();
+	npf_worker_sysinit(npf);
+	npf_tableset_sysinit();
+	npf_conn_sysinit(npf);
+	npf_nat_sysinit();
+	npf_alg_sysinit(npf);
+	npf_ext_sysinit(npf);
+
+	/* Load an empty configuration. */
+	npf_config_init(npf);
+	return npf;
+}
+
+void
+npf_destroy(npf_t *npf)
+{
+	/*
+	 * Destroy the current configuration.  Note: at this point all
+	 * handlers must be deactivated; we will drain any processing.
+	 */
+	npf_config_fini(npf);
+
+	/* Finally, safe to destroy the subsystems. */
+	npf_ext_sysfini(npf);
+	npf_alg_sysfini(npf);
+	npf_nat_sysfini();
+	npf_conn_sysfini(npf);
+	npf_tableset_sysfini();
+	npf_bpf_sysfini();
+
+	/* Note: worker is the last. */
+	npf_worker_sysfini(npf);
+	percpu_free(npf->stats_percpu, NPF_STATS_SIZE);
+}
 
 #ifdef _KERNEL
 void		npfattach(int);
@@ -97,19 +140,8 @@ npf_init(void)
 #endif
 	int error = 0;
 
-	npf_stats_percpu = percpu_alloc(NPF_STATS_SIZE);
-
-	npf_bpf_sysinit();
-	npf_worker_sysinit();
-	npf_tableset_sysinit();
-	npf_conn_sysinit();
-	npf_nat_sysinit();
-	npf_alg_sysinit();
-	npf_ext_sysinit();
-
-	/* Load empty configuration. */
+	npf_kernel_ctx = npf_create();
 	npf_pfil_register(true);
-	npf_config_init();
 
 #ifdef _MODULE
 	/* Attach /dev/npf device. */
@@ -130,20 +162,7 @@ npf_fini(void)
 	devsw_detach(NULL, &npf_cdevsw);
 #endif
 	npf_pfil_unregister(true);
-	npf_config_fini();
-
-	/* Finally, safe to destroy the subsystems. */
-	npf_ext_sysfini();
-	npf_alg_sysfini();
-	npf_nat_sysfini();
-	npf_conn_sysfini();
-	npf_tableset_sysfini();
-	npf_bpf_sysfini();
-
-	/* Note: worker is the last. */
-	npf_worker_sysfini();
-	percpu_free(npf_stats_percpu, NPF_STATS_SIZE);
-
+	npf_destroy(npf_kernel_ctx);
 	return 0;
 }
 
@@ -209,22 +228,22 @@ npf_dev_ioctl(dev_t dev, u_long cmd, void *data, int flag, lwp_t *l)
 
 	switch (cmd) {
 	case IOC_NPF_TABLE:
-		error = npfctl_table(data);
+		error = npfctl_table(npf, data);
 		break;
 	case IOC_NPF_RULE:
-		error = npfctl_rule(cmd, data);
+		error = npfctl_rule(npf, cmd, data);
 		break;
 	case IOC_NPF_STATS:
-		error = npfctl_stats(data);
+		error = npfctl_stats(npf_kernel_ctx, data);
 		break;
 	case IOC_NPF_SAVE:
-		error = npfctl_save(cmd, data);
+		error = npfctl_save(npf_kernel_ctx, cmd, data);
 		break;
 	case IOC_NPF_SWITCH:
 		error = npfctl_switch(data);
 		break;
 	case IOC_NPF_LOAD:
-		error = npfctl_load(cmd, data);
+		error = npfctl_load(npf_kernel_ctx, cmd, data);
 		break;
 	case IOC_NPF_VERSION:
 		*(int *)data = NPF_VERSION;
@@ -264,28 +283,27 @@ npf_autounload_p(void)
  */
 
 void
-npf_stats_inc(npf_stats_t st)
+npf_stats_inc(npf_t *npf, npf_stats_t st)
 {
-	uint64_t *stats = percpu_getref(npf_stats_percpu);
+	uint64_t *stats = percpu_getref(npf->stats_percpu);
 	stats[st]++;
-	percpu_putref(npf_stats_percpu);
+	percpu_putref(npf->stats_percpu);
 }
 
 void
-npf_stats_dec(npf_stats_t st)
+npf_stats_dec(npf_t *npf, npf_stats_t st)
 {
-	uint64_t *stats = percpu_getref(npf_stats_percpu);
+	uint64_t *stats = percpu_getref(npf->stats_percpu);
 	stats[st]--;
-	percpu_putref(npf_stats_percpu);
+	percpu_putref(npf->stats_percpu);
 }
 
 static void
 npf_stats_collect(void *mem, void *arg, struct cpu_info *ci)
 {
 	uint64_t *percpu_stats = mem, *full_stats = arg;
-	int i;
 
-	for (i = 0; i < NPF_STATS_COUNT; i++) {
+	for (unsigned i = 0; i < NPF_STATS_COUNT; i++) {
 		full_stats[i] += percpu_stats[i];
 	}
 }
@@ -294,13 +312,13 @@ npf_stats_collect(void *mem, void *arg, struct cpu_info *ci)
  * npfctl_stats: export collected statistics.
  */
 static int
-npfctl_stats(void *data)
+npfctl_stats(npf_t *npf, void *data)
 {
 	uint64_t *fullst, *uptr = *(uint64_t **)data;
 	int error;
 
 	fullst = kmem_zalloc(NPF_STATS_SIZE, KM_SLEEP);
-	percpu_foreach(npf_stats_percpu, npf_stats_collect, fullst);
+	percpu_foreach(npf->stats_percpu, npf_stats_collect, fullst);
 	error = copyout(fullst, uptr, NPF_STATS_SIZE);
 	kmem_free(fullst, NPF_STATS_SIZE);
 	return error;

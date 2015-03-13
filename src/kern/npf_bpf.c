@@ -166,7 +166,7 @@ static uint32_t
 npf_cop_table(const bpf_ctx_t *bc, bpf_args_t *args, uint32_t A)
 {
 	const npf_cache_t * const npc = (const npf_cache_t *)args->arg;
-	npf_tableset_t *tblset = npf_config_tableset();
+	npf_tableset_t *tblset = npf_config_tableset(npc->npc_ctx);
 	const uint32_t tid = A & (SRC_FLAG_BIT - 1);
 	const npf_addr_t *addr;
 	npf_table_t *t;

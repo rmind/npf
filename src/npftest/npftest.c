@@ -172,6 +172,32 @@ generate_test_cdb(size_t *size)
 	return cdb;
 }
 
+static void
+npf_kern_init(void)
+{
+#if defined(_NPF_STANDALONE)
+	npf_kernel_ctx = npf_create();
+	assert(npf_kernel_ctx != NULL);
+#else
+	/* XXX rn_init */
+	extern int rumpns_max_keylen;
+	rumpns_max_keylen = 1;
+
+	rump_init();
+	rump_schedule();
+#endif
+}
+
+static void
+npf_kern_fini(void)
+{
+#if defined(_NPF_STANDALONE)
+	npf_destroy(npf_kernel_ctx);
+#else
+	rump_unschedule();
+#endif
+}
+
 int
 main(int argc, char **argv)
 {
@@ -249,16 +275,11 @@ main(int argc, char **argv)
 		errx(EXIT_FAILURE, "missing config for the benchmark or "
 		    "invalid thread count");
 	}
-#if defined(_NPF_STANDALONE)
-#define	rump_unschedule()
-#else
-	/* XXX rn_init */
-	extern int rumpns_max_keylen;
-	rumpns_max_keylen = 1;
 
-	rump_init();
-	rump_schedule();
-#endif
+	/*
+	 * Initialise the NPF kernel component.
+	 */
+	npf_kern_init();
 	rumpns_npf_test_init(inet_pton, inet_ntop, random);
 
 	if (config) {
@@ -329,7 +350,7 @@ main(int argc, char **argv)
 		}
 	}
 
-	rump_unschedule();
+	npf_kern_fini();
 
 	if (testname && !tname_matched)
 		errx(EXIT_FAILURE, "test \"%s\" unknown", testname);

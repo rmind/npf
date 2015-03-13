@@ -54,6 +54,12 @@
  * Public declarations and definitions.
  */
 
+struct npf;
+typedef struct npf		npf_t;
+
+npf_t *		npf_create(void);
+void		npf_destroy(npf_t *);
+
 /*
  * Storage of address (both for IPv4 and IPv6) and netmask.
  */
@@ -110,7 +116,7 @@ typedef struct {
 	int		nb_flags;
 } nbuf_t;
 
-void		nbuf_init(nbuf_t *, struct mbuf *, const ifnet_t *);
+void		nbuf_init(npf_t *, nbuf_t *, struct mbuf *, const ifnet_t *);
 void		nbuf_reset(nbuf_t *);
 struct mbuf *	nbuf_head_mbuf(nbuf_t *);
 
@@ -147,7 +153,8 @@ int		nbuf_find_tag(nbuf_t *, uint32_t, void **);
 #define	NPC_IP46	(NPC_IP4|NPC_IP6)
 
 typedef struct {
-	/* Information flags and the nbuf. */
+	/* NPF context, information flags and the nbuf. */
+	npf_t *			npc_ctx;
 	uint32_t		npc_info;
 	nbuf_t *		npc_nbuf;
 
@@ -195,8 +202,6 @@ npf_iscached(const npf_cache_t *npc, const int inf)
 struct npf_rproc;
 typedef struct npf_rproc	npf_rproc_t;
 
-void		npf_rproc_assign(npf_rproc_t *, void *);
-
 typedef struct {
 	unsigned int	version;
 	void *		ctx;
@@ -205,8 +210,9 @@ typedef struct {
 	bool		(*proc)(npf_cache_t *, void *, int *);
 } npf_ext_ops_t;
 
-void *		npf_ext_register(const char *, const npf_ext_ops_t *);
-int		npf_ext_unregister(void *);
+void *		npf_ext_register(npf_t *, const char *, const npf_ext_ops_t *);
+int		npf_ext_unregister(npf_t *, void *);
+void		npf_rproc_assign(npf_rproc_t *, void *);
 
 /*
  * Misc.
@@ -267,9 +273,6 @@ bool		npf_autounload_p(void);
 /* Layers. */
 #define	NPF_LAYER_2			2
 #define	NPF_LAYER_3			3
-
-/* XXX mbuf.h: just for now. */
-#define	PACKET_TAG_NPF			10
 
 /*
  * Rule commands (non-ioctl).

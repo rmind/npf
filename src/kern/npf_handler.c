@@ -68,7 +68,7 @@ static pfil_head_t *	npf_ph_inet6 = NULL;
 #endif
 
 static int
-npf_reassembly(npf_cache_t *npc, struct mbuf **mp)
+npf_reassembly(npf_t *npf, npf_cache_t *npc, struct mbuf **mp)
 {
 	nbuf_t *nbuf = npc->npc_nbuf;
 	int error = EINVAL;
@@ -91,12 +91,12 @@ npf_reassembly(npf_cache_t *npc, struct mbuf **mp)
 		}
 	}
 	if (error) {
-		npf_stats_inc(NPF_STAT_REASSFAIL);
+		npf_stats_inc(npf, NPF_STAT_REASSFAIL);
 		return error;
 	}
 	if (*mp == NULL) {
 		/* More fragments should come. */
-		npf_stats_inc(NPF_STAT_FRAGMENTS);
+		npf_stats_inc(npf, NPF_STAT_FRAGMENTS);
 		return 0;
 	}
 
@@ -104,13 +104,13 @@ npf_reassembly(npf_cache_t *npc, struct mbuf **mp)
 	 * Reassembly is complete, we have the final packet.
 	 * Cache again, since layer 4 data is accessible now.
 	 */
-	nbuf_init(nbuf, *mp, nbuf->nb_ifp);
+	nbuf_init(npf, nbuf, *mp, nbuf->nb_ifp);
 	npc->npc_info = 0;
 
 	if (npf_cache_all(npc) & NPC_IPFRAG) {
 		return EINVAL;
 	}
-	npf_stats_inc(NPF_STAT_REASSEMBLY);
+	npf_stats_inc(npf, NPF_STAT_REASSEMBLY);
 	return 0;
 }
 
@@ -122,6 +122,9 @@ npf_reassembly(npf_cache_t *npc, struct mbuf **mp)
 int
 npf_packet_handler(void *arg, struct mbuf **mp, ifnet_t *ifp, int di)
 {
+	extern npf_t *npf_kernel_ctx;
+	npf_t *npf = npf_kernel_ctx;
+
 	nbuf_t nbuf;
 	npf_cache_t npc;
 	npf_conn_t *con;
@@ -130,12 +133,14 @@ npf_packet_handler(void *arg, struct mbuf **mp, ifnet_t *ifp, int di)
 	int error, retfl;
 	int decision;
 
+	KASSERT(ifp != NULL);
+
 	/*
 	 * Initialise packet information cache.
 	 * Note: it is enough to clear the info bits.
 	 */
-	KASSERT(ifp != NULL);
-	nbuf_init(&nbuf, *mp, ifp);
+	npc.npc_ctx = npf;
+	nbuf_init(npf, &nbuf, *mp, ifp);
 	npc.npc_nbuf = &nbuf;
 	npc.npc_info = 0;
 
@@ -149,7 +154,7 @@ npf_packet_handler(void *arg, struct mbuf **mp, ifnet_t *ifp, int di)
 		/*
 		 * Pass to IPv4 or IPv6 reassembly mechanism.
 		 */
-		error = npf_reassembly(&npc, mp);
+		error = npf_reassembly(npf, &npc, mp);
 		if (error) {
 			con = NULL;
 			goto out;
@@ -165,7 +170,7 @@ npf_packet_handler(void *arg, struct mbuf **mp, ifnet_t *ifp, int di)
 
 	/* If "passing" connection found - skip the ruleset inspection. */
 	if (con && npf_conn_pass(con, &rp)) {
-		npf_stats_inc(NPF_STAT_PASS_CONN);
+		npf_stats_inc(npf, NPF_STAT_PASS_CONN);
 		KASSERT(error == 0);
 		goto pass;
 	}
@@ -177,18 +182,18 @@ npf_packet_handler(void *arg, struct mbuf **mp, ifnet_t *ifp, int di)
 
 	/* Acquire the lock, inspect the ruleset using this packet. */
 	int slock = npf_config_read_enter();
-	npf_ruleset_t *rlset = npf_config_ruleset();
+	npf_ruleset_t *rlset = npf_config_ruleset(npf);
 
 	rl = npf_ruleset_inspect(&npc, rlset, di, NPF_LAYER_3);
 	if (__predict_false(rl == NULL)) {
-		const bool pass = npf_default_pass();
+		const bool pass = npf_default_pass(npf);
 		npf_config_read_exit(slock);
 
 		if (pass) {
-			npf_stats_inc(NPF_STAT_PASS_DEFAULT);
+			npf_stats_inc(npf, NPF_STAT_PASS_DEFAULT);
 			goto pass;
 		}
-		npf_stats_inc(NPF_STAT_BLOCK_DEFAULT);
+		npf_stats_inc(npf, NPF_STAT_BLOCK_DEFAULT);
 		goto block;
 	}
 
@@ -204,10 +209,10 @@ npf_packet_handler(void *arg, struct mbuf **mp, ifnet_t *ifp, int di)
 	npf_config_read_exit(slock);
 
 	if (error) {
-		npf_stats_inc(NPF_STAT_BLOCK_RULESET);
+		npf_stats_inc(npf, NPF_STAT_BLOCK_RULESET);
 		goto block;
 	}
-	npf_stats_inc(NPF_STAT_PASS_RULESET);
+	npf_stats_inc(npf, NPF_STAT_PASS_RULESET);
 
 	/*
 	 * Establish a "pass" connection, if required.  Just proceed if

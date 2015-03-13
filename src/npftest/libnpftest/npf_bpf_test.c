@@ -74,7 +74,7 @@ test_bpf_code(void *code, size_t size)
 
 	/* Layer 3 (IP + TCP). */
 	m = fill_packet(IPPROTO_TCP);
-	nbuf_init(&nbuf, m, dummy_ifp);
+	nbuf_init(npf_kernel_ctx, &nbuf, m, dummy_ifp);
 	npc.npc_nbuf = &nbuf;
 	npf_cache_all(&npc);
 
