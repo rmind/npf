@@ -96,17 +96,17 @@ struct npf_rule {
 		 * Dynamic group: rule subset and a group list entry.
 		 */
 		struct {
-			npf_rule_t *            r_subset;
-			LIST_ENTRY(npf_rule)    r_dentry;
+			npf_rule_t *		r_subset;
+			LIST_ENTRY(npf_rule)	r_dentry;
 		};
 
 		/*
 		 * Dynamic rule: priority, parent group and next rule.
 		 */
 		struct {
-			int                     r_priority;
-			npf_rule_t *            r_parent;
-			npf_rule_t *            r_next;
+			int			r_priority;
+			npf_rule_t *		r_parent;
+			npf_rule_t *		r_next;
 		};
 	};
 
