@@ -156,7 +156,10 @@ typedef struct { pthread_t thr; } lwp_t;
 static inline int
 npfkern_pthread_create(lwp_t **lret, void (*func)(void *), void *arg)
 {
-	lwp_t *l = calloc(1, sizeof(lwp_t));
+	lwp_t *l;
+
+	if ((l = calloc(1, sizeof(lwp_t))) == NULL)
+		return ENOMEM;
 	*lret = l;
 	return pthread_create(&l->thr, NULL, (void *(*)(void *))func, arg);
 }
@@ -189,8 +192,12 @@ typedef struct pool_cache *pool_cache_t;
 static inline pool_cache_t
 npfkern_pool_cache_init(size_t size)
 {
-	pool_cache_t p = calloc(1, sizeof(struct pool_cache));
-	p->obj_size = size;
+	pool_cache_t p;
+
+	p = calloc(1, sizeof(struct pool_cache));
+	if (p) {
+		p->obj_size = size;
+	}
 	return p;
 }
 
@@ -352,13 +359,17 @@ struct mbuf {
 #define	M_CSUM_UDPv4		0x2
 
 static inline struct mbuf *
-npfkern_m_get(int flags)
+npfkern_m_get(int flags, unsigned space)
 {
+	unsigned mlen = offsetof(struct mbuf, m_data0[space]);
 	struct mbuf *m;
+
 	m = calloc(1, sizeof(struct mbuf));
-	m->m_type = 1;
-	m->m_flags = flags;
-	m->m_data = m->m_data0;
+	if (m) {
+		m->m_type = 1;
+		m->m_flags = flags;
+		m->m_data = m->m_data0;
+	}
 	return m;
 }
 
@@ -388,12 +399,33 @@ npfkern_m_freem(struct mbuf *m)
 	} while (m);
 }
 
-#define	m_gethdr(x, y)		npfkern_m_get(M_PKTHDR)
-#define	m_get(x, y)		npfkern_m_get(0)
+static inline bool
+npfkern_m_ensure_contig(struct mbuf **m0, int len)
+{
+	struct mbuf *m1;
+	unsigned tlen;
+	char *dptr;
+
+	tlen = npfkern_m_length(*m0);
+	if ((m1 = npfkern_m_get(M_PKTHDR, tlen)) == NULL) {
+		return false;
+	}
+	m1->m_pkthdr.len = m1->m_len = tlen;
+	dptr = m1->m_data;
+	for (struct mbuf *m = *m0; m != NULL; m = m->m_next) {
+		memcpy(dptr, m->m_data, m->m_len);
+		dptr += m->m_len;
+	}
+	*m0 = m1;
+	return true;
+}
+
+#define	m_gethdr(x, y)		npfkern_m_get(M_PKTHDR, MLEN)
+#define	m_get(x, y)		npfkern_m_get(0, MLEN)
 #define	m_freem(m)		npfkern_m_freem(m)
 #define	m_length(m)		npfkern_m_length(m)
-#define	m_makewritable(a,b,c,d)	false
-#define	m_ensure_contig(m, l)	false
+#define	m_makewritable(a,b,c,d)	true
+#define	m_ensure_contig(m, l)	npfkern_m_ensure_contig(m, l)
 #define	mtod(m, t)		((t)((m)->m_data))
 
 /*

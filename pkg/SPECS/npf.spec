@@ -8,6 +8,9 @@ Source0:	npf.tar.gz
 
 BuildRequires:	make
 BuildRequires:	libtool
+BuildRequires:	openssl-devel
+#BuildRequires:	libcdb-devel
+#BuildRequires:	libprop-devel
 
 Requires:	libcdb
 Requires:	libprop

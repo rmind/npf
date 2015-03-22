@@ -223,6 +223,7 @@ int		npfctl_table(npf_t *, void *);
 
 void		npf_stats_inc(npf_t *, npf_stats_t);
 void		npf_stats_dec(npf_t *, npf_stats_t);
+int		npf_stats(npf_t *, void *);
 
 u_int		npf_ifmap_register(npf_t *, const char *);
 void		npf_ifmap_flush(npf_t *);

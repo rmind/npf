@@ -32,10 +32,12 @@
 #include <sys/cdefs.h>
 __RCSID("$NetBSD: npfctl.c,v 1.46 2015/01/04 20:02:15 christos Exp $");
 
-#include <sys/ioctl.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <sys/ioctl.h>
+#ifdef __NetBSD__
 #include <sys/module.h>
+#endif
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -492,6 +494,7 @@ npfctl_bpfjit(bool onoff)
 static void
 npfctl_preload_bpfjit(void)
 {
+#ifdef __NetBSD__
 	modctl_load_t args = {
 		.ml_filename = "bpfjit",
 		.ml_flags = MODCTL_NO_PROP,
@@ -511,6 +514,7 @@ npfctl_preload_bpfjit(void)
 		warnx("To disable this warning `set bpf.jit off' in "
 		    "/etc/npf.conf");
 	}
+#endif
 }
 
 static int

@@ -39,7 +39,9 @@ endif
 
 OBJS=		$(shell grep ^file files.npf | cut -f2 | \
 		    sed 's/\(.*\)net\/npf\/\(.*\).c/\2.o/g' | \
-		    grep -v npf_alg_ | grep -v npf_ext_ | grep -v if_npflog)
+		    grep -v npf_os | grep -v npf_alg_ | \
+		    grep -v npf_ext_ | \
+		    grep -v if_npflog)
 
 OBJS+=		stand/bpf_filter.o
 

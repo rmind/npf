@@ -11,6 +11,7 @@ defpseudo	npf:	ifnet
 
 # Core
 file	net/npf/npf.c				npf
+file	net/npf/npf_os.c			npf
 file	net/npf/npf_conf.c			npf
 file	net/npf/npf_ctl.c			npf
 file	net/npf/npf_handler.c			npf
