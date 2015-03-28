@@ -36,7 +36,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#ifdef __NetBSD__
 #include <vis.h>
+#endif
 
 #include "npfctl.h"
 
@@ -65,11 +67,14 @@ yyerror(const char *fmt, ...)
 	fprintf(stderr, "%s:%d:%d: %s", yyfilename,
 	    yylineno - (int)eol, yycolumn, msg);
 	if (!eol) {
+#if __NetBSD__
 		size_t len = strlen(context);
 		char *dst = ecalloc(1, len * 4 + 1);
 
 		strvisx(dst, context, len, VIS_WHITE|VIS_CSTYLE);
-		fprintf(stderr, " near '%s'", dst);
+		context = dst;
+#endif
+		fprintf(stderr, " near '%s'", context);
 	}
 	fprintf(stderr, "\n");
 	exit(EXIT_FAILURE);

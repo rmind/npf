@@ -39,7 +39,7 @@ endif
 
 OBJS=		npfctl.o npf_var.o npf_data.o npf_build.o npf_extmod.o
 OBJS+=		npf_bpf_comp.o npf_show.o
-OBJS+=		npf_scan.l npf_parse.y
+OBJS+=		npf_parse.o npf_scan.o
 
 MANS=		npfctl.8 npf.conf.5
 
@@ -49,6 +49,15 @@ MANS=		npfctl.8 npf.conf.5
 
 all: $(OBJS)
 	$(CC) $^ -o $(BIN) $(LDFLAGS)
+
+npf_parse.c:
+	$(YACC) -d -o npf_parse.c npf_parse.y
+
+npf_scan.c:
+	$(LEX) -o npf_scan.c npf_scan.l
+
+npf_scan.o:
+	$(CC) $(CFLAGS) -Wno-sign-compare -c npf_scan.c -o npf_scan.o
 
 install:
 	#mkdir -p $(IMANDIR) && install -c $(MANS) $(IMANDIR)

@@ -73,9 +73,23 @@ estrdup(const char *s)
 }
 #endif
 
-#ifndef easprintf
-int vasprintf(char **strp, const char *fmt, va_list ap); // XXX
+#ifndef estrndup
+static inline char *
+estrndup(const char *s, size_t len)
+{
+	char *d = strndup(s, len);
+	if (d == NULL)
+		err(1, "Cannot copy string");
+	return d;
+}
+#endif
 
+#ifdef __linux__ // XXX glibc
+int asprintf(char **strp, const char *fmt, ...);
+int vasprintf(char **strp, const char *fmt, va_list ap);
+#endif
+
+#ifndef easprintf
 static inline int
 easprintf(char ** __restrict ret, const char * __restrict format, ...)
 {

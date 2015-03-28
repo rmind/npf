@@ -65,14 +65,18 @@ typedef struct {
 	uint32_t	curmark;
 } npf_conf_info_t;
 
-static npf_conf_info_t	stdout_ctx = {
-	.fp = stdout,
-	.fpos = 0,
-	.flags = 0
-};
+static npf_conf_info_t	stdout_ctx;
 
 static void	print_indent(npf_conf_info_t *, u_int);
 static void	print_linesep(npf_conf_info_t *);
+
+void
+npfctl_show_init(void)
+{
+	stdout_ctx.fp = stdout;
+	stdout_ctx.fpos = 0;
+	stdout_ctx.flags = 0;
+}
 
 /*
  * Helper routines to print various pieces of information.
