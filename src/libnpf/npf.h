@@ -94,7 +94,7 @@ void		npf_ext_param_string(nl_ext_t *, const char *, const char *);
 
 nl_rule_t *	npf_rule_create(const char *, uint32_t, const char *);
 int		npf_rule_setcode(nl_rule_t *, int, const void *, size_t);
-int		npf_rule_setprio(nl_rule_t *, pri_t);
+int		npf_rule_setprio(nl_rule_t *, int);
 int		npf_rule_setproc(nl_rule_t *, const char *);
 int		npf_rule_setkey(nl_rule_t *, const void *, size_t);
 int		npf_rule_setinfo(nl_rule_t *, const void *, size_t);
@@ -110,7 +110,7 @@ int		npf_rproc_insert(nl_config_t *, nl_rproc_t *);
 
 nl_nat_t *	npf_nat_create(int, u_int, const char *,
 		    int, npf_addr_t *, npf_netmask_t, in_port_t);
-int		npf_nat_insert(nl_config_t *, nl_nat_t *, pri_t);
+int		npf_nat_insert(nl_config_t *, nl_nat_t *, int);
 
 nl_table_t *	npf_table_create(const char *, u_int, int);
 int		npf_table_add_entry(nl_table_t *, int,

@@ -200,4 +200,14 @@ void		npfctl_build_natseg(int, int, const char *,
 void		npfctl_build_maprset(const char *, int, const char *);
 void		npfctl_build_table(const char *, u_int, const char *);
 
+/*
+ * For the systems which do not define TH_ECE and TW_CRW.
+ */
+#ifndef TH_ECE
+#define	TH_ECE	  0x40
+#endif
+#ifndef TH_CWR
+#define	TH_CWR	  0x80
+#endif
+
 #endif

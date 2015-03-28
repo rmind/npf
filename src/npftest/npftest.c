@@ -175,10 +175,7 @@ generate_test_cdb(size_t *size)
 static void
 npf_kern_init(void)
 {
-#if defined(_NPF_STANDALONE)
-	npf_kernel_ctx = npf_create();
-	assert(npf_kernel_ctx != NULL);
-#else
+#if !defined(_NPF_STANDALONE)
 	/* XXX rn_init */
 	extern int rumpns_max_keylen;
 	rumpns_max_keylen = 1;
@@ -191,9 +188,7 @@ npf_kern_init(void)
 static void
 npf_kern_fini(void)
 {
-#if defined(_NPF_STANDALONE)
-	npf_destroy(npf_kernel_ctx);
-#else
+#if !defined(_NPF_STANDALONE)
 	rump_unschedule();
 #endif
 }

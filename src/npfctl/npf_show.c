@@ -39,6 +39,7 @@
 __RCSID("$NetBSD: npf_show.c,v 1.18 2015/03/21 00:49:07 rmind Exp $");
 
 #include <sys/socket.h>
+#define	__FAVOR_BSD
 #include <netinet/in.h>
 #include <netinet/tcp.h>
 #include <net/if.h>

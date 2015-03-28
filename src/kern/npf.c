@@ -93,6 +93,18 @@ npf_destroy(npf_t *npf)
 	percpu_free(npf->stats_percpu, NPF_STATS_SIZE);
 }
 
+void
+npf_setkernctx(npf_t *npf)
+{
+	npf_kernel_ctx = npf;
+}
+
+npf_t *
+npf_getkernctx(void)
+{
+	return npf_kernel_ctx;
+}
+
 /*
  * NPF statistics interface.
  */

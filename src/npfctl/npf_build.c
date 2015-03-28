@@ -39,6 +39,7 @@ __RCSID("$NetBSD: npf_build.c,v 1.39 2015/03/21 00:49:07 rmind Exp $");
 #include <sys/types.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
+#define	__FAVOR_BSD
 #include <netinet/tcp.h>
 
 #include <stdlib.h>
@@ -738,7 +739,9 @@ npfctl_fill_table(nl_table_t *tl, u_int type, const char *fname)
 		void *cdb;
 		int fd;
 
-		strlcpy(sfn, "/tmp/npfcdb.XXXXXX", sizeof(sfn));
+		strncpy(sfn, "/tmp/npfcdb.XXXXXX", sizeof(sfn));
+		sfn[sizeof(sfn) - 1] = '\0';
+
 		if ((fd = mkstemp(sfn)) == -1) {
 			err(EXIT_FAILURE, "mkstemp");
 		}

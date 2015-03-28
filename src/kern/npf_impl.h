@@ -392,6 +392,8 @@ npf_conn_t *	npf_alg_conn(npf_cache_t *, int);
 prop_array_t	npf_alg_export(npf_t *);
 
 /* Debugging routines. */
+void		npf_setkernctx(npf_t *);
+npf_t *		npf_getkernctx(void);
 const char *	npf_addr_dump(const npf_addr_t *, int);
 void		npf_state_dump(const npf_state_t *);
 void		npf_nat_dump(const npf_nat_t *);

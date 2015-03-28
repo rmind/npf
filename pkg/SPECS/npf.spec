@@ -11,6 +11,8 @@ BuildRequires:	libtool
 BuildRequires:	openssl-devel
 #BuildRequires:	libcdb-devel
 #BuildRequires:	libprop-devel
+BuildRequires:	flex
+BuildRequires:	byacc
 
 Requires:	libcdb
 Requires:	libprop

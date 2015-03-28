@@ -76,8 +76,8 @@ fill_packet(const struct test_case *t)
 static int
 npf_rule_raw_test(bool verbose, struct mbuf *m, ifnet_t *ifp, int di)
 {
-	npf_t *npf = npf_kernel_ctx;
-	npf_cache_t npc = { .npc_info = 0 };
+	npf_t *npf = npf_getkernctx();
+	npf_cache_t npc = { .npc_info = 0, .npc_ctx = npf };
 	nbuf_t nbuf;
 	npf_rule_t *rl;
 	int retfl, error;
@@ -114,7 +114,7 @@ npf_test_case(u_int i, bool verbose)
 static npf_rule_t *
 npf_blockall_rule(void)
 {
-	npf_t *npf = npf_kernel_ctx;
+	npf_t *npf = npf_getkernctx();
 	prop_dictionary_t rldict;
 
 	rldict = prop_dictionary_create();
@@ -126,7 +126,7 @@ npf_blockall_rule(void)
 bool
 npf_rule_test(bool verbose)
 {
-	npf_t *npf = npf_kernel_ctx;
+	npf_t *npf = npf_getkernctx();
 	npf_ruleset_t *rlset;
 	npf_rule_t *rl;
 	bool fail = false;

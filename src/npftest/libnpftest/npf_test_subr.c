@@ -32,6 +32,9 @@ npf_test_init(int (*pton_func)(int, const char *, void *),
     const char *(*ntop_func)(int, const void *, char *, socklen_t),
     long (*rndfunc)(void))
 {
+	npf_t *npf = npf_create();
+	npf_setkernctx(npf);
+
 	npf_state_setsampler(npf_state_sample);
 	_pton_func = pton_func;
 	_ntop_func = ntop_func;
@@ -42,13 +45,13 @@ int
 npf_test_load(const void *xml)
 {
 	prop_dictionary_t npf_dict = prop_dictionary_internalize(xml);
-	return npfctl_load(npf_kernel_ctx, 0, npf_dict);
+	return npfctl_load(npf_getkernctx(), 0, npf_dict);
 }
 
 ifnet_t *
 npf_test_addif(const char *ifname, bool reg, bool verbose)
 {
-	npf_t *npf = npf_kernel_ctx;
+	npf_t *npf = npf_getkernctx();
 	ifnet_t *ifp = if_alloc(IFT_OTHER);
 
 	/*

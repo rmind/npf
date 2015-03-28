@@ -47,6 +47,7 @@ __RCSID("$NetBSD: npfctl.c,v 1.46 2015/01/04 20:02:15 christos Exp $");
 #include <unistd.h>
 #include <errno.h>
 
+#include <arpa/inet.h>
 #include <openssl/sha.h>
 
 #include "npfctl.h"
@@ -227,34 +228,32 @@ npfctl_print_error(const nl_error_t *ne)
 char *
 npfctl_print_addrmask(int alen, const npf_addr_t *addr, npf_netmask_t mask)
 {
+	const unsigned buflen = 64;
+	char *buf = ecalloc(1, buflen);
 	struct sockaddr_storage ss;
-	char *buf = ecalloc(1, 64);
-	int len;
+
+	memset(&ss, 0, sizeof(ss));
 
 	switch (alen) {
 	case 4: {
 		struct sockaddr_in *sin = (void *)&ss;
-		sin->sin_len = sizeof(*sin);
 		sin->sin_family = AF_INET;
-		sin->sin_port = 0;
 		memcpy(&sin->sin_addr, addr, sizeof(sin->sin_addr));
 		break;
 	}
 	case 16: {
 		struct sockaddr_in6 *sin6 = (void *)&ss;
-		sin6->sin6_len = sizeof(*sin6);
 		sin6->sin6_family = AF_INET6;
-		sin6->sin6_port = 0;
-		sin6->sin6_scope_id = 0;
 		memcpy(&sin6->sin6_addr, addr, sizeof(sin6->sin6_addr));
 		break;
 	}
 	default:
 		assert(false);
 	}
-	len = sockaddr_snprintf(buf, 64, "%a", (struct sockaddr *)&ss);
+	inet_ntop(ss.ss_family, (const void *)&ss, buf, buflen);
 	if (mask && mask != NPF_NO_NETMASK) {
-		snprintf(&buf[len], 64 - len, "/%u", mask);
+		const unsigned len = strlen(buf);
+		snprintf(&buf[len], buflen - len, "/%u", mask);
 	}
 	return buf;
 }
@@ -463,7 +462,7 @@ npfctl_rule(int fd, int argc, char **argv)
 		error = npf_ruleset_flush(fd, ruleset_name);
 		break;
 	default:
-		assert(false);
+		abort();
 	}
 
 	switch (error) {

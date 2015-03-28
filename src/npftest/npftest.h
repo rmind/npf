@@ -29,8 +29,6 @@
 
 #include "npf.h"
 
-extern npf_t *	npf_kernel_ctx;
-
 void		rumpns_npf_test_init(int (*)(int, const char *, void *),
 		    const char *(*)(int, const void *, char *, socklen_t),
 		    long (*)(void));

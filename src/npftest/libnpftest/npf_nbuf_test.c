@@ -38,7 +38,7 @@ parse_nbuf_chain(struct mbuf *m)
 	void *nptr;
 	int n;
 
-	nbuf_init(npf_kernel_ctx, &nbuf, m, dummy_ifp);
+	nbuf_init(npf_getkernctx(), &nbuf, m, dummy_ifp);
 
 	nptr = nbuf_advance(&nbuf, (random() % 16) + 1, (random() % 16) + 1);
 	mbuf_consistency_check(&nbuf);
