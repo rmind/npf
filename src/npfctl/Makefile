@@ -70,6 +70,6 @@ install:
 	mkdir -p $(IMAN8DIR) && install -c $(MAN8) $(IMAN8DIR)
 
 clean:
-	rm -f $(BIN) *.o npf_parse.c npf_scan.c
+	rm -f $(BIN) *.o npf_parse.c npf_parse.h npf_scan.c
 
 .PHONY: all install clean
