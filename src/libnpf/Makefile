@@ -1,32 +1,73 @@
-LIBS=		libnpf.la
-INCS=		npf.h
+#
+# Standalone NPF makefile: the kernel component as a library.
+# This file is in the Public Domain.
+#
 
-CFLAGS=		-std=gnu99 -O2 -W -Wextra -Werror -I.
-CFLAGS+=	-DNDEBUG -D__KERNEL_RCSID\(x,y\)=
+CFLAGS=		-std=gnu99 -O2 -g -Wall -Wextra -Werror
+CFLAGS+=	-Wstrict-prototypes -Wmissing-prototypes -Wpointer-arith
+CFLAGS+=	-I . -I ../kern/stand -D__KERNEL_RCSID\(x,y\)=
+CFLAGS+=	-D_NPF_STANDALONE
 
-LDFLAGS=        -rpath $(LIBDIR)
+CFLAGS+=	-Wno-unused-parameter -Wno-unused-variable -Wno-unused-function
+CFLAGS+=	-Wno-unused
+
+ifeq ($(DEBUG),1)
+CFLAGS+=	-O1 -DDEBUG -fno-omit-frame-pointer
+else
+CFLAGS+=	-DNDEBUG
+endif
+
+LDFLAGS=	-lprop
+
+#
+# System specific flags
+#
+
+SYSNAME:=	$(shell uname -s)
+
+ifeq ($(SYSNAME),Linux)
+CFLAGS+=	-D_POSIX_C_SOURCE=200809L
+CFLAGS+=	-D_BSD_SOURCE -D__FAVOR_BSD=1
+endif
+
+#
+# Objects to compile
+#
 
 ILIBDIR=	$(DESTDIR)/$(LIBDIR)
 IINCDIR=	$(DESTDIR)/$(INCDIR)
 
-libcdb_OBJS=	npf.lo
+OBJS=		npf.o
 
-all: libcdb.la
+#
+# Flags for the library target
+#
+
+LIB=		libnpf
+
+$(LIB).la:	LDFLAGS+=	-rpath $(LIBDIR)
+install/%.la:	ILIBDIR=	$(DESTDIR)/$(LIBDIR)
+install:	IINCDIR=	$(DESTDIR)/$(INCDIR)
+install:	IMANDIR=	$(DESTDIR)/$(MANDIR)/man3/
+
+#
+# Targets
+#
+
+all: $(LIB).la
 
 %.lo: %.c
 	libtool --mode=compile --tag CC $(CC) $(CFLAGS) -c $<
 
-libcdb.la: $(libcdb_OBJS)
-	libtool --mode=link --tag CC $(CC) $(LDFLAGS) -o $@ $^
+$(LIB).la: $(shell echo $(OBJS) | sed 's/\.o/\.lo/g')
+	libtool --mode=link --tag CC $(CC) $(LDFLAGS) -o $@ $(notdir $^)
 
 install/%.la: %.la
 	mkdir -p $(ILIBDIR)
 	libtool --mode=install install -c $(notdir $@) $(ILIBDIR)/$(notdir $@)
 
-install: $(addprefix install/,$(LIBS))
+install: $(addprefix install/,$(LIB).la)
 	libtool --mode=finish $(LIBDIR)
-	mkdir -p $(IINCDIR)
-	install -c $(INCS) $(IINCDIR)
 
 clean:
 	libtool --mode=clean rm

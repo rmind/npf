@@ -171,8 +171,12 @@ npf_config_submit(nl_config_t *ncf, int fd)
 		return error;
 	}
 	if (fd) {
+#ifdef _NPF_STANDALONE
+		error = ENOTSUP;
+#else
 		error = prop_dictionary_sendrecv_ioctl(npf_dict, fd,
 		    IOC_NPF_LOAD, &ncf->ncf_err);
+#endif
 		if (error) {
 			prop_object_release(npf_dict);
 			assert(ncf->ncf_err == NULL);
@@ -210,7 +214,11 @@ npf_config_retrieve(int fd, bool *active, bool *loaded)
 	nl_config_t *ncf;
 	int error;
 
+#ifdef _NPF_STANDALONE
+	error = ENOTSUP;
+#else
 	error = prop_dictionary_recv_ioctl(fd, IOC_NPF_SAVE, &npf_dict);
+#endif
 	if (error) {
 		return NULL;
 	}
@@ -340,7 +348,11 @@ npf_ruleset_add(int fd, const char *rname, nl_rule_t *rl, uint64_t *id)
 
 	prop_dictionary_set_cstring(rldict, "ruleset-name", rname);
 	prop_dictionary_set_uint32(rldict, "command", NPF_CMD_RULE_ADD);
+#ifdef _NPF_STANDALONE
+	error = ENOTSUP;
+#else
 	error = prop_dictionary_sendrecv_ioctl(rldict, fd, IOC_NPF_RULE, &ret);
+#endif
 	if (!error) {
 		prop_dictionary_get_uint64(ret, "id", id);
 	}
@@ -359,7 +371,11 @@ npf_ruleset_remove(int fd, const char *rname, uint64_t id)
 	prop_dictionary_set_cstring(rldict, "ruleset-name", rname);
 	prop_dictionary_set_uint32(rldict, "command", NPF_CMD_RULE_REMOVE);
 	prop_dictionary_set_uint64(rldict, "id", id);
+#ifdef _NPF_STANDALONE
+	return ENOTSUP;
+#else
 	return prop_dictionary_send_ioctl(rldict, fd, IOC_NPF_RULE);
+#endif
 }
 
 int
@@ -383,7 +399,11 @@ npf_ruleset_remkey(int fd, const char *rname, const void *key, size_t len)
 	prop_dictionary_set(rldict, "key", keyobj);
 	prop_object_release(keyobj);
 
+#ifdef _NPF_STANDALONE
+	return ENOTSUP;
+#else
 	return prop_dictionary_send_ioctl(rldict, fd, IOC_NPF_RULE);
+#endif
 }
 
 int
@@ -397,7 +417,11 @@ npf_ruleset_flush(int fd, const char *rname)
 	}
 	prop_dictionary_set_cstring(rldict, "ruleset-name", rname);
 	prop_dictionary_set_uint32(rldict, "command", NPF_CMD_RULE_FLUSH);
+#ifdef _NPF_STANDALONE
+	return ENOTSUP;
+#else
 	return prop_dictionary_send_ioctl(rldict, fd, IOC_NPF_RULE);
+#endif
 }
 
 /*
@@ -568,7 +592,7 @@ npf_rule_setinfo(nl_rule_t *rl, const void *info, size_t len)
 }
 
 int
-npf_rule_setprio(nl_rule_t *rl, pri_t pri)
+npf_rule_setprio(nl_rule_t *rl, int pri)
 {
 	prop_dictionary_t rldict = rl->nrl_dict;
 
@@ -748,7 +772,11 @@ _npf_ruleset_list(int fd, const char *rname, nl_config_t *ncf)
 	}
 	prop_dictionary_set_cstring(rldict, "ruleset-name", rname);
 	prop_dictionary_set_uint32(rldict, "command", NPF_CMD_RULE_LIST);
+#ifdef _NPF_STANDALONE
+	error = ENOTSUP;
+#else
 	error = prop_dictionary_sendrecv_ioctl(rldict, fd, IOC_NPF_RULE, &ret);
+#endif
 	if (!error) {
 		prop_array_t rules;
 
@@ -924,7 +952,7 @@ npf_nat_create(int type, u_int flags, const char *ifname,
 }
 
 int
-npf_nat_insert(nl_config_t *ncf, nl_nat_t *nt, pri_t pri __unused)
+npf_nat_insert(nl_config_t *ncf, nl_nat_t *nt, int pri __unused)
 {
 	prop_dictionary_t rldict = nt->nrl_dict;
 

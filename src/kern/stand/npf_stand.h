@@ -316,7 +316,9 @@ npfkern_kpause(const char *wmesg, bool intr, int timo, kmutex_t *mtx)
 #define	DLT_NULL	0
 #define	IFNET_FOREACH(ifp)	if (0)
 
+#ifndef	IFNAMSIZ
 #define	IFNAMSIZ	8
+#endif
 
 typedef struct {
 	char		if_xname[IFNAMSIZ];
