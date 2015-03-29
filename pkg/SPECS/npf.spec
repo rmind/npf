@@ -11,8 +11,8 @@ BuildRequires:	libtool
 BuildRequires:	openssl-devel
 #BuildRequires:	libcdb-devel
 #BuildRequires:	libprop-devel
-BuildRequires:	flex
-BuildRequires:	byacc
+#BuildRequires:	flex
+#BuildRequires:	byacc
 
 Requires:	libcdb
 Requires:	libprop
@@ -46,8 +46,8 @@ make install \
 
 %files
 %{_libdir}/*
-#%{_includedir}/*
-#%{_mandir}/*
+%{_includedir}/*
+%{_mandir}/*
 
 
 %changelog

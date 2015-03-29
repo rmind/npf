@@ -19,7 +19,7 @@ CFLAGS+=	-DNDEBUG
 LDFLAGS=	-flto
 endif
 
-LDFLAGS=	-lnpf -lcdb -lprop -lcrypto -lpcap -lutil -ly
+LDFLAGS=	-lnpf -lcdb -lprop -lcrypto -lpcap
 
 #
 # System specific flags
@@ -53,17 +53,14 @@ all: $(OBJS)
 npf_parse.c:
 	$(YACC) -d -o npf_parse.c npf_parse.y
 
-npf_scan.c:
-	$(LEX) -o npf_scan.c npf_scan.l
-
 npf_scan.o:
+	$(LEX) -o npf_scan.c npf_scan.l
 	$(CC) $(CFLAGS) -Wno-sign-compare -c npf_scan.c -o npf_scan.o
 
 install:
 	#mkdir -p $(IMANDIR) && install -c $(MANS) $(IMANDIR)
 
 clean:
-	libtool --mode=clean rm
-	rm -rf .libs *.{l,}o *.la stand/*.{l,}o stand/*.la
+	rm -f *.o npf_parse.c npf_scan.c
 
 .PHONY: all install clean

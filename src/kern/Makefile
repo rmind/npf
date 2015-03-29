@@ -69,9 +69,6 @@ install:	IMANDIR=	$(DESTDIR)/$(MANDIR)/man3/
 # Targets
 #
 
-all: $(OBJS) stand/test.o
-	$(CC) $^ -o npf $(LDFLAGS)
-
 lib: $(LIB).la
 
 %.lo: %.c
