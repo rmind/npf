@@ -31,6 +31,8 @@ ifeq ($(SYSNAME),Linux)
 CFLAGS+=	-Dgetprogname\(\)=\"$(BIN)\"
 CFLAGS+=	-D_POSIX_C_SOURCE=200809L
 CFLAGS+=	-D_BSD_SOURCE -D__FAVOR_BSD=1
+
+LDFLAGS+=	-ldl
 endif
 
 #
@@ -41,7 +43,12 @@ OBJS=		npfctl.o npf_var.o npf_data.o npf_build.o npf_extmod.o
 OBJS+=		npf_bpf_comp.o npf_show.o
 OBJS+=		npf_parse.o npf_scan.o
 
-MANS=		npfctl.8 npf.conf.5
+MAN5=		npf.conf.5
+MAN8=		npfctl.8
+
+install:	IBINDIR=	$(DESTDIR)/$(BINDIR)
+install:	IMAN5DIR=	$(DESTDIR)/$(MANDIR)/man5/
+install:	IMAN8DIR=	$(DESTDIR)/$(MANDIR)/man8/
 
 #
 # Targets
@@ -58,9 +65,11 @@ npf_scan.o:
 	$(CC) $(CFLAGS) -Wno-sign-compare -c npf_scan.c -o npf_scan.o
 
 install:
-	#mkdir -p $(IMANDIR) && install -c $(MANS) $(IMANDIR)
+	mkdir -p $(IBINDIR) && install -c $(BIN) $(IBINDIR)
+	mkdir -p $(IMAN5DIR) && install -c $(MAN5) $(IMAN5DIR)
+	mkdir -p $(IMAN8DIR) && install -c $(MAN8) $(IMAN8DIR)
 
 clean:
-	rm -f *.o npf_parse.c npf_scan.c
+	rm -f $(BIN) *.o npf_parse.c npf_scan.c
 
 .PHONY: all install clean

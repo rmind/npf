@@ -1,18 +1,22 @@
-Name:		npf
+Name:		npfctl
 Version:	0.1
 Release:	1%{?dist}
-Summary:	Standalone NPF package
+Summary:	Standalone NPF package: npfctl utility
 License:	BSD
 URL:		http://www.netbsd.org/~rmind/npf/
 Source0:	npf.tar.gz
 
 BuildRequires:	make
 BuildRequires:	libtool
+BuildRequires:	openssl-devel
 #BuildRequires:	libcdb-devel
 #BuildRequires:	libprop-devel
+BuildRequires:	flex
+BuildRequires:	byacc
 
 Requires:	libcdb
 Requires:	libprop
+Requires:	npf
 
 %description
 
@@ -21,30 +25,23 @@ NPF is a layer 3 packet filter, supporting IPv4 and IPv6 as well as layer
 high performance, scalability, and modularity.  NPF was written from scratch
 in 2009 and is distributed under the 2-clause BSD license.
 
-This RPM package is a standalone version of NPF.  It contains libnpfkern
-and libnpf libraries.
+This RPM package contains npfctl(8) utility.
 
 
 %prep
-%setup -q -n src
+%setup -q -n src/npfctl
 
 
 %build
-make %{?_smp_mflags} DEBUG=1 LIBDIR=%{_libdir}
+make %{?_smp_mflags}
 
 
 %install
-make install \
-    DEBUG=1 \
-    DESTDIR=%{buildroot} \
-    LIBDIR=%{_libdir} \
-    INCDIR=%{_includedir} \
-    MANDIR=%{_mandir}
+make install DESTDIR=%{buildroot} BINDIR=%{_bindir} MANDIR=%{_mandir}
 
 
 %files
-%{_libdir}/*
-%{_includedir}/*
+%{_bindir}/*
 %{_mandir}/*
 
 
