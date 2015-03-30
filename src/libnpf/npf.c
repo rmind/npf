@@ -942,7 +942,7 @@ npf_nat_create(int type, u_int flags, const char *ifname,
 		return NULL;
 	}
 	prop_dictionary_set(rldict, "nat-ip", addrdat);
-	prop_dictionary_set_uint32(rldict, "nat-mask", mask);
+	prop_dictionary_set_uint8(rldict, "nat-mask", mask);
 	prop_object_release(addrdat);
 
 	/* Translation port (for redirect case). */
