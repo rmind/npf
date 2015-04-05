@@ -309,16 +309,13 @@ npfkern_kpause(const char *wmesg, bool intr, int timo, kmutex_t *mtx)
 /*
  * FIXME/TODO: To be implemented ..
  */
+#if 0
 #define	if_alloc(x)	calloc(1, sizeof(ifnet_t))
 #define	if_alloc_sadl(x)
 #define	if_attach(x)
 #define	ifunit(name)	NULL
 #define	DLT_NULL	0
 #define	IFNET_FOREACH(ifp)	if (0)
-
-#ifndef	IFNAMSIZ
-#define	IFNAMSIZ	8
-#endif
 
 typedef struct {
 	char		if_xname[IFNAMSIZ];
@@ -327,6 +324,14 @@ typedef struct {
 	void *		if_pf_kif;
 	void *		next;
 } ifnet_t;
+#else
+struct ifnet;
+typedef struct ifnet ifnet_t;
+#endif
+
+#ifndef	IFNAMSIZ
+#define	IFNAMSIZ	8
+#endif
 
 #define	ip_reass_packet(p, h)		ENOTSUP
 #define	ip_output(m, a, b, c, d, e)	ENOTSUP

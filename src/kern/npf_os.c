@@ -80,7 +80,7 @@ const struct cdevsw npf_cdevsw = {
 static const char *	npf_ifop_getname(ifnet_t *);
 static ifnet_t *	npf_ifop_lookup(const char *);
 static void		npf_ifop_flush(void *);
-static void *		npf_ifop_getmeta(void);
+static const void *	npf_ifop_getmeta(ifnet_t *);
 static void *		npf_ifop_setmeta(ifp_t *, void *);
 
 static const npf_ifops_t kern_ifops = {
@@ -264,8 +264,8 @@ npf_ifop_flush(void *arg)
 	KERNEL_UNLOCK_ONE(NULL);
 }
 
-static void *
-npf_ifop_getmeta(void)
+static const void *
+npf_ifop_getmeta(const ifnet_t *ifp)
 {
 	return ifp->if_pf_kif
 }

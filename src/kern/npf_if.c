@@ -155,7 +155,7 @@ npf_ifmap_flush(npf_t *npf)
 }
 
 u_int
-npf_ifmap_getid(npf_t *npf, ifnet_t *ifp)
+npf_ifmap_getid(npf_t *npf, const ifnet_t *ifp)
 {
 	const u_int i = (uintptr_t)npf->ifops->getmeta(ifp);
 
