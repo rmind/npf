@@ -51,16 +51,6 @@
 #endif
 
 /*
- * Public declarations and definitions.
- */
-
-struct npf;
-typedef struct npf		npf_t;
-
-npf_t *		npf_create(void);
-void		npf_destroy(npf_t *);
-
-/*
  * Storage of address (both for IPv4 and IPv6) and netmask.
  */
 typedef union {
@@ -85,6 +75,22 @@ typedef uint8_t			npf_netmask_t;
 #endif
 /* The number of words used. */
 #define	NPF_BPF_NWORDS		3
+
+/*
+ * Public declarations and definitions.
+ */
+
+struct npf;
+struct npf_ifops;
+typedef struct npf		npf_t;
+typedef struct npf_ifops	npf_ifops_t;
+
+npf_t *		npf_create(const npf_ifops_t *);
+void		npf_destroy(npf_t *);
+
+/*
+ * In-kernel declarations and definitions.
+ */
 
 #if defined(_KERNEL) || defined(_NPF_STANDALONE)
 

@@ -143,8 +143,16 @@ typedef struct {
 } npfa_funcs_t;
 
 /*
- * NPF INSTANCE (CONTEXT) STRUCTURE.
+ * NPF INSTANCE (CONTEXT) STRUCTURE AND AUXILIARY OPERATIONS.
  */
+
+struct npf_ifops {
+	const void *	(*getname)(ifnet_t *);
+	ifnet_t *	(*lookup)(const char *);
+	void		(*flush)(void *);
+	void *		(*getmeta)(ifnet_t *);
+	void		(*setmeta)(ifnet_t *, void *);
+};
 
 struct npf {
 	/* Active NPF configuration. */
@@ -166,6 +174,9 @@ struct npf {
 
 	/* ALGs. */
 	npf_algset_t *		algset;
+
+	/* External operations. */
+	const npf_ifops_t *	ifops;
 
 	/* List of extensions and its lock. */
 	LIST_HEAD(, npf_ext)	ext_list;
@@ -225,11 +236,12 @@ void		npf_stats_inc(npf_t *, npf_stats_t);
 void		npf_stats_dec(npf_t *, npf_stats_t);
 int		npf_stats(npf_t *, void *);
 
+void		npf_ifmap_sysinit(npf_t *, const npf_ifops_t *);
 u_int		npf_ifmap_register(npf_t *, const char *);
 void		npf_ifmap_flush(npf_t *);
 void		npf_ifmap_attach(npf_t *, ifnet_t *);
 void		npf_ifmap_detach(npf_t *, ifnet_t *);
-u_int		npf_ifmap_getid(npf_t *, const ifnet_t *);
+u_int		npf_ifmap_getid(npf_t *, ifnet_t *);
 const char *	npf_ifmap_getname(npf_t *, const u_int);
 
 /* Packet filter hooks. */

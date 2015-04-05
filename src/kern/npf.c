@@ -48,10 +48,10 @@ __KERNEL_RCSID(0, "$NetBSD: npf.c,v 1.22 2014/07/25 08:10:40 dholland Exp $");
 #include "npf_impl.h"
 #include "npf_conn.h"
 
-npf_t *	npf_kernel_ctx = NULL __read_mostly;
+static npf_t *	npf_kernel_ctx = NULL __read_mostly;
 
 npf_t *
-npf_create(void)
+npf_create(const npf_ifops_t *ifops)
 {
 	npf_t *npf;
 
@@ -59,6 +59,7 @@ npf_create(void)
 	npf->stats_percpu = percpu_alloc(NPF_STATS_SIZE);
 
 	npf_bpf_sysinit();
+	npf_ifmap_sysinit(npf, ifops);
 	npf_worker_sysinit(npf);
 	npf_tableset_sysinit();
 	npf_conn_sysinit(npf);

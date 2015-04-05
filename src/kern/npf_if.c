@@ -69,6 +69,15 @@ typedef struct {
 static npf_ifmap_t	npf_ifmap[NPF_MAX_IFMAP]	__read_mostly;
 static u_int		npf_ifmap_cnt			__read_mostly;
 
+void
+npf_ifmap_sysinit(npf_t *npf, const npf_ifops_t *ifops)
+{
+	KASSERT(ifops != NULL);
+
+	ifops->flush((void *)(uintptr_t)INACTIVE_ID);
+	npf->ifops = ifops;
+}
+
 /*
  * NOTE: IDs start from 1.  Zero is reserved for "no interface" and
  * (unsigned)-1 for "inactive interface".  Therefore, an interface
@@ -123,11 +132,9 @@ npf_ifmap_register(npf_t *npf, const char *ifname)
 	nim = &npf_ifmap[i - 1];
 	strlcpy(nim->n_ifname, ifname, IFNAMSIZ);
 
-	KERNEL_LOCK(1, NULL);
-	if ((ifp = ifunit(ifname)) != NULL) {
-		ifp->if_pf_kif = (void *)(uintptr_t)i;
+	if ((ifp = npf->ifops->lookup(ifname)) != NULL) {
+		npf->ifops->setmeta(ifp, (void *)(uintptr_t)i);
 	}
-	KERNEL_UNLOCK_ONE(NULL);
 out:
 	npf_config_exit(npf);
 	return i;
@@ -144,18 +151,13 @@ npf_ifmap_flush(npf_t *npf)
 		npf_ifmap[i].n_ifname[0] = '\0';
 	}
 	npf_ifmap_cnt = 0;
-
-	KERNEL_LOCK(1, NULL);
-	IFNET_FOREACH(ifp) {
-		ifp->if_pf_kif = (void *)(uintptr_t)INACTIVE_ID;
-	}
-	KERNEL_UNLOCK_ONE(NULL);
+	npf->ifops->flush((void *)(uintptr_t)INACTIVE_ID);
 }
 
 u_int
-npf_ifmap_getid(npf_t *npf, const ifnet_t *ifp)
+npf_ifmap_getid(npf_t *npf, ifnet_t *ifp)
 {
-	const u_int i = (uintptr_t)ifp->if_pf_kif;
+	const u_int i = (uintptr_t)npf->ifops->getmeta(ifp);
 
 	KASSERT(i == INACTIVE_ID || (i > 0 && i <= npf_ifmap_cnt));
 	return i;
@@ -177,15 +179,20 @@ npf_ifmap_getname(npf_t *npf, const u_int id)
 void
 npf_ifmap_attach(npf_t *npf, ifnet_t *ifp)
 {
+	const npf_ifops_t *ifops = npf->ifops;
+	u_int i;
+
 	npf_config_enter(npf);
-	ifp->if_pf_kif = (void *)(uintptr_t)npf_ifmap_lookup(npf, ifp->if_xname);
+	i = npf_ifmap_lookup(npf, ifops->getname(ifp));
+	ifops->setmeta(ifp, (void *)(uintptr_t)i);
 	npf_config_exit(npf);
 }
 
 void
 npf_ifmap_detach(npf_t *npf, ifnet_t *ifp)
 {
+	/* Diagnostic. */
 	npf_config_enter(npf);
-	ifp->if_pf_kif = (void *)(uintptr_t)INACTIVE_ID; /* diagnostic */
+	npf->ifops->setmeta(ifp, (void *)(uintptr_t)INACTIVE_ID);
 	npf_config_exit(npf);
 }

@@ -15,8 +15,8 @@ SOURCES:
 	mkdir -p SOURCES && tar czpvf SOURCES/npf.tar.gz ../src
 
 devinstall:
-	sudo rpm -ev npf npf-debuginfo || true
 	sudo rpm -ev npfctl npfctl-debuginfo || true
+	sudo rpm -ev npf npf-debuginfo || true
 	sudo rpm -Uhv RPMS/x86_64/npf*
 
 clean:

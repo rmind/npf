@@ -77,16 +77,31 @@ const struct cdevsw npf_cdevsw = {
 	.d_flag = D_OTHER | D_MPSAFE
 };
 
+static const char *	npf_ifop_getname(ifnet_t *);
+static ifnet_t *	npf_ifop_lookup(const char *);
+static void		npf_ifop_flush(void *);
+static void *		npf_ifop_getmeta(void);
+static void *		npf_ifop_setmeta(ifp_t *, void *);
+
+static const npf_ifops_t kern_ifops = {
+	.getname	= npf_ifop_getname,
+	.lookup		= npf_ifop_lookup,
+	.flush		= npf_ifop_flush,
+	.getmeta	= npf_ifop_getmeta,
+	.setmeta	= npf_ifop_setmeta,
+};
+
 static int
 npf_init(void)
 {
 #ifdef _MODULE
 	devmajor_t bmajor = NODEVMAJOR, cmajor = NODEVMAJOR;
 #endif
+	npf_t *npf;
 	int error = 0;
 
-	extern npf_t *npf_kernel_ctx;
-	npf_kernel_ctx = npf_create();
+	npf = npf_create(&kern_ifops);
+	npf_setkernctx(npf);
 	npf_pfil_register(true);
 
 #ifdef _MODULE
@@ -103,12 +118,14 @@ npf_init(void)
 static int
 npf_fini(void)
 {
+	npf_t *npf = npf_getkernctx();
+
 	/* At first, detach device and remove pfil hooks. */
 #ifdef _MODULE
 	devsw_detach(NULL, &npf_cdevsw);
 #endif
 	npf_pfil_unregister(true);
-	npf_destroy(npf_kernel_ctx);
+	npf_destroy(npf);
 	return 0;
 }
 
@@ -157,7 +174,6 @@ npf_dev_open(dev_t dev, int flag, int mode, lwp_t *l)
 static int
 npf_dev_close(dev_t dev, int flag, int mode, lwp_t *l)
 {
-
 	return 0;
 }
 
@@ -205,14 +221,12 @@ npf_dev_ioctl(dev_t dev, u_long cmd, void *data, int flag, lwp_t *l)
 static int
 npf_dev_poll(dev_t dev, int events, lwp_t *l)
 {
-
 	return ENOTSUP;
 }
 
 static int
 npf_dev_read(dev_t dev, struct uio *uio, int flag)
 {
-
 	return ENOTSUP;
 }
 
@@ -220,4 +234,44 @@ bool
 npf_autounload_p(void)
 {
 	return !npf_pfil_registered_p() && npf_default_pass();
+}
+
+/*
+ * Interface operations.
+ */
+
+static const char *
+npf_ifop_getname(ifnet_t *ifp)
+{
+	return ifp->if_xname;
+}
+
+static ifnet_t *
+npf_ifop_lookup(const char *name)
+{
+	return ifunit(name);
+}
+
+static void
+npf_ifop_flush(void *arg)
+{
+	ifnet_t *ifp;
+
+	KERNEL_LOCK(1, NULL);
+	IFNET_FOREACH(ifp) {
+		ifp->if_pf_kif = arg;
+	}
+	KERNEL_UNLOCK_ONE(NULL);
+}
+
+static void *
+npf_ifop_getmeta(void)
+{
+	return ifp->if_pf_kif
+}
+
+static void *
+npf_ifop_setmeta(ifp_t *ifp, void *arg)
+{
+	ifp->if_pf_kif = arg;
 }
