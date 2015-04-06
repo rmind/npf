@@ -313,7 +313,7 @@ struct ifnet;
 typedef struct ifnet ifnet_t;
 
 #ifndef	IFNAMSIZ
-#define	IFNAMSIZ	8
+#define	IFNAMSIZ	16
 #endif
 
 #define	ip_reass_packet(p, h)		ENOTSUP
