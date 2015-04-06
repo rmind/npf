@@ -115,7 +115,7 @@ typedef int pserialize_t;
 #define	pserialize_destroy(p)
 #define	pserialize_perform(p)
 #define	pserialize_read_enter()	0x50505050
-#define	pserialize_read_exit(s)	assert(s == 0x5050505)
+#define	pserialize_read_exit(s)	assert((s) == 0x50505050)
 
 /*
  * Atomic operations and memory barriers.
@@ -309,25 +309,8 @@ npfkern_kpause(const char *wmesg, bool intr, int timo, kmutex_t *mtx)
 /*
  * FIXME/TODO: To be implemented ..
  */
-#if 0
-#define	if_alloc(x)	calloc(1, sizeof(ifnet_t))
-#define	if_alloc_sadl(x)
-#define	if_attach(x)
-#define	ifunit(name)	NULL
-#define	DLT_NULL	0
-#define	IFNET_FOREACH(ifp)	if (0)
-
-typedef struct {
-	char		if_xname[IFNAMSIZ];
-	unsigned	if_index;
-	unsigned	if_dlt;
-	void *		if_pf_kif;
-	void *		next;
-} ifnet_t;
-#else
 struct ifnet;
 typedef struct ifnet ifnet_t;
-#endif
 
 #ifndef	IFNAMSIZ
 #define	IFNAMSIZ	8
