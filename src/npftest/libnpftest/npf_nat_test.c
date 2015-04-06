@@ -236,9 +236,11 @@ fill_packet(const struct test_case *t)
 bool
 npf_nat_test(bool verbose)
 {
+	npf_t *npf = npf_getkernctx();
+
 	for (unsigned i = 0; i < __arraycount(test_cases); i++) {
 		const struct test_case *t = &test_cases[i];
-		ifnet_t *ifp = ifunit(t->ifname);
+		ifnet_t *ifp = npf_test_getif(t->ifname);
 		struct mbuf *m = fill_packet(t);
 		int error;
 		bool ret;
@@ -247,7 +249,7 @@ npf_nat_test(bool verbose)
 			printf("Interface %s is not configured.\n", t->ifname);
 			return false;
 		}
-		error = npf_packet_handler(NULL, &m, ifp, t->di);
+		error = npf_packet_handler(npf, &m, ifp, t->di);
 		ret = checkresult(verbose, i, m, ifp, error);
 		if (m) {
 			m_freem(m);

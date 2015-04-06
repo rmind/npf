@@ -27,12 +27,33 @@ static const char *	(*_ntop_func)(int, const void *, char *, socklen_t);
 
 static void		npf_state_sample(npf_state_t *, bool);
 
+struct ifnet {
+	char		name[32];
+	void *		arg;
+	struct ifnet *	next;
+};
+
+static struct ifnet *	npftest_ifnet_list = NULL;
+
+static const char *	npftest_ifop_getname(ifnet_t *);
+static void		npftest_ifop_flush(void *);
+static void *		npftest_ifop_getmeta(const ifnet_t *);
+static void		npftest_ifop_setmeta(ifnet_t *, void *);
+
+static const npf_ifops_t npftest_ifops = {
+	.getname	= npftest_ifop_getname,
+	.lookup		= npf_test_getif,
+	.flush		= npftest_ifop_flush,
+	.getmeta	= npftest_ifop_getmeta,
+	.setmeta	= npftest_ifop_setmeta,
+};
+
 void
 npf_test_init(int (*pton_func)(int, const char *, void *),
     const char *(*ntop_func)(int, const void *, char *, socklen_t),
     long (*rndfunc)(void))
 {
-	npf_t *npf = npf_create();
+	npf_t *npf = npf_create(&npftest_ifops );
 	npf_setkernctx(npf);
 
 	npf_state_setsampler(npf_state_sample);
@@ -52,18 +73,16 @@ ifnet_t *
 npf_test_addif(const char *ifname, bool reg, bool verbose)
 {
 	npf_t *npf = npf_getkernctx();
-	ifnet_t *ifp = if_alloc(IFT_OTHER);
+	ifnet_t *ifp = calloc(1, sizeof(struct ifnet));
 
 	/*
 	 * This is a "fake" interface with explicitly set index.
 	 * Note: test modules may not setup pfil(9) hooks and if_attach()
 	 * may not trigger npf_ifmap_attach(), so we call it manually.
 	 */
-	strlcpy(ifp->if_xname, ifname, sizeof(ifp->if_xname));
-	ifp->if_dlt = DLT_NULL;
-	ifp->if_index = 0;
-	if_attach(ifp);
-	if_alloc_sadl(ifp);
+	strlcpy(ifp->name, ifname, sizeof(ifp->name));
+	ifp->next = npftest_ifnet_list;
+	npftest_ifnet_list = ifp;
 
 	npf_ifmap_attach(npf, ifp);
 	if (reg) {
@@ -76,10 +95,46 @@ npf_test_addif(const char *ifname, bool reg, bool verbose)
 	return ifp;
 }
 
+static const char *
+npftest_ifop_getname(ifnet_t *ifp)
+{
+	return ifp->name;
+}
+
 ifnet_t *
 npf_test_getif(const char *ifname)
 {
-	return ifunit(ifname);
+	ifnet_t *ifp = npftest_ifnet_list;
+
+	while (ifp) {
+		if (!strcmp(ifp->name, ifname))
+			break;
+		ifp = ifp->next;
+	}
+	return ifp;
+}
+
+static void
+npftest_ifop_flush(void *arg)
+{
+	ifnet_t *ifp = npftest_ifnet_list;
+
+	while (ifp) {
+		ifp->arg = arg;
+		ifp = ifp->next;
+	}
+}
+
+static void *
+npftest_ifop_getmeta(const ifnet_t *ifp)
+{
+	return ifp->arg;
+}
+
+static void
+npftest_ifop_setmeta(ifnet_t *ifp, void *arg)
+{
+	ifp->arg = arg;
 }
 
 /*
@@ -98,11 +153,12 @@ int
 npf_test_statetrack(const void *data, size_t len, ifnet_t *ifp,
     bool forw, int64_t *result)
 {
+	npf_t *npf = npf_getkernctx();
 	struct mbuf *m;
 	int i = 0, error;
 
 	m = mbuf_getwithdata(data, len);
-	error = npf_packet_handler(NULL, &m, ifp, forw ? PFIL_OUT : PFIL_IN);
+	error = npf_packet_handler(npf, &m, ifp, forw ? PFIL_OUT : PFIL_IN);
 	if (error) {
 		assert(m == NULL);
 		return error;

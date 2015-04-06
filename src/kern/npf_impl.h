@@ -147,10 +147,10 @@ typedef struct {
  */
 
 struct npf_ifops {
-	const void *	(*getname)(ifnet_t *);
+	const char *	(*getname)(ifnet_t *);
 	ifnet_t *	(*lookup)(const char *);
 	void		(*flush)(void *);
-	const void *	(*getmeta)(const ifnet_t *);
+	void *		(*getmeta)(const ifnet_t *);
 	void		(*setmeta)(ifnet_t *, void *);
 };
 

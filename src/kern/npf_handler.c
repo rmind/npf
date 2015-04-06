@@ -122,9 +122,7 @@ npf_reassembly(npf_t *npf, npf_cache_t *npc, struct mbuf **mp)
 int
 npf_packet_handler(void *arg, struct mbuf **mp, ifnet_t *ifp, int di)
 {
-	extern npf_t *npf_kernel_ctx;
-	npf_t *npf = npf_kernel_ctx;
-
+	npf_t *npf = arg;
 	nbuf_t nbuf;
 	npf_cache_t npc;
 	npf_conn_t *con;
@@ -324,6 +322,7 @@ npf_ifhook(void *arg, struct mbuf **mp, ifnet_t *ifp, int di)
 int
 npf_pfil_register(bool init)
 {
+	npf_t *npf = npf_getkernctx();
 	int error = 0;
 
 	mutex_enter(softnet_lock);
@@ -360,12 +359,12 @@ npf_pfil_register(bool init)
 
 	/* Packet IN/OUT handlers for IP layer. */
 	if (npf_ph_inet) {
-		error = pfil_add_hook(npf_packet_handler, NULL,
+		error = pfil_add_hook(npf_packet_handler, npf,
 		    PFIL_ALL, npf_ph_inet);
 		KASSERT(error == 0);
 	}
 	if (npf_ph_inet6) {
-		error = pfil_add_hook(npf_packet_handler, NULL,
+		error = pfil_add_hook(npf_packet_handler, npf,
 		    PFIL_ALL, npf_ph_inet6);
 		KASSERT(error == 0);
 	}
@@ -383,6 +382,8 @@ out:
 void
 npf_pfil_unregister(bool fini)
 {
+	npf_t *npf = npf_getkernctx();
+
 	mutex_enter(softnet_lock);
 	KERNEL_LOCK(1, NULL);
 
@@ -391,11 +392,11 @@ npf_pfil_unregister(bool fini)
 		    PFIL_IFADDR | PFIL_IFNET, npf_ph_if);
 	}
 	if (npf_ph_inet) {
-		(void)pfil_remove_hook(npf_packet_handler, NULL,
+		(void)pfil_remove_hook(npf_packet_handler, npf,
 		    PFIL_ALL, npf_ph_inet);
 	}
 	if (npf_ph_inet6) {
-		(void)pfil_remove_hook(npf_packet_handler, NULL,
+		(void)pfil_remove_hook(npf_packet_handler, npf,
 		    PFIL_ALL, npf_ph_inet6);
 	}
 	pfil_registered = false;

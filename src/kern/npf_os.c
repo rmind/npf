@@ -264,7 +264,7 @@ npf_ifop_flush(void *arg)
 	KERNEL_UNLOCK_ONE(NULL);
 }
 
-static const void *
+static void *
 npf_ifop_getmeta(const ifnet_t *ifp)
 {
 	return ifp->if_pf_kif

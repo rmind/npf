@@ -102,7 +102,7 @@ static int
 npf_test_case(u_int i, bool verbose)
 {
 	const struct test_case *t = &test_cases[i];
-	ifnet_t *ifp = ifunit(t->ifname);
+	ifnet_t *ifp = npf_test_getif(t->ifname);
 	int error;
 
 	struct mbuf *m = fill_packet(t);
@@ -135,7 +135,7 @@ npf_rule_test(bool verbose)
 
 	for (unsigned i = 0; i < __arraycount(test_cases); i++) {
 		const struct test_case *t = &test_cases[i];
-		ifnet_t *ifp = ifunit(t->ifname);
+		ifnet_t *ifp = npf_test_getif(t->ifname);
 		int serror;
 
 		if (ifp == NULL) {
@@ -145,7 +145,7 @@ npf_rule_test(bool verbose)
 
 		struct mbuf *m = fill_packet(t);
 		error = npf_rule_raw_test(verbose, m, ifp, t->di);
-		serror = npf_packet_handler(NULL, &m, ifp, t->di);
+		serror = npf_packet_handler(npf, &m, ifp, t->di);
 
 		if (m) {
 			m_freem(m);

@@ -48,7 +48,8 @@ fill_packet(unsigned i)
 __dead static void
 worker(void *arg)
 {
-	ifnet_t *ifp = ifunit(IFNAME_INT);
+	npf_t *npf = npf_getkernctx();
+	ifnet_t *ifp = npf_test_getif(IFNAME_INT);
 	unsigned int i = (uintptr_t)arg;
 	struct mbuf *m = fill_packet(i);
 	uint64_t n = 0;
@@ -58,7 +59,7 @@ worker(void *arg)
 	while (!done) {
 		int error;
 
-		error = npf_packet_handler(NULL, &m, ifp, PFIL_OUT);
+		error = npf_packet_handler(npf, &m, ifp, PFIL_OUT);
 		KASSERT(error == 0);
 		n++;
 	}
