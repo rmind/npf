@@ -339,6 +339,15 @@ connkey_set_id(npf_connkey_t *key, const uint16_t id, const int di)
 	key->ck_key[1] = ((uint32_t)id << shift) | (oid & mask);
 }
 
+static inline void
+conn_update_atime(npf_conn_t *con)
+{
+	struct timespec tsnow;
+
+	getnanouptime(&tsnow);
+	con->c_atime = tsnow.tv_sec;
+}
+
 /*
  * npf_conn_lookup: lookup if there is an established connection.
  *
@@ -388,7 +397,7 @@ npf_conn_lookup(const npf_cache_t *npc, const int di, bool *forw)
 	}
 
 	/* Update the last activity time. */
-	getnanouptime(&con->c_atime);
+	conn_update_atime(con);
 	return con;
 }
 
@@ -500,7 +509,7 @@ npf_conn_establish(npf_cache_t *npc, int di, bool per_if)
 	 * Set last activity time for a new connection and acquire
 	 * a reference for the caller before we make it visible.
 	 */
-	getnanouptime(&con->c_atime);
+	conn_update_atime(con);
 	con->c_refcnt = 1;
 
 	/*
@@ -721,17 +730,15 @@ npf_conn_getnat(npf_conn_t *con, const int di, bool *forw)
  * npf_conn_expired: criterion to check if connection is expired.
  */
 static inline bool
-npf_conn_expired(const npf_conn_t *con, const struct timespec *tsnow)
+npf_conn_expired(const npf_conn_t *con, uint64_t tsnow)
 {
-	const int etime = npf_state_etime(&con->c_state, con->c_proto);
-	struct timespec tsdiff;
+	const u_int etime = npf_state_etime(&con->c_state, con->c_proto);
 
 	if (__predict_false(con->c_flags & CONN_EXPIRE)) {
 		/* Explicitly marked to be expired. */
 		return true;
 	}
-	timespecsub(tsnow, &con->c_atime, &tsdiff);
-	return tsdiff.tv_sec > etime;
+	return (tsnow - con->c_atime) > etime;
 }
 
 /*
@@ -758,7 +765,7 @@ npf_conn_gc(npf_t *npf, npf_conndb_t *cd, bool flush, bool sync)
 		npf_conn_t *next = con->c_next;
 
 		/* Expired?  Flushing all? */
-		if (!npf_conn_expired(con, &tsnow) && !flush) {
+		if (!npf_conn_expired(con, tsnow.tv_sec) && !flush) {
 			prev = con;
 			con = next;
 			continue;
@@ -930,7 +937,7 @@ npf_conn_import(npf_t *npf, npf_conndb_t *cd, prop_dictionary_t cdict,
 	prop_dictionary_get_uint32(cdict, "proto", &con->c_proto);
 	prop_dictionary_get_uint32(cdict, "flags", &con->c_flags);
 	con->c_flags &= PFIL_ALL | CONN_ACTIVE | CONN_PASS;
-	getnanouptime(&con->c_atime);
+	conn_update_atime(con);
 
 	if (prop_dictionary_get_cstring_nocopy(cdict, "ifname", &ifname) &&
 	    (con->c_ifid = npf_ifmap_register(npf, ifname)) == 0) {
@@ -997,16 +1004,15 @@ npf_conn_print(const npf_conn_t *con)
 	const uint32_t *fkey = con->c_forw_entry.ck_key;
 	const uint32_t *bkey = con->c_back_entry.ck_key;
 	const u_int proto = con->c_proto;
-	struct timespec tsnow, tsdiff;
+	struct timespec tspnow;
 	const void *src, *dst;
 	int etime;
 
-	getnanouptime(&tsnow);
-	timespecsub(&tsnow, &con->c_atime, &tsdiff);
+	getnanouptime(&tspnow);
 	etime = npf_state_etime(&con->c_state, proto);
 
-	printf("%p:\n\tproto %d flags 0x%x tsdiff %d etime %d\n",
-	    con, proto, con->c_flags, (int)tsdiff.tv_sec, etime);
+	printf("%p:\n\tproto %d flags 0x%x tsdiff %ld etime %d\n", con,
+	    proto, con->c_flags, (long)(tspnow.tv_sec - con->c_atime), etime);
 
 	src = &fkey[2], dst = &fkey[2 + (alen >> 2)];
 	printf("\tforw %s:%d", npf_addr_dump(src, alen), ntohs(fkey[1] >> 16));

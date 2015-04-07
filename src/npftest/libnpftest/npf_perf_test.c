@@ -91,7 +91,7 @@ npf_test_conc(bool st, unsigned nthreads)
 
 	/* Let them spin! */
 	run = true;
-	kpause("perf", false, NSECS * hz, NULL);
+	kpause("perf", false, mstohz(NSECS * 1000), NULL);
 	done = true;
 
 	/* Wait until all threads exit and sum the counts. */

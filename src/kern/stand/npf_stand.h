@@ -260,30 +260,16 @@ uint32_t	murmurhash2(const void *, size_t, uint32_t);
 #define	getnanouptime(ts)	clock_gettime(CLOCK_MONOTONIC, (ts))
 #undef	mstohz
 #define	mstohz(ms)		(ms)
-#define	hz			1
 
 static inline int
 npfkern_kpause(const char *wmesg, bool intr, int timo, kmutex_t *mtx)
 {
 	const struct timespec req = { .tv_sec = 0, .tv_nsec = timo * 1000000 };
-
 	(void)wmesg; (void)intr; (void)mtx;
 	return nanosleep(&req, NULL);
 }
 
 #define	kpause(w, s, t, l)	npfkern_kpause(w, s, t, l)
-
-#ifndef timespecsub
-#define	timespecsub(tsp, usp, vsp)					\
-	do {								\
-		(vsp)->tv_sec = (tsp)->tv_sec - (usp)->tv_sec;		\
-		(vsp)->tv_nsec = (tsp)->tv_nsec - (usp)->tv_nsec;	\
-		if ((vsp)->tv_nsec < 0) {				\
-			(vsp)->tv_sec--;				\
-			(vsp)->tv_nsec += 1000000000L;			\
-		}							\
-	} while (/* CONSTCOND */ 0)
-#endif
 
 /*
  * Networking.

@@ -88,7 +88,7 @@ struct npf_conn {
 	kmutex_t		c_lock;
 	npf_state_t		c_state;
 	u_int			c_refcnt;
-	struct timespec		c_atime;
+	uint64_t		c_atime;
 };
 
 #endif
