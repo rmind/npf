@@ -87,6 +87,7 @@ npf_destroy(npf_t *npf)
 	npf_nat_sysfini();
 	npf_conn_sysfini(npf);
 	npf_tableset_sysfini();
+	npf_ifmap_sysfini(npf);
 	npf_bpf_sysfini();
 
 	/* Note: worker is the last. */

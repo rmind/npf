@@ -37,6 +37,13 @@
 #include <sys/cdefs.h>
 __KERNEL_RCSID(0, "$NetBSD: npf.c,v 1.22 2014/07/25 08:10:40 dholland Exp $");
 
+#ifdef _KERNEL_OPT
+#include "pf.h"
+#if NPF > 0
+#error "NPF and PF are mutually exclusive; please select one"
+#endif
+#endif
+
 #include <sys/param.h>
 #include <sys/types.h>
 

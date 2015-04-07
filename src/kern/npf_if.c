@@ -45,13 +45,6 @@
 #include <sys/cdefs.h>
 __KERNEL_RCSID(0, "$NetBSD: npf_if.c,v 1.4 2014/08/10 19:09:43 rmind Exp $");
 
-#ifdef _KERNEL_OPT
-#include "pf.h"
-#if NPF > 0
-#error "NPF and PF are mutually exclusive; please select one"
-#endif
-#endif
-
 #include <sys/param.h>
 #include <sys/types.h>
 #include <sys/kmem.h>
@@ -62,20 +55,28 @@ __KERNEL_RCSID(0, "$NetBSD: npf_if.c,v 1.4 2014/08/10 19:09:43 rmind Exp $");
 
 #define	INACTIVE_ID	((u_int)-1)
 
-typedef struct {
+typedef struct npf_ifmap {
 	char		n_ifname[IFNAMSIZ];
 } npf_ifmap_t;
-
-static npf_ifmap_t	npf_ifmap[NPF_MAX_IFMAP]	__read_mostly;
-static u_int		npf_ifmap_cnt			__read_mostly;
 
 void
 npf_ifmap_sysinit(npf_t *npf, const npf_ifops_t *ifops)
 {
-	KASSERT(ifops != NULL);
+	const size_t nbytes = sizeof(npf_ifmap_t) * NPF_MAX_IFMAP;
 
+	KASSERT(ifops != NULL);
 	ifops->flush((void *)(uintptr_t)INACTIVE_ID);
+
+	npf->ifmap = kmem_zalloc(nbytes, KM_SLEEP);
+	npf->ifmap_cnt = 0;
 	npf->ifops = ifops;
+}
+
+void
+npf_ifmap_sysfini(npf_t *npf)
+{
+	const size_t nbytes = sizeof(npf_ifmap_t) * NPF_MAX_IFMAP;
+	kmem_free(npf->ifmap, nbytes);
 }
 
 /*
@@ -89,15 +90,15 @@ npf_ifmap_new(npf_t *npf)
 {
 	KASSERT(npf_config_locked_p(npf));
 
-	for (u_int i = 0; i < npf_ifmap_cnt; i++)
-		if (npf_ifmap[i].n_ifname[0] == '\0')
+	for (u_int i = 0; i < npf->ifmap_cnt; i++)
+		if (npf->ifmap[i].n_ifname[0] == '\0')
 			return i + 1;
 
-	if (npf_ifmap_cnt == NPF_MAX_IFMAP) {
+	if (npf->ifmap_cnt == NPF_MAX_IFMAP) {
 		printf("npf_ifmap_new: out of slots; bump NPF_MAX_IFMAP\n");
 		return INACTIVE_ID;
 	}
-	return ++npf_ifmap_cnt;
+	return ++npf->ifmap_cnt;
 }
 
 static u_int
@@ -105,8 +106,8 @@ npf_ifmap_lookup(npf_t *npf, const char *ifname)
 {
 	KASSERT(npf_config_locked_p(npf));
 
-	for (u_int i = 0; i < npf_ifmap_cnt; i++) {
-		npf_ifmap_t *nim = &npf_ifmap[i];
+	for (u_int i = 0; i < npf->ifmap_cnt; i++) {
+		npf_ifmap_t *nim = &npf->ifmap[i];
 
 		if (nim->n_ifname[0] && strcmp(nim->n_ifname, ifname) == 0)
 			return i + 1;
@@ -129,7 +130,7 @@ npf_ifmap_register(npf_t *npf, const char *ifname)
 		i = INACTIVE_ID;
 		goto out;
 	}
-	nim = &npf_ifmap[i - 1];
+	nim = &npf->ifmap[i - 1];
 	strlcpy(nim->n_ifname, ifname, IFNAMSIZ);
 
 	if ((ifp = npf->ifops->lookup(ifname)) != NULL) {
@@ -147,10 +148,10 @@ npf_ifmap_flush(npf_t *npf)
 
 	KASSERT(npf_config_locked_p(npf));
 
-	for (u_int i = 0; i < npf_ifmap_cnt; i++) {
-		npf_ifmap[i].n_ifname[0] = '\0';
+	for (u_int i = 0; i < npf->ifmap_cnt; i++) {
+		npf->ifmap[i].n_ifname[0] = '\0';
 	}
-	npf_ifmap_cnt = 0;
+	npf->ifmap_cnt = 0;
 	npf->ifops->flush((void *)(uintptr_t)INACTIVE_ID);
 }
 
@@ -159,7 +160,7 @@ npf_ifmap_getid(npf_t *npf, const ifnet_t *ifp)
 {
 	const u_int i = (uintptr_t)npf->ifops->getmeta(ifp);
 
-	KASSERT(i == INACTIVE_ID || (i > 0 && i <= npf_ifmap_cnt));
+	KASSERT(i == INACTIVE_ID || (i > 0 && i <= npf->ifmap_cnt));
 	return i;
 }
 
@@ -169,9 +170,9 @@ npf_ifmap_getname(npf_t *npf, const u_int id)
 	const char *ifname;
 
 	KASSERT(npf_config_locked_p(npf));
-	KASSERT(id > 0 && id <= npf_ifmap_cnt);
+	KASSERT(id > 0 && id <= npf->ifmap_cnt);
 
-	ifname = npf_ifmap[id - 1].n_ifname;
+	ifname = npf->ifmap[id - 1].n_ifname;
 	KASSERT(ifname[0] != '\0');
 	return ifname;
 }

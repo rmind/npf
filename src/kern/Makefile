@@ -88,6 +88,6 @@ install: $(addprefix install/,$(LIB).la)
 
 clean:
 	libtool --mode=clean rm
-	rm -rf .libs *.{l,}o *.la stand/*.{l,}o stand/*.la
+	rm -rf .libs *.o *.lo *.la stand/*.{l,}o stand/*.la
 
 .PHONY: all lib install clean

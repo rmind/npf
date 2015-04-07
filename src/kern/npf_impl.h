@@ -90,6 +90,7 @@ struct npf_conndb;
 struct npf_table;
 struct npf_tableset;
 struct npf_algset;
+struct npf_ifmap;
 
 typedef struct npf_conndb	npf_conndb_t;
 typedef struct npf_table	npf_table_t;
@@ -175,8 +176,10 @@ struct npf {
 	/* ALGs. */
 	npf_algset_t *		algset;
 
-	/* External operations. */
+	/* Interface mapping. */
 	const npf_ifops_t *	ifops;
+	struct npf_ifmap *	ifmap;
+	unsigned		ifmap_cnt;
 
 	/* List of extensions and its lock. */
 	LIST_HEAD(, npf_ext)	ext_list;
@@ -237,6 +240,7 @@ void		npf_stats_dec(npf_t *, npf_stats_t);
 int		npf_stats(npf_t *, void *);
 
 void		npf_ifmap_sysinit(npf_t *, const npf_ifops_t *);
+void		npf_ifmap_sysfini(npf_t *);
 u_int		npf_ifmap_register(npf_t *, const char *);
 void		npf_ifmap_flush(npf_t *);
 void		npf_ifmap_attach(npf_t *, ifnet_t *);
