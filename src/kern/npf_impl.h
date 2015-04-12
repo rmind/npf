@@ -155,6 +155,17 @@ struct npf_ifops {
 	void		(*setmeta)(ifnet_t *, void *);
 };
 
+struct npf_mbufops {
+	struct mbuf *	(*get)(int, int);
+	void		(*put)(struct mbuf *);
+	void *		(*getdata)(const struct mbuf *);
+	struct mbuf *	(*getnext)(struct mbuf *);
+	size_t		(*getlen)(const struct mbuf *);
+	size_t		(*getchainlen)(const struct mbuf *);
+	bool		(*ensure_contig)(struct mbuf **, size_t);
+	bool		(*ensure_writable)(struct mbuf **, size_t);
+};
+
 struct npf {
 	/* Active NPF configuration. */
 	kmutex_t		config_lock;
@@ -163,6 +174,7 @@ struct npf {
 
 	/* BPF byte-code context. */
 	bpf_ctx_t *		bpfctx;
+	const npf_mbufops_t *	mbufops;
 
 	/*
 	 * Connection tracking state: disabled (off) or enabled (on).

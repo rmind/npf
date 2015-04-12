@@ -46,6 +46,18 @@ __KERNEL_RCSID(0, "$NetBSD: npf_mbuf.c,v 1.13 2014/08/10 19:09:43 rmind Exp $");
 
 #include "npf_impl.h"
 
+#if defined(_NPF_STANDALONE)
+#define	m_length(m)		(nbuf)->nb_mops->getchainlen(m)
+#define	m_buflen(m)		(nbuf)->nb_mops->getlen(m)
+#define	m_next(m)		(nbuf)->nb_mops->getnext(m)
+#define	m_ensure_contig(m,t)	(nbuf)->nb_mops->ensure_contig((m), (t))
+#define	m_makewritable(m,o,l,f)	(nbuf)->nb_mops->ensure_writable((m), (o+f))
+#define	mtod(m,t)		((t)((nbuf)->nb_mops->getdata(m)))
+#else
+#define	m_next(m)		(m)->m_next
+#define	m_buflen(m)		(m)->m_len
+#endif
+
 #define	NBUF_ENSURE_ALIGN	(MAX(COHERENCY_UNIT, 64))
 #define	NBUF_ENSURE_MASK	(NBUF_ENSURE_ALIGN - 1)
 #define	NBUF_ENSURE_ROUNDUP(x)	(((x) + NBUF_ENSURE_ALIGN) & ~NBUF_ENSURE_MASK)
@@ -56,6 +68,7 @@ nbuf_init(npf_t *npf, nbuf_t *nbuf, struct mbuf *m, const ifnet_t *ifp)
 	u_int ifid = npf_ifmap_getid(npf, ifp);
 
 	KASSERT((m->m_flags & M_PKTHDR) != 0);
+	nbuf->nb_mops = npf->mbufops;
 
 	nbuf->nb_mbuf0 = m;
 	nbuf->nb_ifp = ifp;
@@ -123,11 +136,11 @@ nbuf_advance(nbuf_t *nbuf, size_t len, size_t ensure)
 
 	/* Offset with amount to advance. */
 	off = (uintptr_t)nbuf->nb_nptr - mtod(m, uintptr_t) + len;
-	wmark = m->m_len;
+	wmark = m_buflen(m);
 
 	/* Find the mbuf according to offset. */
 	while (__predict_false(wmark <= off)) {
-		m = m->m_next;
+		m = m_next(m);
 		if (__predict_false(m == NULL)) {
 			/*
 			 * If end of the chain, then the offset is
@@ -135,14 +148,14 @@ nbuf_advance(nbuf_t *nbuf, size_t len, size_t ensure)
 			 */
 			return NULL;
 		}
-		wmark += m->m_len;
+		wmark += m_buflen(m);
 	}
 	KASSERT(off < m_length(nbuf->nb_mbuf0));
 
 	/* Offset in mbuf data. */
 	d = mtod(m, uint8_t *);
-	KASSERT(off >= (wmark - m->m_len));
-	d += (off - (wmark - m->m_len));
+	KASSERT(off >= (wmark - m_buflen(m)));
+	d += (off - (wmark - m_buflen(m)));
 
 	nbuf->nb_mbuf = m;
 	nbuf->nb_nptr = d;
@@ -167,13 +180,13 @@ nbuf_ensure_contig(nbuf_t *nbuf, size_t len)
 	const struct mbuf * const n = nbuf->nb_mbuf;
 	const size_t off = (uintptr_t)nbuf->nb_nptr - mtod(n, uintptr_t);
 
-	KASSERT(off <= n->m_len);
+	KASSERT(off <= m_buflen(n));
 
-	if (__predict_false(n->m_len < (off + len))) {
+	if (__predict_false(m_buflen(n) < (off + len))) {
 		struct mbuf *m = nbuf->nb_mbuf0;
 		const size_t foff = nbuf_offset(nbuf);
 		const size_t plen = m_length(m);
-		const size_t mlen = m->m_len;
+		const size_t mlen = m_buflen(m);
 		size_t target;
 		bool success;
 
@@ -190,7 +203,7 @@ nbuf_ensure_contig(nbuf_t *nbuf, size_t len)
 		KASSERT(m != NULL);
 
 		/* If no change in the chain: return what we have. */
-		if (m == nbuf->nb_mbuf0 && m->m_len == mlen) {
+		if (m == nbuf->nb_mbuf0 && m_buflen(m) == mlen) {
 			return success ? nbuf->nb_nptr : NULL;
 		}
 
@@ -203,7 +216,7 @@ nbuf_ensure_contig(nbuf_t *nbuf, size_t len)
 		nbuf->nb_mbuf0 = m;
 		nbuf->nb_mbuf = m;
 
-		KASSERT(foff < m->m_len && foff < m_length(m));
+		KASSERT(foff < m_buflen(m) && foff < m_length(m));
 		nbuf->nb_nptr = mtod(m, uint8_t *) + foff;
 		nbuf->nb_flags |= NBUF_DATAREF_RESET;
 

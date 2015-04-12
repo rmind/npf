@@ -84,8 +84,9 @@ struct npf;
 struct npf_ifops;
 typedef struct npf		npf_t;
 typedef struct npf_ifops	npf_ifops_t;
+typedef struct npf_mbufops	npf_mbufops_t;
 
-npf_t *		npf_create(const npf_ifops_t *);
+npf_t *		npf_create(const npf_mbufops_t *, const npf_ifops_t *);
 void		npf_destroy(npf_t *);
 
 /*
@@ -120,6 +121,7 @@ typedef struct {
 	const ifnet_t *	nb_ifp;
 	unsigned	nb_ifid;
 	int		nb_flags;
+	const npf_mbufops_t *nb_mops;
 } nbuf_t;
 
 void		nbuf_init(npf_t *, nbuf_t *, struct mbuf *, const ifnet_t *);

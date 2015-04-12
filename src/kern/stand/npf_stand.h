@@ -397,12 +397,6 @@ npfkern_m_ensure_contig(struct mbuf **m0, int len)
 }
 
 #define	m_gethdr(x, y)		npfkern_m_get(M_PKTHDR, MLEN)
-#define	m_get(x, y)		npfkern_m_get(0, MLEN)
-#define	m_freem(m)		npfkern_m_freem(m)
-#define	m_length(m)		npfkern_m_length(m)
-#define	m_makewritable(a,b,c,d)	true
-#define	m_ensure_contig(m, l)	npfkern_m_ensure_contig(m, l)
-#define	mtod(m, t)		((t)((m)->m_data))
 
 /*
  * Misc.
@@ -435,8 +429,6 @@ npfkern_m_ensure_contig(struct mbuf **m0, int len)
 #define	MODULE_CMD_AUTOUNLOAD	4
 
 typedef int modcmd_t;
-
-#define	kauth_authorize_network(c, a, r, a1, a2, a3)	0
 
 #ifndef EPROGMISMATCH
 #define	EPROGMISMATCH		ENOTSUP

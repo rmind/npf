@@ -288,7 +288,8 @@ out:
 	}
 
 	if (*mp) {
-		m_freem(*mp);
+		/* Free the mbuf chain. */
+		npf->mbufops->put(*mp);
 		*mp = NULL;
 	}
 	return error;

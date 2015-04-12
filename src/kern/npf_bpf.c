@@ -48,6 +48,10 @@ __KERNEL_RCSID(0, "$NetBSD: npf_bpf.c,v 1.11 2014/07/20 00:37:41 rmind Exp $");
 #define NPF_BPFCOP
 #include "npf_impl.h"
 
+#if defined(_NPF_STANDALONE)
+#define	m_length(m)		(nbuf)->nb_mops->getchainlen(m)
+#endif
+
 /*
  * BPF context and the coprocessor.
  */
@@ -82,7 +86,8 @@ npf_bpf_sysfini(void)
 void
 npf_bpf_prepare(npf_cache_t *npc, bpf_args_t *args, uint32_t *M)
 {
-	const struct mbuf *mbuf = nbuf_head_mbuf(npc->npc_nbuf);
+	nbuf_t *nbuf = npc->npc_nbuf;
+	const struct mbuf *mbuf = nbuf_head_mbuf(nbuf);
 	const size_t pktlen = m_length(mbuf);
 
 	/* Prepare the arguments for the BPF programs. */

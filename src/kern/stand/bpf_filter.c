@@ -60,6 +60,13 @@ static const char rcsid[] =
 #include "npf_stand.h"
 #define	_KERNEL
 
+#define	m_get(x, y)		npfkern_m_get(0, MLEN)
+#define	m_freem(m)		npfkern_m_freem(m)
+#define	m_length(m)		npfkern_m_length(m)
+#define	m_makewritable(a,b,c,d)	true
+#define	m_ensure_contig(m, l)	npfkern_m_ensure_contig(m, l)
+#define	mtod(m, t)		((t)((m)->m_data))
+
 #ifdef _KERNEL
 
 bpf_ctx_t *
