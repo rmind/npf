@@ -63,6 +63,13 @@ static pfil_head_t *	npf_ph_if = NULL;
 static pfil_head_t *	npf_ph_inet = NULL;
 static pfil_head_t *	npf_ph_inet6 = NULL;
 
+#if defined(_NPF_STANDALONE)
+#define	m_freem(m)		npf->mbufops->put(m)
+#define	m_clear_flag(m,f)
+#else
+#define	m_clear_flag(m,f)	(m)->m_flags &= ~(f)
+#endif
+
 #ifndef INET6
 #define ip6_reass_packet(x, y)	ENOTSUP
 #endif
@@ -270,7 +277,7 @@ out:
 		 * XXX: Disable for now, it will be set accordingly later,
 		 * for optimisations (to reduce inspection).
 		 */
-		(*mp)->m_flags &= ~M_CANFASTFWD;
+		m_clear_flag(*mp, M_CANFASTFWD);
 		return 0;
 	}
 
@@ -289,7 +296,7 @@ out:
 
 	if (*mp) {
 		/* Free the mbuf chain. */
-		npf->mbufops->put(*mp);
+		m_freem(*mp);
 		*mp = NULL;
 	}
 	return error;

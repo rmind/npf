@@ -53,9 +53,11 @@ __KERNEL_RCSID(0, "$NetBSD: npf_mbuf.c,v 1.13 2014/08/10 19:09:43 rmind Exp $");
 #define	m_ensure_contig(m,t)	(nbuf)->nb_mops->ensure_contig((m), (t))
 #define	m_makewritable(m,o,l,f)	(nbuf)->nb_mops->ensure_writable((m), (o+f))
 #define	mtod(m,t)		((t)((nbuf)->nb_mops->getdata(m)))
+#define	m_flags_p(m,f)		true
 #else
 #define	m_next(m)		(m)->m_next
 #define	m_buflen(m)		(m)->m_len
+#define	m_flags_p(m,f)		(((m)->m_flags & (f)) != 0)
 #endif
 
 #define	NBUF_ENSURE_ALIGN	(MAX(COHERENCY_UNIT, 64))
@@ -67,7 +69,7 @@ nbuf_init(npf_t *npf, nbuf_t *nbuf, struct mbuf *m, const ifnet_t *ifp)
 {
 	u_int ifid = npf_ifmap_getid(npf, ifp);
 
-	KASSERT((m->m_flags & M_PKTHDR) != 0);
+	KASSERT(m_flags_p(m, M_PKTHDR));
 	nbuf->nb_mops = npf->mbufops;
 
 	nbuf->nb_mbuf0 = m;
@@ -198,7 +200,7 @@ nbuf_ensure_contig(nbuf_t *nbuf, size_t len)
 		}
 
 		/* Rearrange the chain to be contiguous. */
-		KASSERT((m->m_flags & M_PKTHDR) != 0);
+		KASSERT(m_flags_p(m, M_PKTHDR));
 		success = m_ensure_contig(&m, target);
 		KASSERT(m != NULL);
 
@@ -212,7 +214,7 @@ nbuf_ensure_contig(nbuf_t *nbuf, size_t len)
 		 * accordingly and indicate that the references to the data
 		 * might need a reset.
 		 */
-		KASSERT((m->m_flags & M_PKTHDR) != 0);
+		KASSERT(m_flags_p(m, M_PKTHDR));
 		nbuf->nb_mbuf0 = m;
 		nbuf->nb_mbuf = m;
 
@@ -247,7 +249,7 @@ nbuf_ensure_writable(nbuf_t *nbuf, size_t len)
 		return NULL;
 	}
 	if (head_buf) {
-		KASSERT((m->m_flags & M_PKTHDR) != 0);
+		KASSERT(m_flags_p(m, M_PKTHDR));
 		KASSERT(off < m_length(m));
 		nbuf->nb_mbuf0 = m;
 	}
@@ -267,7 +269,7 @@ nbuf_cksum_barrier(nbuf_t *nbuf, int di)
 		return false;
 	}
 	m = nbuf->nb_mbuf0;
-	KASSERT((m->m_flags & M_PKTHDR) != 0);
+	KASSERT(m_flags_p(m, M_PKTHDR));
 
 	if (m->m_pkthdr.csum_flags & (M_CSUM_TCPv4 | M_CSUM_UDPv4)) {
 		in_delayed_cksum(m);
@@ -293,7 +295,7 @@ nbuf_add_tag(nbuf_t *nbuf, uint32_t key, uint32_t val)
 	struct m_tag *mt;
 	uint32_t *dat;
 
-	KASSERT((m->m_flags & M_PKTHDR) != 0);
+	KASSERT(m_flags_p(m, M_PKTHDR));
 
 	mt = m_tag_get(PACKET_TAG_NPF, sizeof(uint32_t), M_NOWAIT);
 	if (mt == NULL) {
@@ -316,7 +318,7 @@ nbuf_find_tag(nbuf_t *nbuf, uint32_t key, void **data)
 	struct mbuf *m = nbuf->nb_mbuf0;
 	struct m_tag *mt;
 
-	KASSERT((m->m_flags & M_PKTHDR) != 0);
+	KASSERT(m_flags_p(m, M_PKTHDR));
 
 	mt = m_tag_find(m, PACKET_TAG_NPF, NULL);
 	if (mt == NULL) {
