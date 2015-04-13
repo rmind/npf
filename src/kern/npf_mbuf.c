@@ -51,7 +51,7 @@ __KERNEL_RCSID(0, "$NetBSD: npf_mbuf.c,v 1.13 2014/08/10 19:09:43 rmind Exp $");
 #define	m_buflen(m)		(nbuf)->nb_mops->getlen(m)
 #define	m_next(m)		(nbuf)->nb_mops->getnext(m)
 #define	m_ensure_contig(m,t)	(nbuf)->nb_mops->ensure_contig((m), (t))
-#define	m_makewritable(m,o,l,f)	(nbuf)->nb_mops->ensure_writable((m), (o+f))
+#define	m_makewritable(m,o,l,f)	(nbuf)->nb_mops->ensure_writable((m), (o+l))
 #define	mtod(m,t)		((t)((nbuf)->nb_mops->getdata(m)))
 #define	m_flags_p(m,f)		true
 #else
@@ -192,7 +192,7 @@ nbuf_ensure_contig(nbuf_t *nbuf, size_t len)
 		size_t target;
 		bool success;
 
-		//npf_stats_inc(NPF_STAT_NBUF_NONCONTIG);
+		//npf_stats_inc(npf, NPF_STAT_NBUF_NONCONTIG);
 
 		/* Attempt to round-up to NBUF_ENSURE_ALIGN bytes. */
 		if ((target = NBUF_ENSURE_ROUNDUP(foff + len)) > plen) {
@@ -223,7 +223,7 @@ nbuf_ensure_contig(nbuf_t *nbuf, size_t len)
 		nbuf->nb_flags |= NBUF_DATAREF_RESET;
 
 		if (!success) {
-			//npf_stats_inc(NPF_STAT_NBUF_CONTIG_FAIL);
+			//npf_stats_inc(npf, NPF_STAT_NBUF_CONTIG_FAIL);
 			return NULL;
 		}
 	}

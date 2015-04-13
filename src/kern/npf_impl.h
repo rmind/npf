@@ -156,8 +156,8 @@ struct npf_ifops {
 };
 
 struct npf_mbufops {
-	struct mbuf *	(*get)(int, int);
-	void		(*put)(struct mbuf *);
+	struct mbuf *	(*alloc)(int, int);
+	void		(*free)(struct mbuf *);
 	void *		(*getdata)(const struct mbuf *);
 	struct mbuf *	(*getnext)(struct mbuf *);
 	size_t		(*getlen)(const struct mbuf *);

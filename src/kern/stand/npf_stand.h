@@ -241,7 +241,7 @@ npfkern_copy(void *dst, const void *src, size_t len)
  * Random number generator.
  */
 
-#define	cprng_fast32()		((uint32_t)random())
+#define	cprng_fast32()			((uint32_t)random())
 
 /*
  * Hashing.
@@ -310,93 +310,7 @@ typedef struct ifnet ifnet_t;
 #define	ip_defttl		64
 #define	max_linkhdr		0
 
-#define	MLEN			512
-
-struct mbuf {
-	unsigned	m_flags;
-	int		m_type;
-	unsigned	m_len;
-	void *		m_next;
-	struct {
-		int	len;
-	} m_pkthdr;
-	char *		m_data;
-	char		m_data0[MLEN];
-};
-
-#define	MT_FREE			0
 #define	M_UNWRITABLE(m, l)	false
-#define	M_NOWAIT		0x00001
-#define M_PKTHDR		0x00002
-#ifndef M_CANFASTFWD
-#define	M_CANFASTFWD		0x00400
-#endif
-#define	M_CSUM_TCPv4		0x1
-#define	M_CSUM_UDPv4		0x2
-
-static inline struct mbuf *
-npfkern_m_get(int flags, unsigned space)
-{
-	unsigned mlen = offsetof(struct mbuf, m_data0[space]);
-	struct mbuf *m;
-
-	m = calloc(1, sizeof(struct mbuf));
-	if (m) {
-		m->m_type = 1;
-		m->m_flags = flags;
-		m->m_data = m->m_data0;
-	}
-	return m;
-}
-
-static inline unsigned
-npfkern_m_length(const struct mbuf *m)
-{
-	const struct mbuf *m0;
-	unsigned pktlen = 0;
-
-	if ((m->m_flags & M_PKTHDR) != 0)
-		return m->m_pkthdr.len;
-	for (m0 = m; m0 != NULL; m0 = m0->m_next)
-		pktlen += m0->m_len;
-	return pktlen;
-}
-
-static inline void
-npfkern_m_freem(struct mbuf *m)
-{
-	struct mbuf *n;
-
-	do {
-		n = m->m_next;
-		m->m_type = MT_FREE;
-		free(m);
-		m = n;
-	} while (m);
-}
-
-static inline bool
-npfkern_m_ensure_contig(struct mbuf **m0, int len)
-{
-	struct mbuf *m1;
-	unsigned tlen;
-	char *dptr;
-
-	tlen = npfkern_m_length(*m0);
-	if ((m1 = npfkern_m_get(M_PKTHDR, tlen)) == NULL) {
-		return false;
-	}
-	m1->m_pkthdr.len = m1->m_len = tlen;
-	dptr = m1->m_data;
-	for (struct mbuf *m = *m0; m != NULL; m = m->m_next) {
-		memcpy(dptr, m->m_data, m->m_len);
-		dptr += m->m_len;
-	}
-	*m0 = m1;
-	return true;
-}
-
-#define	m_gethdr(x, y)		npfkern_m_get(M_PKTHDR, MLEN)
 
 /*
  * Misc.

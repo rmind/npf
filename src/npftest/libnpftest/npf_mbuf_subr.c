@@ -14,6 +14,72 @@
 #include "npf_impl.h"
 #include "npf_test.h"
 
+#if defined(_NPF_STANDALONE)
+
+struct mbuf *
+npfkern_m_get(int flags, unsigned space)
+{
+	unsigned mlen = offsetof(struct mbuf, m_data0[space]);
+	struct mbuf *m;
+
+	m = calloc(1, sizeof(struct mbuf));
+	if (m) {
+		m->m_type = 1;
+		m->m_flags = flags;
+		m->m_data = m->m_data0;
+	}
+	return m;
+}
+
+unsigned
+npfkern_m_length(const struct mbuf *m)
+{
+	const struct mbuf *m0;
+	unsigned pktlen = 0;
+
+	if ((m->m_flags & M_PKTHDR) != 0)
+		return m->m_pkthdr.len;
+	for (m0 = m; m0 != NULL; m0 = m0->m_next)
+		pktlen += m0->m_len;
+	return pktlen;
+}
+
+void
+npfkern_m_freem(struct mbuf *m)
+{
+	struct mbuf *n;
+
+	do {
+		n = m->m_next;
+		m->m_type = MT_FREE;
+		free(m);
+		m = n;
+	} while (m);
+}
+
+bool
+npfkern_m_ensure_contig(struct mbuf **m0, int len)
+{
+	struct mbuf *m1;
+	unsigned tlen;
+	char *dptr;
+
+	tlen = npfkern_m_length(*m0);
+	if ((m1 = npfkern_m_get(M_PKTHDR, tlen)) == NULL) {
+		return false;
+	}
+	m1->m_pkthdr.len = m1->m_len = tlen;
+	dptr = m1->m_data;
+	for (struct mbuf *m = *m0; m != NULL; m = m->m_next) {
+		memcpy(dptr, m->m_data, m->m_len);
+		dptr += m->m_len;
+	}
+	*m0 = m1;
+	return true;
+}
+
+#endif
+
 struct mbuf *
 mbuf_getwithdata(const void *data, size_t len)
 {

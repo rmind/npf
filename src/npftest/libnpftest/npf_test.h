@@ -48,6 +48,37 @@
 #define	REMOTE_IP6	"2001:db8:fefe::1010"
 #define	EXPECTED_IP6	"2001:db8:1:d550::1234"
 
+#if defined(_NPF_STANDALONE)
+
+#define	MLEN		512
+
+struct mbuf {
+	unsigned	m_flags;
+	int		m_type;
+	unsigned	m_len;
+	void *		m_next;
+	struct {
+		int	len;
+	} m_pkthdr;
+	char *		m_data;
+	char		m_data0[MLEN];
+};
+
+#define	MT_FREE			0
+#define	M_UNWRITABLE(m, l)	false
+#define	M_NOWAIT		0x00001
+#define M_PKTHDR		0x00002
+
+struct mbuf *	npfkern_m_get(int, unsigned);
+unsigned	npfkern_m_length(const struct mbuf *m)
+void		npfkern_m_freem(struct mbuf *);
+
+#define	m_gethdr(x, y)		npfkern_m_get(M_PKTHDR, MLEN)
+#define	m_length(m)		npfkern_m_length(m)
+#define	m_freem(m)		npfkern_m_freem(m)
+
+#endif
+
 void		npf_test_init(int (*)(int, const char *, void *),
 		    const char *(*)(int, const void *, char *, socklen_t),
 		    long (*)(void));

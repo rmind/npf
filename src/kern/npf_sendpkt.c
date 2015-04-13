@@ -56,7 +56,13 @@ __KERNEL_RCSID(0, "$NetBSD: npf_sendpkt.c,v 1.15 2014/07/20 00:37:41 rmind Exp $
 
 #define	DEFAULT_IP_TTL		(ip_defttl)
 
-#ifndef INET6
+#if defined(_NPF_STANDALONE)
+#define	m_gethdr(t, f)		npf->mbufops->alloc(0, 0)
+#define	m_freem(m)		npc->npc_ctx->mbufops->free(m)
+#define	mtod(m,t)		((t)((npf)->mbufops->getdata(m)))
+#endif
+
+#if !defined(INET6) || defined(_NPF_STANDALONE)
 #define	in6_cksum(...)		0
 #define	ip6_output(...)		0
 #define	icmp6_error(m, ...)	m_freem(m)
@@ -68,6 +74,7 @@ __KERNEL_RCSID(0, "$NetBSD: npf_sendpkt.c,v 1.15 2014/07/20 00:37:41 rmind Exp $
 static int
 npf_return_tcp(npf_cache_t *npc)
 {
+	npf_t *npf = npc->npc_ctx;
 	struct mbuf *m;
 	struct ip *ip = NULL;
 	struct ip6_hdr *ip6 = NULL;
@@ -99,10 +106,11 @@ npf_return_tcp(npf_cache_t *npc)
 	if (m == NULL) {
 		return ENOMEM;
 	}
+#if !defined(_NPF_STANDALONE)
 	m->m_data += max_linkhdr;
 	m->m_len = len;
 	m->m_pkthdr.len = len;
-
+#endif
 	if (npf_iscached(npc, NPC_IP4)) {
 		struct ip *oip = npc->npc_ip.v4;
 

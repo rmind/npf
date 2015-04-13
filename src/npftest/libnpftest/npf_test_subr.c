@@ -53,7 +53,7 @@ npf_test_init(int (*pton_func)(int, const char *, void *),
     const char *(*ntop_func)(int, const void *, char *, socklen_t),
     long (*rndfunc)(void))
 {
-	npf_t *npf = npf_create(&npftest_ifops );
+	npf_t *npf = npf_create(&npftest_mbufops, &npftest_ifops);
 	npf_setkernctx(npf);
 
 	npf_state_setsampler(npf_state_sample);

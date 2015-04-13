@@ -58,6 +58,8 @@ static const char rcsid[] =
  * Provide the kernel API.
  */
 #include "npf_stand.h"
+
+#if 0
 #define	_KERNEL
 
 #define	m_get(x, y)		npfkern_m_get(0, MLEN)
@@ -66,8 +68,9 @@ static const char rcsid[] =
 #define	m_makewritable(a,b,c,d)	true
 #define	m_ensure_contig(m, l)	npfkern_m_ensure_contig(m, l)
 #define	mtod(m, t)		((t)((m)->m_data))
+#endif
 
-#ifdef _KERNEL
+#if defined(_KERNEL) || defined(_NPF_STANDALONE)
 
 bpf_ctx_t *
 bpf_create(void)
@@ -232,7 +235,7 @@ m_xbyte(const struct mbuf *m, uint32_t k, int *err)
  * wirelen is the length of the original packet
  * buflen is the amount of data present
  */
-#ifdef _KERNEL
+#if defined(_KERNEL) || defined(_NPF_STANDALONE)
 
 u_int
 bpf_filter(const struct bpf_insn *pc, const u_char *p, u_int wirelen,
@@ -259,7 +262,7 @@ bpf_filter(const struct bpf_insn *pc, const u_char *p, u_int wirelen,
 #endif
 {
 	uint32_t A, X, k;
-#ifndef _KERNEL
+#if !defined(_KERNEL) && !defined(_NPF_STANDALONE)
 	uint32_t mem[BPF_MEMWORDS];
 	bpf_args_t args_store = {
 		.pkt = p,
@@ -588,7 +591,7 @@ bpf_filter(const struct bpf_insn *pc, const u_char *p, u_int wirelen,
 			continue;
 
 		case BPF_MISC|BPF_COP:
-#ifdef _KERNEL
+#if defined(_KERNEL) || defined(_NPF_STANDALONE)
 			if (pc->k < bc->nfuncs) {
 				const bpf_copfunc_t fn = bc->copfuncs[pc->k];
 				A = fn(bc, args, A);
@@ -598,7 +601,7 @@ bpf_filter(const struct bpf_insn *pc, const u_char *p, u_int wirelen,
 			return 0;
 
 		case BPF_MISC|BPF_COPX:
-#ifdef _KERNEL
+#if defined(_KERNEL) || defined(_NPF_STANDALONE)
 			if (X < bc->nfuncs) {
 				const bpf_copfunc_t fn = bc->copfuncs[X];
 				A = fn(bc, args, A);
@@ -622,7 +625,7 @@ bpf_filter(const struct bpf_insn *pc, const u_char *p, u_int wirelen,
  * Otherwise, a bogus program could easily crash the system.
  */
 
-#if defined(KERNEL) || defined(_KERNEL)
+#if defined(KERNEL) || defined(_KERNEL) || defined(_NPF_STANDALONE)
 
 int
 bpf_validate(const struct bpf_insn *f, int signed_len)
@@ -639,7 +642,7 @@ bpf_validate(const struct bpf_insn *f, int signed_len)
 {
 	u_int i, from, len, ok = 0;
 	const struct bpf_insn *p;
-#if defined(KERNEL) || defined(_KERNEL)
+#if defined(KERNEL) || defined(_KERNEL) || defined(_NPF_STANDALONE)
 	bpf_memword_init_t *mem, invalid;
 	size_t size;
 	const size_t extwords = bc ? bc->extwords : 0;
@@ -652,21 +655,21 @@ bpf_validate(const struct bpf_insn *f, int signed_len)
 	len = (u_int)signed_len;
 	if (len < 1)
 		return 0;
-#if defined(KERNEL) || defined(_KERNEL)
+#if defined(KERNEL) || defined(_KERNEL) || defined(_NPF_STANDALONE)
 	if (len > BPF_MAXINSNS)
 		return 0;
 #endif
 	if (BPF_CLASS(f[len - 1].code) != BPF_RET)
 		return 0;
 
-#if defined(KERNEL) || defined(_KERNEL)
+#if defined(KERNEL) || defined(_KERNEL) || defined(_NPF_STANDALONE)
 	/* Note: only the pre-initialised is valid on startup */
 	mem = kmem_zalloc(size = sizeof(*mem) * len, KM_SLEEP);
 	invalid = ~preinited;
 #endif
 
 	for (i = 0; i < len; ++i) {
-#if defined(KERNEL) || defined(_KERNEL)
+#if defined(KERNEL) || defined(_KERNEL) || defined(_NPF_STANDALONE)
 		/* blend in any invalid bits for current pc */
 		invalid |= mem[i];
 #endif
@@ -684,7 +687,7 @@ bpf_validate(const struct bpf_insn *f, int signed_len)
 				 * in userland.  The runtime packet length
 				 * check suffices.
 				 */
-#if defined(KERNEL) || defined(_KERNEL)
+#if defined(KERNEL) || defined(_KERNEL) || defined(_NPF_STANDALONE)
 				/*
 				 * More strict check with actual packet length
 				 * is done runtime.
@@ -710,7 +713,7 @@ bpf_validate(const struct bpf_insn *f, int signed_len)
 		case BPF_STX:
 			if (p->k >= memwords)
 				goto out;
-#if defined(KERNEL) || defined(_KERNEL)
+#if defined(KERNEL) || defined(_KERNEL) || defined(_NPF_STANDALONE)
 			/* validate the memory word */
 			invalid &= ~BPF_MEMWORD_INIT(p->k);
 #endif
@@ -769,7 +772,7 @@ bpf_validate(const struct bpf_insn *f, int signed_len)
 			case BPF_JA:
 				if (from + p->k >= len)
 					goto out;
-#if defined(KERNEL) || defined(_KERNEL)
+#if defined(KERNEL) || defined(_KERNEL) || defined(_NPF_STANDALONE)
 				if (from + p->k < from)
 					goto out;
 				/*
@@ -786,7 +789,7 @@ bpf_validate(const struct bpf_insn *f, int signed_len)
 			case BPF_JSET:
 				if (from + p->jt >= len || from + p->jf >= len)
 					goto out;
-#if defined(KERNEL) || defined(_KERNEL)
+#if defined(KERNEL) || defined(_KERNEL) || defined(_NPF_STANDALONE)
 				/*
 				 * mark the currently invalid bits for both
 				 * possible jump destinations
@@ -807,7 +810,7 @@ bpf_validate(const struct bpf_insn *f, int signed_len)
 			case BPF_COP:
 			case BPF_COPX:
 				/* In-kernel COP use only. */
-#if defined(KERNEL) || defined(_KERNEL)
+#if defined(KERNEL) || defined(_KERNEL) || defined(_NPF_STANDALONE)
 				if (bc == NULL || bc->copfuncs == NULL)
 					goto out;
 				if (BPF_MISCOP(p->code) == BPF_COP &&
@@ -828,7 +831,7 @@ bpf_validate(const struct bpf_insn *f, int signed_len)
 	}
 	ok = 1;
 out:
-#if defined(KERNEL) || defined(_KERNEL)
+#if defined(KERNEL) || defined(_KERNEL) || defined(_NPF_STANDALONE)
 	kmem_free(mem, size);
 #endif
 	return ok;

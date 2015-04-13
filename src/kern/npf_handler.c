@@ -64,7 +64,7 @@ static pfil_head_t *	npf_ph_inet = NULL;
 static pfil_head_t *	npf_ph_inet6 = NULL;
 
 #if defined(_NPF_STANDALONE)
-#define	m_freem(m)		npf->mbufops->put(m)
+#define	m_freem(m)		npf->mbufops->free(m)
 #define	m_clear_flag(m,f)
 #else
 #define	m_clear_flag(m,f)	(m)->m_flags &= ~(f)
