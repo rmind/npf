@@ -17,7 +17,7 @@
 #if defined(_NPF_STANDALONE)
 
 struct mbuf *
-npfkern_m_get(int flags, unsigned space)
+npfkern_m_get(int flags, int space)
 {
 	unsigned mlen = offsetof(struct mbuf, m_data0[space]);
 	struct mbuf *m;
@@ -31,7 +31,25 @@ npfkern_m_get(int flags, unsigned space)
 	return m;
 }
 
-unsigned
+static void *
+npfkern_m_getdata(const struct mbuf *m)
+{
+	return m->m_data;
+}
+
+static struct mbuf *
+npfkern_m_next(struct mbuf *m)
+{
+	return m->m_next;
+}
+
+static size_t
+npfkern_m_buflen(const struct mbuf *m)
+{
+	return m->m_len;
+}
+
+size_t
 npfkern_m_length(const struct mbuf *m)
 {
 	const struct mbuf *m0;
@@ -57,8 +75,8 @@ npfkern_m_freem(struct mbuf *m)
 	} while (m);
 }
 
-bool
-npfkern_m_ensure_contig(struct mbuf **m0, int len)
+static bool
+npfkern_m_ensure_contig(struct mbuf **m0, size_t len)
 {
 	struct mbuf *m1;
 	unsigned tlen;
@@ -227,3 +245,14 @@ mbuf_icmp_append(struct mbuf *m, struct mbuf *m_orig)
 	m->m_len += addlen;
 	m_freem(m_orig);
 }
+
+const npf_mbufops_t npftest_mbufops = {
+	.alloc			= npfkern_m_get,
+	.free			= npfkern_m_freem,
+	.getdata		= npfkern_m_getdata,
+	.getnext		= npfkern_m_next,
+	.getlen			= npfkern_m_buflen,
+	.getchainlen		= npfkern_m_length,
+	.ensure_contig		= npfkern_m_ensure_contig,
+	.ensure_writable	= NULL,
+};
