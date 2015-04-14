@@ -127,9 +127,8 @@ npf_reassembly(npf_t *npf, npf_cache_t *npc, struct mbuf **mp)
  * Note: packet flow and inspection logic is in strict order.
  */
 int
-npf_packet_handler(void *arg, struct mbuf **mp, ifnet_t *ifp, int di)
+npf_packet_handler(npf_t *npf, struct mbuf **mp, ifnet_t *ifp, int di)
 {
-	npf_t *npf = arg;
 	nbuf_t nbuf;
 	npf_cache_t npc;
 	npf_conn_t *con;

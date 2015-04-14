@@ -50,6 +50,9 @@
 #include <netinet/in.h>
 #endif
 
+struct npf;
+typedef struct npf npf_t;
+
 /*
  * Storage of address (both for IPv4 and IPv6) and netmask.
  */
@@ -77,19 +80,6 @@ typedef uint8_t			npf_netmask_t;
 #define	NPF_BPF_NWORDS		3
 
 /*
- * Public declarations and definitions.
- */
-
-struct npf;
-struct npf_ifops;
-typedef struct npf		npf_t;
-typedef struct npf_ifops	npf_ifops_t;
-typedef struct npf_mbufops	npf_mbufops_t;
-
-npf_t *		npf_create(const npf_mbufops_t *, const npf_ifops_t *);
-void		npf_destroy(npf_t *);
-
-/*
  * In-kernel declarations and definitions.
  */
 
@@ -114,15 +104,9 @@ void		npf_destroy(npf_t *);
 
 #define	NBUF_DATAREF_RESET	0x01
 
-typedef struct {
-	struct mbuf *	nb_mbuf0;
-	struct mbuf *	nb_mbuf;
-	void *		nb_nptr;
-	const ifnet_t *	nb_ifp;
-	unsigned	nb_ifid;
-	int		nb_flags;
-	const npf_mbufops_t *nb_mops;
-} nbuf_t;
+struct mbuf;
+struct nbuf;
+typedef struct nbuf nbuf_t;
 
 void		nbuf_init(npf_t *, nbuf_t *, struct mbuf *, const ifnet_t *);
 void		nbuf_reset(nbuf_t *);

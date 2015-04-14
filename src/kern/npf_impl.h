@@ -59,6 +59,7 @@
 #endif
 
 #include "npf.h"
+#include "npfkern.h"
 
 #ifdef _NPF_DEBUG
 #define	NPF_PRINTF(x)	printf x
@@ -144,27 +145,22 @@ typedef struct {
 } npfa_funcs_t;
 
 /*
- * NPF INSTANCE (CONTEXT) STRUCTURE AND AUXILIARY OPERATIONS.
+ * NBUF STRUCTURE.
  */
 
-struct npf_ifops {
-	const char *	(*getname)(ifnet_t *);
-	ifnet_t *	(*lookup)(const char *);
-	void		(*flush)(void *);
-	void *		(*getmeta)(const ifnet_t *);
-	void		(*setmeta)(ifnet_t *, void *);
+struct nbuf {
+	struct mbuf *	nb_mbuf0;
+	struct mbuf *	nb_mbuf;
+	void *		nb_nptr;
+	const ifnet_t *	nb_ifp;
+	unsigned	nb_ifid;
+	int		nb_flags;
+	const npf_mbufops_t *nb_mops;
 };
 
-struct npf_mbufops {
-	struct mbuf *	(*alloc)(int, int);
-	void		(*free)(struct mbuf *);
-	void *		(*getdata)(const struct mbuf *);
-	struct mbuf *	(*getnext)(struct mbuf *);
-	size_t		(*getlen)(const struct mbuf *);
-	size_t		(*getchainlen)(const struct mbuf *);
-	bool		(*ensure_contig)(struct mbuf **, size_t);
-	bool		(*ensure_writable)(struct mbuf **, size_t);
-};
+/*
+ * NPF INSTANCE (CONTEXT) STRUCTURE AND AUXILIARY OPERATIONS.
+ */
 
 struct npf {
 	/* Active NPF configuration. */
@@ -264,7 +260,6 @@ const char *	npf_ifmap_getname(npf_t *, const u_int);
 int		npf_pfil_register(bool);
 void		npf_pfil_unregister(bool);
 bool		npf_pfil_registered_p(void);
-int		npf_packet_handler(void *, struct mbuf **, ifnet_t *, int);
 
 /* Protocol helpers. */
 int		npf_cache_all(npf_cache_t *);

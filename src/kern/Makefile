@@ -57,7 +57,7 @@ ifeq ($(DEBUG),1)
 LIB=		libnpfkern-dbg
 endif
 
-INCS=		npf.h
+INCS=		npf.h npfkern.h
 #MANS=		npfkern.3
 
 $(LIB).la:	LDFLAGS+=	-rpath $(LIBDIR)
