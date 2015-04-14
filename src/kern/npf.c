@@ -96,6 +96,12 @@ npf_destroy(npf_t *npf)
 	percpu_free(npf->stats_percpu, NPF_STATS_SIZE);
 }
 
+int
+npf_load(npf_t *npf, void *config, void *err)
+{
+	return npfctl_load(npf, 0, config);
+}
+
 void
 npf_setkernctx(npf_t *npf)
 {

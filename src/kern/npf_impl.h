@@ -251,8 +251,6 @@ void		npf_ifmap_sysinit(npf_t *, const npf_ifops_t *);
 void		npf_ifmap_sysfini(npf_t *);
 u_int		npf_ifmap_register(npf_t *, const char *);
 void		npf_ifmap_flush(npf_t *);
-void		npf_ifmap_attach(npf_t *, ifnet_t *);
-void		npf_ifmap_detach(npf_t *, ifnet_t *);
 u_int		npf_ifmap_getid(npf_t *, const ifnet_t *);
 const char *	npf_ifmap_getname(npf_t *, const u_int);
 

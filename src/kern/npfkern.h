@@ -55,7 +55,11 @@ typedef struct {
 } npf_mbufops_t;
 
 npf_t *	npf_create(const npf_mbufops_t *, const npf_ifops_t *);
-int	npf_packet_handler(npf_t *, struct mbuf **, struct ifnet *, int);
+int	npf_load(npf_t *, void *, void *);
 void	npf_destroy(npf_t *);
+
+int	npf_packet_handler(npf_t *, struct mbuf **, struct ifnet *, int);
+void	npf_ifmap_attach(npf_t *, struct ifnet *);
+void	npf_ifmap_detach(npf_t *, struct ifnet *);
 
 #endif
