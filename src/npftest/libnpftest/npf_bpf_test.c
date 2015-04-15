@@ -77,8 +77,11 @@ test_bpf_code(void *code, size_t size)
 	nbuf_init(npf_getkernctx(), &nbuf, m, dummy_ifp);
 	npc.npc_nbuf = &nbuf;
 	npf_cache_all(&npc);
-
+#ifdef _NPF_STANDALONE
+	bc_args.pkt = (const uint8_t *)nbuf_dataptr(&nbuf);
+#else
 	bc_args.pkt = (const uint8_t *)m;
+#endif
 	bc_args.buflen = m_length(m);
 	bc_args.wirelen = bc_args.buflen;
 	bc_args.mem = memstore;

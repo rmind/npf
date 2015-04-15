@@ -142,7 +142,6 @@ npf_fini(void)
 static int
 npf_modcmd(modcmd_t cmd, void *arg)
 {
-
 	switch (cmd) {
 	case MODULE_CMD_INIT:
 		return npf_init();
@@ -162,7 +161,6 @@ npf_modcmd(modcmd_t cmd, void *arg)
 void
 npfattach(int nunits)
 {
-
 	/* Void. */
 }
 
@@ -274,7 +272,7 @@ npf_ifop_flush(void *arg)
 static void *
 npf_ifop_getmeta(const ifnet_t *ifp)
 {
-	return ifp->if_pf_kif
+	return ifp->if_pf_kif;
 }
 
 static void *

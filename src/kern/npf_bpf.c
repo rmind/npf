@@ -91,9 +91,14 @@ npf_bpf_prepare(npf_cache_t *npc, bpf_args_t *args, uint32_t *M)
 	const size_t pktlen = m_length(mbuf);
 
 	/* Prepare the arguments for the BPF programs. */
+#ifdef _NPF_STANDALONE
+	args->pkt = (const uint8_t *)nbuf_dataptr(nbuf);
+	args->wirelen = args->buflen = pktlen;
+#else
 	args->pkt = (const uint8_t *)mbuf;
 	args->wirelen = pktlen;
 	args->buflen = 0;
+#endif
 	args->mem = M;
 	args->arg = npc;
 

@@ -915,9 +915,12 @@ npf_ruleset_inspect(npf_cache_t *npc, const npf_ruleset_t *rlset,
 
 	/*
 	 * Prepare the external memory store and the arguments for
-	 * the BPF programs to be executed.
+	 * the BPF programs to be executed.  Reset mbuf before taking
+	 * any pointers for the BPF.
 	 */
 	uint32_t bc_words[NPF_BPF_NWORDS];
+
+	nbuf_reset(nbuf);
 	npf_bpf_prepare(npc, &bc_args, bc_words);
 
 	while (n < nitems) {
