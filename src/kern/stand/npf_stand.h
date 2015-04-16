@@ -282,8 +282,6 @@ npfkern_kpause(const char *wmesg, bool intr, int timo, kmutex_t *mtx)
 #define IPV6_DEFHLIM	64
 #endif
 
-#define PFIL_IN		0x00000001
-#define PFIL_OUT	0x00000002
 #define PFIL_ALL	(PFIL_IN|PFIL_OUT)
 #define PFIL_IFADDR	0x00000008
 #define PFIL_IFNET	0x00000010

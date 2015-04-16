@@ -35,6 +35,11 @@
 struct mbuf;
 struct ifnet;
 
+#if defined(_NPF_STANDALONE) || !defined(__NetBSD__)
+#define PFIL_IN		0x00000001	// incoming packet
+#define PFIL_OUT	0x00000002	// outgoing packet
+#endif
+
 typedef struct {
 	const char *	(*getname)(struct ifnet *);
 	struct ifnet *	(*lookup)(const char *);
