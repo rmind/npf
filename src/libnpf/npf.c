@@ -95,8 +95,6 @@ struct nl_config {
 	prop_dictionary_t	ncf_err;
 	prop_dictionary_t	ncf_debug;
 
-	/* Custom file to externalise property-list. */
-	const char *		ncf_plist;
 	bool			ncf_flush;
 };
 
@@ -120,31 +118,27 @@ npf_config_create(void)
 	ncf->ncf_rproc_list = prop_array_create();
 	ncf->ncf_table_list = prop_array_create();
 	ncf->ncf_nat_list = prop_array_create();
-
-	ncf->ncf_plist = NULL;
 	ncf->ncf_flush = false;
-
 	return ncf;
 }
 
-int
-npf_config_submit(nl_config_t *ncf, int fd)
+static prop_dictionary_t
+_npf_build_config(nl_config_t *ncf)
 {
-	const char *plist = ncf->ncf_plist;
 	prop_dictionary_t npf_dict;
 	prop_array_t rlset;
 	int error = 0;
 
 	npf_dict = prop_dictionary_create();
 	if (npf_dict == NULL) {
-		return ENOMEM;
+		return NULL;
 	}
 	prop_dictionary_set_uint32(npf_dict, "version", NPF_VERSION);
 
 	rlset = _npf_ruleset_transform(ncf->ncf_rules_list);
 	if (rlset == NULL) {
 		prop_object_release(npf_dict);
-		return ENOMEM;
+		return NULL;
 	}
 	prop_object_release(ncf->ncf_rules_list);
 	ncf->ncf_rules_list = rlset;
@@ -162,30 +156,34 @@ npf_config_submit(nl_config_t *ncf, int fd)
 	if (ncf->ncf_debug) {
 		prop_dictionary_set(npf_dict, "debug", ncf->ncf_debug);
 	}
+	return npf_dict;
+}
 
-	if (plist) {
-		if (!prop_dictionary_externalize_to_file(npf_dict, plist)) {
-			error = errno;
-		}
+int
+npf_config_submit(nl_config_t *ncf, int fd)
+{
+#if !defined(_NPF_STANDALONE)
+	prop_dictionary_t npf_dict;
+	int error = 0;
+
+	npf_dict = _npf_build_config(ncf);
+	if (!npf_dict) {
+		return ENOMEM;
+	}
+	error = prop_dictionary_sendrecv_ioctl(npf_dict, fd,
+	    IOC_NPF_LOAD, &ncf->ncf_err);
+	if (error) {
 		prop_object_release(npf_dict);
+		assert(ncf->ncf_err == NULL);
 		return error;
 	}
-	if (fd) {
-#ifdef _NPF_STANDALONE
-		error = ENOTSUP;
-#else
-		error = prop_dictionary_sendrecv_ioctl(npf_dict, fd,
-		    IOC_NPF_LOAD, &ncf->ncf_err);
-#endif
-		if (error) {
-			prop_object_release(npf_dict);
-			assert(ncf->ncf_err == NULL);
-			return error;
-		}
-		prop_dictionary_get_int32(ncf->ncf_err, "errno", &error);
-	}
+	prop_dictionary_get_int32(ncf->ncf_err, "errno", &error);
 	prop_object_release(npf_dict);
 	return error;
+#else
+	(void)ncf; (void)fd;
+	return ENOTSUP;
+#endif
 }
 
 static nl_config_t *
@@ -231,12 +229,15 @@ npf_config_retrieve(int fd)
 }
 
 int
-npf_config_export(const nl_config_t *ncf, const char *path)
+npf_config_export(nl_config_t *ncf, const char *path)
 {
 	prop_dictionary_t npf_dict = ncf->ncf_dict;
 	int error = 0;
 
-	if (!prop_dictionary_externalize_to_file(npf_dict, path)) {
+	if (!ncf->ncf_dict && !(ncf->ncf_dict = _npf_build_config(ncf))) {
+		return ENOMEM;
+	}
+	if (!prop_dictionary_externalize_to_file(ncf->ncf_dict, path)) {
 		error = errno;
 	}
 	return error;
@@ -322,12 +323,6 @@ npf_config_destroy(nl_config_t *ncf)
 		prop_object_release(ncf->ncf_debug);
 	}
 	free(ncf);
-}
-
-void
-_npf_config_setsubmit(nl_config_t *ncf, const char *plist_file)
-{
-	ncf->ncf_plist = plist_file;
 }
 
 static bool

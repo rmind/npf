@@ -83,15 +83,17 @@ npfctl_config_send(int fd, const char *out)
 {
 	int error;
 
-	if (out) {
-		_npf_config_setsubmit(npf_conf, out);
-		printf("\nSaving to %s\n", out);
-	}
 	if (!defgroup) {
 		errx(EXIT_FAILURE, "default group was not defined");
 	}
 	npf_rule_insert(npf_conf, NULL, defgroup);
-	error = npf_config_submit(npf_conf, fd);
+	if (out) {
+		printf("\nSaving to %s\n", out);
+		npf_config_export(npf_conf, out);
+		error = 0;
+	} else {
+		error = npf_config_submit(npf_conf, fd);
+	}
 	if (error == EEXIST) { /* XXX */
 		errx(EXIT_FAILURE, "(re)load failed: "
 		    "some table has a duplicate entry?");

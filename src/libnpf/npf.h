@@ -79,7 +79,7 @@ int		npf_config_submit(nl_config_t *, int);
 nl_config_t *	npf_config_retrieve(int);
 int		npf_config_flush(int);
 nl_config_t *	npf_config_import(const char *);
-int		npf_config_export(const nl_config_t *, const char *);
+int		npf_config_export(nl_config_t *, const char *);
 bool		npf_config_active_p(nl_config_t *);
 bool		npf_config_loaded_p(nl_config_t *);
 
@@ -150,7 +150,6 @@ nl_rproc_t *	npf_rproc_iterate(nl_config_t *);
 const char *	npf_rproc_getname(nl_rproc_t *);
 
 void		_npf_config_error(nl_config_t *, nl_error_t *);
-void		_npf_config_setsubmit(nl_config_t *, const char *);
 int		_npf_ruleset_list(int, const char *, nl_config_t *);
 void		_npf_debug_addif(nl_config_t *, const char *);
 
