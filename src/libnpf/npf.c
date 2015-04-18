@@ -208,7 +208,7 @@ _npf_config_consdict(prop_dictionary_t npf_dict)
 }
 
 nl_config_t *
-npf_config_retrieve(int fd, bool *active, bool *loaded)
+npf_config_retrieve(int fd)
 {
 	prop_dictionary_t npf_dict;
 	nl_config_t *ncf;
@@ -227,8 +227,6 @@ npf_config_retrieve(int fd, bool *active, bool *loaded)
 		prop_object_release(npf_dict);
 		return NULL;
 	}
-	prop_dictionary_get_bool(npf_dict, "active", active);
-	*loaded = (ncf->ncf_rules_list != NULL);
 	return ncf;
 }
 
@@ -276,6 +274,20 @@ npf_config_flush(int fd)
 	error = npf_config_submit(ncf, fd);
 	npf_config_destroy(ncf);
 	return error;
+}
+
+bool
+npf_config_active_p(nl_config_t *ncf)
+{
+	bool active = false;
+	prop_dictionary_get_bool(ncf->ncf_dict, "active", &active);
+	return active;
+}
+
+bool
+npf_config_loaded_p(nl_config_t *ncf)
+{
+	return ncf->ncf_rules_list != NULL;
 }
 
 void

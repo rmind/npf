@@ -75,12 +75,13 @@ typedef void (*nl_table_callback_t)(unsigned, int);
 
 nl_config_t *	npf_config_create(void);
 void		npf_config_destroy(nl_config_t *);
-
 int		npf_config_submit(nl_config_t *, int);
-nl_config_t *	npf_config_retrieve(int, bool *, bool *);
+nl_config_t *	npf_config_retrieve(int);
+int		npf_config_flush(int);
 nl_config_t *	npf_config_import(const char *);
 int		npf_config_export(const nl_config_t *, const char *);
-int		npf_config_flush(int);
+bool		npf_config_active_p(nl_config_t *);
+bool		npf_config_loaded_p(nl_config_t *);
 
 int		npf_ruleset_add(int, const char *, nl_rule_t *, uint64_t *);
 int		npf_ruleset_remove(int, const char *, uint64_t);

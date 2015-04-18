@@ -492,15 +492,16 @@ npfctl_config_show(int fd)
 {
 	npf_conf_info_t *ctx = &stdout_ctx;
 	nl_config_t *ncf;
-	bool active, loaded;
+	bool loaded;
 
 	if (fd) {
-		ncf = npf_config_retrieve(fd, &active, &loaded);
+		ncf = npf_config_retrieve(fd);
 		if (ncf == NULL) {
 			return errno;
 		}
+		loaded = npf_config_loaded_p(ncf);
 		fprintf(ctx->fp, "# filtering:\t%s\n# config:\t%s\n",
-		    active ? "active" : "inactive",
+		    npf_config_active_p(ncf) ? "active" : "inactive",
 		    loaded ? "loaded" : "empty");
 		print_linesep(ctx);
 	} else {

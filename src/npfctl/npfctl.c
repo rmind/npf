@@ -520,10 +520,9 @@ static int
 npfctl_save(int fd)
 {
 	nl_config_t *ncf;
-	bool active, loaded;
 	int error;
 
-	ncf = npf_config_retrieve(fd, &active, &loaded);
+	ncf = npf_config_retrieve(fd);
 	if (ncf == NULL) {
 		return errno;
 	}

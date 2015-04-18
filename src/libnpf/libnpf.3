@@ -45,11 +45,13 @@
 .Ft nl_config_t *
 .Fn npf_config_retrieve "int fd" "bool *active" "bool *loaded"
 .Ft int
+.Fn npf_config_flush "int fd"
+.Ft int
 .Fn npf_config_export "const nl_config_t *ncf" "const char *path"
 .Ft nl_config_t *
 .Fn npf_config_import "const char *path"
-.Ft int
-.Fn npf_config_flush "int fd"
+.Ft bool
+.Fn npf_config_active_p "nl_config_t *ncf"
 .Ft void
 .Fn npf_config_destroy "nl_config_t *ncf"
 .\" ---
@@ -120,10 +122,11 @@ Read the configuration from a file, unserialize and construct the
 configuration object.
 .It Fn npf_config_flush "fd"
 Flush the current configuration.
-.It Fn npf_config_flush "fd"
-Flush the current configuration.
-.It Fn npf_config_retrieve "int fd" "bool *active" "bool *loaded"
+.It Fn npf_config_retrieve "fd" "active" "loaded"
 Retrieve and return the loaded configuration from the kernel.
+.It Fn npf_config_active_p "ncf"
+Indicate whether the retrievied configuration is active (true if yes
+and false otherwise).
 .It Fn npf_config_destroy "ncf"
 Destroy the configuration
 .Fa ncf .
@@ -203,7 +206,7 @@ The size shall not exceed
 The kernel does not validate the key is unique, it is the responsibilty
 of the caller.
 .\" ---
-.It npf_rule_setinfo "rl" "info" "len"
+.It Fn npf_rule_setinfo "rl" "info" "len"
 Associate arbitrary information blob specified by
 .Fa info ,
 and its size by
