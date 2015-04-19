@@ -214,15 +214,15 @@ npfctl_print_stats(int fd)
 }
 
 void
-npfctl_print_error(const nl_error_t *ne)
+npfctl_print_error(const npf_error_t *ne)
 {
-	const char *srcfile = ne->ne_source_file;
+	const char *srcfile = ne->source_file;
 
 	if (srcfile) {
-		warnx("source %s line %d", srcfile, ne->ne_source_line);
+		warnx("source %s line %d", srcfile, ne->source_line);
 	}
-	if (ne->ne_id) {
-		warnx("object: %d", ne->ne_id);
+	if (ne->id) {
+		warnx("object: %" PRIi64, ne->id);
 	}
 }
 
@@ -521,7 +521,7 @@ static int
 npfctl_load(int fd)
 {
 	nl_config_t *ncf;
-	nl_error_t errinfo;
+	npf_error_t errinfo;
 	struct stat sb;
 	size_t blen;
 	void *blob;

@@ -58,14 +58,6 @@ typedef int (*npfext_paramfunc_t)(nl_ext_t *, const char *, const char *);
 
 #ifdef _NPF_PRIVATE
 
-typedef struct {
-	int		ne_id;
-	char *		ne_source_file;
-	u_int		ne_source_line;
-	int		ne_ncode_error;
-	int		ne_ncode_errat;
-} nl_error_t;
-
 typedef void (*nl_rule_callback_t)(nl_rule_t *, unsigned);
 typedef void (*nl_table_callback_t)(unsigned, int);
 
@@ -75,7 +67,7 @@ typedef void (*nl_table_callback_t)(unsigned, int);
 
 nl_config_t *	npf_config_create(void);
 void		npf_config_destroy(nl_config_t *);
-int		npf_config_submit(nl_config_t *, int, nl_error_t *);
+int		npf_config_submit(nl_config_t *, int, npf_error_t *);
 nl_config_t *	npf_config_retrieve(int);
 int		npf_config_flush(int);
 nl_config_t *	npf_config_import(const void *, size_t);

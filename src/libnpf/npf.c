@@ -160,7 +160,7 @@ _npf_build_config(nl_config_t *ncf)
 }
 
 int
-npf_config_submit(nl_config_t *ncf, int fd, nl_error_t *errinfo)
+npf_config_submit(nl_config_t *ncf, int fd, npf_error_t *errinfo)
 {
 #if !defined(_NPF_STANDALONE)
 	prop_dictionary_t npf_dict;
@@ -182,15 +182,11 @@ npf_config_submit(nl_config_t *ncf, int fd, nl_error_t *errinfo)
 		memset(errinfo, 0, sizeof(*errinfo));
 
 		prop_dictionary_get_int32(ncf->ncf_err, "id",
-		    &errinfo->ne_id);
+		    &errinfo->id);
 		prop_dictionary_get_cstring(ncf->ncf_err,
-		    "source-file", &errinfo->ne_source_file);
+		    "source-file", &errinfo->source_file);
 		prop_dictionary_get_uint32(ncf->ncf_err,
-		    "source-line", &errinfo->ne_source_line);
-		prop_dictionary_get_int32(ncf->ncf_err,
-		    "code-error", &errinfo->ne_ncode_error);
-		prop_dictionary_get_int32(ncf->ncf_err,
-		    "code-errat", &errinfo->ne_ncode_errat);
+		    "source-line", &errinfo->source_line);
 	}
 	prop_object_release(npf_dict);
 	return error;
@@ -284,7 +280,7 @@ int
 npf_config_flush(int fd)
 {
 	nl_config_t *ncf;
-	nl_error_t errinfo;
+	npf_error_t errinfo;
 	int error;
 
 	ncf = npf_config_create();

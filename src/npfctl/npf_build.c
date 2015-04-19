@@ -82,7 +82,7 @@ npfctl_config_init(bool debug)
 int
 npfctl_config_send(int fd, const char *out)
 {
-	nl_error_t errinfo;
+	npf_error_t errinfo;
 	int error = 0;
 
 	if (!defgroup) {

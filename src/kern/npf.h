@@ -320,6 +320,16 @@ typedef struct npf_ioctl_table {
 #define	IOC_NPF_RULE		_IOWR('N', 107, struct plistref)
 
 /*
+ * NPF error report.
+ */
+
+typedef struct {
+	int64_t		id;
+	char *          source_file;
+	u_int           source_line;
+} npf_error_t;
+
+/*
  * Statistics counters.
  */
 
