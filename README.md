@@ -28,7 +28,7 @@ Some key features are:
 - Traffic normalization (extension).
 - Packet logging (extension).
 
-For a full set features and their description, see the NPF documentation
+For a full set of features and their description, see the NPF documentation
 and other manual pages.
 
 ## Documentation

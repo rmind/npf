@@ -309,6 +309,18 @@ npf_config_loaded_p(nl_config_t *ncf)
 	return ncf->ncf_rules_list != NULL;
 }
 
+void *
+npf_config_build(nl_config_t *ncf)
+{
+	prop_dictionary_t npf_dict = ncf->ncf_dict;
+
+	if (!ncf->ncf_dict && !(ncf->ncf_dict = _npf_build_config(ncf))) {
+		errno = ENOMEM;
+		return NULL;
+	}
+	return (void *)ncf->ncf_dict;
+}
+
 void
 npf_config_destroy(nl_config_t *ncf)
 {

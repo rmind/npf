@@ -97,9 +97,15 @@ npf_destroy(npf_t *npf)
 }
 
 int
-npf_load(npf_t *npf, void *config, void *err)
+npf_load(npf_t *npf, void *ref, npf_error_t *err)
 {
-	return npfctl_load(npf, 0, config);
+	return npfctl_load(npf, 0, ref);
+}
+
+void
+npf_thread_register(npf_t *npf)
+{
+	(void)npf;
 }
 
 void
