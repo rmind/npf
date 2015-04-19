@@ -248,13 +248,15 @@ npf_config_export(nl_config_t *ncf, size_t *length)
 	prop_dictionary_t npf_dict = ncf->ncf_dict;
 	void *blob;
 
-	if (!ncf->ncf_dict && !(ncf->ncf_dict = _npf_build_config(ncf))) {
+	if (!npf_dict && (npf_dict = _npf_build_config(ncf)) == NULL) {
 		errno = ENOMEM;
 		return NULL;
 	}
-	if ((blob = prop_dictionary_externalize(ncf->ncf_dict)) == NULL) {
+	if ((blob = prop_dictionary_externalize(npf_dict)) == NULL) {
+		prop_object_release(npf_dict);
 		return NULL;
 	}
+	prop_object_release(npf_dict);
 	*length = strlen(blob);
 	return blob;
 }
@@ -668,6 +670,7 @@ npf_rule_insert(nl_config_t *ncf, nl_rule_t *parent, nl_rule_t *rl)
 		rlset = ncf->ncf_rules_list;
 	}
 	prop_array_add(rlset, rldict);
+	prop_object_release(rldict);
 	return 0;
 }
 
@@ -868,6 +871,7 @@ npf_rproc_extcall(nl_rproc_t *rp, nl_ext_t *ext)
 	}
 	prop_dictionary_set_cstring(extdict, "name", ext->nxt_name);
 	prop_array_add(extcalls, extdict);
+	prop_object_release(extdict);
 	return 0;
 }
 
@@ -890,6 +894,7 @@ npf_rproc_insert(nl_config_t *ncf, nl_rproc_t *rp)
 		return EEXIST;
 	}
 	prop_array_add(ncf->ncf_rproc_list, rpdict);
+	prop_object_release(rpdict);
 	return 0;
 }
 
@@ -980,6 +985,7 @@ npf_nat_insert(nl_config_t *ncf, nl_nat_t *nt, int pri __unused)
 
 	prop_dictionary_set_int32(rldict, "prio", NPF_PRI_LAST);
 	prop_array_add(ncf->ncf_nat_list, rldict);
+	prop_object_release(rldict);
 	return 0;
 }
 
@@ -1163,6 +1169,7 @@ npf_table_insert(nl_config_t *ncf, nl_table_t *tl)
 		return EEXIST;
 	}
 	prop_array_add(ncf->ncf_table_list, tldict);
+	prop_object_release(tldict);
 	return 0;
 }
 
