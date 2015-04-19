@@ -30,12 +30,11 @@ and libnpf libraries.
 
 
 %build
-make %{?_smp_mflags} DEBUG=1 LIBDIR=%{_libdir}
+make %{?_smp_mflags} LIBDIR=%{_libdir}
 
 
 %install
 make install \
-    DEBUG=1 \
     DESTDIR=%{buildroot} \
     LIBDIR=%{_libdir} \
     INCDIR=%{_includedir} \

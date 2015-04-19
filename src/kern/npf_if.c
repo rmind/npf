@@ -177,7 +177,7 @@ npf_ifmap_getname(npf_t *npf, const u_int id)
 	return ifname;
 }
 
-void
+__dso_public void
 npf_ifmap_attach(npf_t *npf, ifnet_t *ifp)
 {
 	const npf_ifops_t *ifops = npf->ifops;
@@ -189,7 +189,7 @@ npf_ifmap_attach(npf_t *npf, ifnet_t *ifp)
 	npf_config_exit(npf);
 }
 
-void
+__dso_public void
 npf_ifmap_detach(npf_t *npf, ifnet_t *ifp)
 {
 	/* Diagnostic. */

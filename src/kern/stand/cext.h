@@ -116,6 +116,14 @@
 #endif
 #endif
 
+#if !defined(__dso_public)
+#if __GNUC_PREREQ__(4, 0)
+#define	__dso_public	__attribute__((__visibility__("default")))
+#else
+#define	__dso_public
+#endif
+#endif
+
 /*
  * Compile-time assertion: if C11 static_assert() is not available,
  * then emulate it.

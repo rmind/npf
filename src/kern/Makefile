@@ -11,6 +11,10 @@ CFLAGS+=	-D__RCSID\(x\)=
 CFLAGS+=	-Wno-unused-parameter -Wno-unused-variable -Wno-unused-function
 CFLAGS+=	-Wno-unused
 
+#
+# WARNING: All symbols must be hidden by default to not conflict with
+# the libnpf(3) library.  The debug version would, however, conflict.
+#
 ifeq ($(DEBUG),1)
 CFLAGS+=	-O1 -DDEBUG -fno-omit-frame-pointer
 CFLAGS+=	-D_NPF_TESTING
@@ -19,8 +23,7 @@ CFLAGS+=	-fvisibility=hidden
 CFLAGS+=	-DNDEBUG
 LDFLAGS=	-flto
 endif
-
-LDFLAGS=	-lpthread -lpcap -lcdb -lprop
+LDFLAGS+=	-lpthread -lpcap -lcdb -lprop
 
 #
 # System specific flags

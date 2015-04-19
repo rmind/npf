@@ -50,7 +50,7 @@ __KERNEL_RCSID(0, "$NetBSD: npf.c,v 1.22 2014/07/25 08:10:40 dholland Exp $");
 
 static npf_t *	npf_kernel_ctx = NULL __read_mostly;
 
-npf_t *
+__dso_public npf_t *
 npf_create(const npf_mbufops_t *mbufops, const npf_ifops_t *ifops)
 {
 	npf_t *npf;
@@ -73,7 +73,7 @@ npf_create(const npf_mbufops_t *mbufops, const npf_ifops_t *ifops)
 	return npf;
 }
 
-void
+__dso_public void
 npf_destroy(npf_t *npf)
 {
 	/*
@@ -96,13 +96,13 @@ npf_destroy(npf_t *npf)
 	percpu_free(npf->stats_percpu, NPF_STATS_SIZE);
 }
 
-int
+__dso_public int
 npf_load(npf_t *npf, void *ref, npf_error_t *err)
 {
 	return npfctl_load(npf, 0, ref);
 }
 
-void
+__dso_public void
 npf_thread_register(npf_t *npf)
 {
 	(void)npf;
