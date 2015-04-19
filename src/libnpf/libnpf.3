@@ -41,7 +41,7 @@
 .Ft nl_config_t *
 .Fn npf_config_create "void"
 .Ft int
-.Fn npf_config_submit "nl_config_t *ncf" "int fd"
+.Fn npf_config_submit "nl_config_t *ncf" "int fd" "nl_error_t *errinfo"
 .Ft nl_config_t *
 .Fn npf_config_retrieve "int fd" "bool *active" "bool *loaded"
 .Ft int
@@ -111,10 +111,12 @@ The configuration can be submitted to the kernel.
 .Bl -tag -width 4n
 .It Fn npf_config_create
 Create a configuration.
-.It Fn npf_config_submit "ncf" "fd"
+.It Fn npf_config_submit "ncf" "fd" "errinfo"
 Submit configuration
 .Fa ncf
 to the kernel.
+On error, the the description is written into the structure specified by
+.Fa errinfo .
 .It Fn npf_config_export "fd" "path"
 Serialize the given configuration and write it to a file.
 .It Fn npf_config_import "path"

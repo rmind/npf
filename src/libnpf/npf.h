@@ -75,7 +75,7 @@ typedef void (*nl_table_callback_t)(unsigned, int);
 
 nl_config_t *	npf_config_create(void);
 void		npf_config_destroy(nl_config_t *);
-int		npf_config_submit(nl_config_t *, int);
+int		npf_config_submit(nl_config_t *, int, nl_error_t *);
 nl_config_t *	npf_config_retrieve(int);
 int		npf_config_flush(int);
 nl_config_t *	npf_config_import(const char *);
@@ -149,7 +149,6 @@ int		npf_nat_setnpt66(nl_nat_t *, uint16_t);
 nl_rproc_t *	npf_rproc_iterate(nl_config_t *);
 const char *	npf_rproc_getname(nl_rproc_t *);
 
-void		_npf_config_error(nl_config_t *, nl_error_t *);
 int		_npf_ruleset_list(int, const char *, nl_config_t *);
 void		_npf_debug_addif(nl_config_t *, const char *);
 

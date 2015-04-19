@@ -160,7 +160,7 @@ _npf_build_config(nl_config_t *ncf)
 }
 
 int
-npf_config_submit(nl_config_t *ncf, int fd)
+npf_config_submit(nl_config_t *ncf, int fd, nl_error_t *errinfo)
 {
 #if !defined(_NPF_STANDALONE)
 	prop_dictionary_t npf_dict;
@@ -178,6 +178,20 @@ npf_config_submit(nl_config_t *ncf, int fd)
 		return error;
 	}
 	prop_dictionary_get_int32(ncf->ncf_err, "errno", &error);
+	if (error) {
+		memset(errinfo, 0, sizeof(*errinfo));
+
+		prop_dictionary_get_int32(ncf->ncf_err, "id",
+		    &errinfo->ne_id);
+		prop_dictionary_get_cstring(ncf->ncf_err,
+		    "source-file", &errinfo->ne_source_file);
+		prop_dictionary_get_uint32(ncf->ncf_err,
+		    "source-line", &errinfo->ne_source_line);
+		prop_dictionary_get_int32(ncf->ncf_err,
+		    "code-error", &errinfo->ne_ncode_error);
+		prop_dictionary_get_int32(ncf->ncf_err,
+		    "code-errat", &errinfo->ne_ncode_errat);
+	}
 	prop_object_release(npf_dict);
 	return error;
 #else
@@ -265,6 +279,7 @@ int
 npf_config_flush(int fd)
 {
 	nl_config_t *ncf;
+	nl_error_t errinfo;
 	int error;
 
 	ncf = npf_config_create();
@@ -272,7 +287,7 @@ npf_config_flush(int fd)
 		return ENOMEM;
 	}
 	ncf->ncf_flush = true;
-	error = npf_config_submit(ncf, fd);
+	error = npf_config_submit(ncf, fd, &errinfo);
 	npf_config_destroy(ncf);
 	return error;
 }
@@ -289,21 +304,6 @@ bool
 npf_config_loaded_p(nl_config_t *ncf)
 {
 	return ncf->ncf_rules_list != NULL;
-}
-
-void
-_npf_config_error(nl_config_t *ncf, nl_error_t *ne)
-{
-	memset(ne, 0, sizeof(*ne));
-	prop_dictionary_get_int32(ncf->ncf_err, "id", &ne->ne_id);
-	prop_dictionary_get_cstring(ncf->ncf_err,
-	    "source-file", &ne->ne_source_file);
-	prop_dictionary_get_uint32(ncf->ncf_err,
-	    "source-line", &ne->ne_source_line);
-	prop_dictionary_get_int32(ncf->ncf_err,
-	    "code-error", &ne->ne_ncode_error);
-	prop_dictionary_get_int32(ncf->ncf_err,
-	    "code-errat", &ne->ne_ncode_errat);
 }
 
 void

@@ -535,17 +535,16 @@ static int
 npfctl_load(int fd)
 {
 	nl_config_t *ncf;
+	nl_error_t errinfo;
 	int error;
 
 	ncf = npf_config_import(NPF_DB_PATH);
 	if (ncf == NULL) {
 		return errno;
 	}
-	errno = error = npf_config_submit(ncf, fd);
+	errno = error = npf_config_submit(ncf, fd, &errinfo);
 	if (error) {
-		nl_error_t ne;
-		_npf_config_error(ncf, &ne);
-		npfctl_print_error(&ne);
+		npfctl_print_error(&errinfo);
 	}
 	npf_config_destroy(ncf);
 	return error;

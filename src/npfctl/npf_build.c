@@ -81,6 +81,7 @@ npfctl_config_init(bool debug)
 int
 npfctl_config_send(int fd, const char *out)
 {
+	nl_error_t errinfo;
 	int error;
 
 	if (!defgroup) {
@@ -92,16 +93,14 @@ npfctl_config_send(int fd, const char *out)
 		npf_config_export(npf_conf, out);
 		error = 0;
 	} else {
-		error = npf_config_submit(npf_conf, fd);
+		error = npf_config_submit(npf_conf, fd, &errinfo);
 	}
 	if (error == EEXIST) { /* XXX */
 		errx(EXIT_FAILURE, "(re)load failed: "
 		    "some table has a duplicate entry?");
 	}
 	if (error) {
-		nl_error_t ne;
-		_npf_config_error(npf_conf, &ne);
-		npfctl_print_error(&ne);
+		npfctl_print_error(&errinfo);
 	}
 	if (fd) {
 		npf_config_destroy(npf_conf);
