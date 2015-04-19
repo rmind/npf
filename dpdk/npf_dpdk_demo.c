@@ -134,9 +134,9 @@ load_npf_config(npf_t *npf, nl_config_t *ncf)
 	void *ref;
 
 	/*
-	 * - Build the config (returns a reference for loading).
-	 * - Load it for the NPF instance.
-	 * - Finally, destroy the config.
+	 * - Build the config: we get a reference for loading.
+	 * - Load the config to the NPF instance.
+	 * - Destroy the config (reference becomes invalid).
 	 */
 	ref = npf_config_build(ncf);
 	if (npf_load(npf, ref, &errinfo) != 0) {
