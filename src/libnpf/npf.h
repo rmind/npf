@@ -78,8 +78,8 @@ void		npf_config_destroy(nl_config_t *);
 int		npf_config_submit(nl_config_t *, int, nl_error_t *);
 nl_config_t *	npf_config_retrieve(int);
 int		npf_config_flush(int);
-nl_config_t *	npf_config_import(const char *);
-int		npf_config_export(nl_config_t *, const char *);
+nl_config_t *	npf_config_import(const void *, size_t);
+void *		npf_config_export(nl_config_t *, size_t *);
 bool		npf_config_active_p(nl_config_t *);
 bool		npf_config_loaded_p(nl_config_t *);
 

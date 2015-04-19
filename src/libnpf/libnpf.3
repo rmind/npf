@@ -46,10 +46,10 @@
 .Fn npf_config_retrieve "int fd" "bool *active" "bool *loaded"
 .Ft int
 .Fn npf_config_flush "int fd"
-.Ft int
-.Fn npf_config_export "const nl_config_t *ncf" "const char *path"
+.Ft void
+.Fn npf_config_export "const nl_config_t *ncf" "size_t *len"
 .Ft nl_config_t *
-.Fn npf_config_import "const char *path"
+.Fn npf_config_import "const void *blob" "size_t len"
 .Ft bool
 .Fn npf_config_active_p "nl_config_t *ncf"
 .Ft void
@@ -117,11 +117,14 @@ Submit configuration
 to the kernel.
 On error, the the description is written into the structure specified by
 .Fa errinfo .
-.It Fn npf_config_export "fd" "path"
-Serialize the given configuration and write it to a file.
-.It Fn npf_config_import "path"
-Read the configuration from a file, unserialize and construct the
-configuration object.
+.It Fn npf_config_export "fd" "len"
+Serialize the given configuration and return binary object and its
+length in
+.Fa len
+parameter.
+.It Fn npf_config_import "blob" "len"
+Read the configuration from a binary object of the specified length,
+unserialize, construct and return the configuration object.
 .It Fn npf_config_flush "fd"
 Flush the current configuration.
 .It Fn npf_config_retrieve "fd" "active" "loaded"

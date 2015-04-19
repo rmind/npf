@@ -47,6 +47,7 @@ __RCSID("$NetBSD: npf_build.c,v 1.39 2015/03/21 00:49:07 rmind Exp $");
 #include <string.h>
 #include <ctype.h>
 #include <unistd.h>
+#include <fcntl.h>
 #include <errno.h>
 #include <err.h>
 
@@ -82,7 +83,7 @@ int
 npfctl_config_send(int fd, const char *out)
 {
 	nl_error_t errinfo;
-	int error;
+	int error = 0;
 
 	if (!defgroup) {
 		errx(EXIT_FAILURE, "default group was not defined");
@@ -90,8 +91,7 @@ npfctl_config_send(int fd, const char *out)
 	npf_rule_insert(npf_conf, NULL, defgroup);
 	if (out) {
 		printf("\nSaving to %s\n", out);
-		npf_config_export(npf_conf, out);
-		error = 0;
+		npfctl_config_save(npf_conf, out);
 	} else {
 		error = npf_config_submit(npf_conf, fd, &errinfo);
 	}
@@ -102,10 +102,26 @@ npfctl_config_send(int fd, const char *out)
 	if (error) {
 		npfctl_print_error(&errinfo);
 	}
-	if (fd) {
-		npf_config_destroy(npf_conf);
-	}
+	npf_config_destroy(npf_conf);
 	return error;
+}
+
+void
+npfctl_config_save(nl_config_t *ncf, const char *outfile)
+{
+	void *blob;
+	size_t len;
+	int fd;
+
+	blob = npf_config_export(ncf, &len);
+	if (!blob)
+		err(EXIT_FAILURE, "npf_config_export");
+	if ((fd = open(outfile, O_CREAT | O_TRUNC | O_WRONLY, 0644)) == -1)
+		err(EXIT_FAILURE, "could not open %s", outfile);
+	if (write(fd, blob, len) != (ssize_t)len) {
+		err(EXIT_FAILURE, "write to %s failed", outfile);
+	}
+	close(fd);
 }
 
 nl_config_t *

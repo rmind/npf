@@ -34,8 +34,9 @@ __RCSID("$NetBSD: npfctl.c,v 1.46 2015/01/04 20:02:15 christos Exp $");
 
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <sys/ioctl.h>
+#include <sys/mman.h>
 #ifdef __NetBSD__
+#include <sys/ioctl.h>
 #include <sys/module.h>
 #endif
 
@@ -517,31 +518,38 @@ npfctl_preload_bpfjit(void)
 }
 
 static int
-npfctl_save(int fd)
-{
-	nl_config_t *ncf;
-	int error;
-
-	ncf = npf_config_retrieve(fd);
-	if (ncf == NULL) {
-		return errno;
-	}
-	error = npf_config_export(ncf, NPF_DB_PATH);
-	npf_config_destroy(ncf);
-	return error;
-}
-
-static int
 npfctl_load(int fd)
 {
 	nl_config_t *ncf;
 	nl_error_t errinfo;
+	struct stat sb;
+	size_t blen;
+	void *blob;
 	int error;
 
-	ncf = npf_config_import(NPF_DB_PATH);
+	/*
+	 * The file may change while reading - we are not handling this,
+	 * leaving this responsibility for the caller.
+	 */
+	if (stat(NPF_DB_PATH, &sb) == -1) {
+		err(EXIT_FAILURE, "stat");
+	}
+	if ((blen = sb.st_size) == 0) {
+		err(EXIT_FAILURE, "saved configuration file is empty");
+	}
+	if ((blob = mmap(NULL, blen, PROT_READ,
+	    MAP_FILE | MAP_PRIVATE, fd, 0)) == MAP_FAILED) {
+		err(EXIT_FAILURE, "mmap");
+	}
+	ncf = npf_config_import(blob, blen);
+	munmap(blob, blen);
 	if (ncf == NULL) {
 		return errno;
 	}
+
+	/*
+	 * Configuration imported - submit it now.
+	 **/
 	errno = error = npf_config_submit(ncf, fd, &errinfo);
 	if (error) {
 		npfctl_print_error(&errinfo);
@@ -554,6 +562,8 @@ static void
 npfctl(int action, int argc, char **argv)
 {
 	int fd, ver, boolval, ret = 0;
+	nl_config_t *ncf;
+	const char *fun = "";
 
 	fd = open(NPF_DEV_PATH, O_RDONLY);
 	if (fd == -1) {
@@ -568,7 +578,6 @@ npfctl(int action, int argc, char **argv)
 		    "Hint: update userland?", NPF_VERSION, ver);
 	}
 
-	const char *fun = "";
 	switch (action) {
 	case NPFCTL_START:
 		boolval = true;
@@ -621,7 +630,13 @@ npfctl(int action, int argc, char **argv)
 		fun = "npfctl_config_load";
 		break;
 	case NPFCTL_SAVE:
-		fd = npfctl_save(fd);
+		ncf = npf_config_retrieve(fd);
+		if (ncf) {
+			npfctl_config_save(ncf, NPF_DB_PATH);
+			npf_config_destroy(ncf);
+		} else {
+			ret = errno;
+		}
 		fun = "npfctl_config_save";
 		break;
 	case NPFCTL_STATS:

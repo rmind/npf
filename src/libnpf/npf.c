@@ -242,28 +242,30 @@ npf_config_retrieve(int fd)
 	return ncf;
 }
 
-int
-npf_config_export(nl_config_t *ncf, const char *path)
+void *
+npf_config_export(nl_config_t *ncf, size_t *length)
 {
 	prop_dictionary_t npf_dict = ncf->ncf_dict;
-	int error = 0;
+	void *blob;
 
 	if (!ncf->ncf_dict && !(ncf->ncf_dict = _npf_build_config(ncf))) {
-		return ENOMEM;
+		errno = ENOMEM;
+		return NULL;
 	}
-	if (!prop_dictionary_externalize_to_file(ncf->ncf_dict, path)) {
-		error = errno;
+	if ((blob = prop_dictionary_externalize(ncf->ncf_dict)) == NULL) {
+		return NULL;
 	}
-	return error;
+	*length = strlen(blob);
+	return blob;
 }
 
 nl_config_t *
-npf_config_import(const char *path)
+npf_config_import(const void *blob, size_t len)
 {
 	prop_dictionary_t npf_dict;
 	nl_config_t *ncf;
 
-	npf_dict = prop_dictionary_internalize_from_file(path);
+	npf_dict = prop_dictionary_internalize(blob);
 	if (!npf_dict) {
 		return NULL;
 	}
@@ -272,6 +274,7 @@ npf_config_import(const char *path)
 		prop_object_release(npf_dict);
 		return NULL;
 	}
+	(void)len;
 	return ncf;
 }
 
