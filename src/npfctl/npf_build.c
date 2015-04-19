@@ -121,6 +121,7 @@ npfctl_config_save(nl_config_t *ncf, const char *outfile)
 	if (write(fd, blob, len) != (ssize_t)len) {
 		err(EXIT_FAILURE, "write to %s failed", outfile);
 	}
+	free(blob);
 	close(fd);
 }
 
