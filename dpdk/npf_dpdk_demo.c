@@ -177,7 +177,7 @@ get_packet(void)
 	/* UDP header. */
 	uh = (struct udphdr *)(ip + 1);
 	uh->uh_sport = htons(25000);
-	uh->uh_sport = htons(80);
+	uh->uh_dport = htons(80);
 	uh->uh_ulen = htons(1);
 
 	m->pkt_len = m->data_len = len;
