@@ -53,13 +53,24 @@ npf_test_init(int (*pton_func)(int, const char *, void *),
     const char *(*ntop_func)(int, const void *, char *, socklen_t),
     long (*rndfunc)(void))
 {
-	npf_t *npf = npf_create(&npftest_mbufops, &npftest_ifops);
+	npf_t *npf;
+
+	npf_worker_sysinit(1);
+	npf = npf_create(&npftest_mbufops, &npftest_ifops);
 	npf_setkernctx(npf);
 
 	npf_state_setsampler(npf_state_sample);
 	_pton_func = pton_func;
 	_ntop_func = ntop_func;
 	_random_func = rndfunc;
+}
+
+void
+npf_test_fini(void)
+{
+	npf_t *npf = npf_getkernctx();
+	npf_destroy(npf);
+	npf_sysfini();
 }
 
 int

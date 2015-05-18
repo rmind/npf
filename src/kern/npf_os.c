@@ -90,6 +90,8 @@ static void		npf_ifop_flush(void *);
 static const void *	npf_ifop_getmeta(ifnet_t *);
 static void *		npf_ifop_setmeta(ifp_t *, void *);
 
+static const unsigned	nworkers = 1;
+
 static const npf_ifops_t kern_ifops = {
 	.getname	= npf_ifop_getname,
 	.lookup		= npf_ifop_lookup,
@@ -107,6 +109,9 @@ npf_init(void)
 	npf_t *npf;
 	int error = 0;
 
+	error = npf_sysinit(nworkers);
+	if (error)
+		return error;
 	npf = npf_create(&kern_ifops);
 	npf_setkernctx(npf);
 	npf_pfil_register(true);
@@ -133,6 +138,7 @@ npf_fini(void)
 #endif
 	npf_pfil_unregister(true);
 	npf_destroy(npf);
+	npf_sysfini();
 	return 0;
 }
 

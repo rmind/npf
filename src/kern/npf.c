@@ -50,6 +50,18 @@ __KERNEL_RCSID(0, "$NetBSD: npf.c,v 1.22 2014/07/25 08:10:40 dholland Exp $");
 
 static npf_t *	npf_kernel_ctx = NULL __read_mostly;
 
+__dso_public int
+npf_sysinit(unsigned nworkers)
+{
+	return npf_worker_sysinit(nworkers);
+}
+
+__dso_public void
+npf_sysfini(void)
+{
+	npf_worker_sysfini();
+}
+
 __dso_public npf_t *
 npf_create(const npf_mbufops_t *mbufops, const npf_ifops_t *ifops)
 {
@@ -61,7 +73,6 @@ npf_create(const npf_mbufops_t *mbufops, const npf_ifops_t *ifops)
 
 	npf_bpf_sysinit();
 	npf_ifmap_sysinit(npf, ifops);
-	npf_worker_sysinit(npf);
 	npf_tableset_sysinit();
 	npf_conn_sysinit(npf);
 	npf_nat_sysinit();
@@ -91,8 +102,6 @@ npf_destroy(npf_t *npf)
 	npf_ifmap_sysfini(npf);
 	npf_bpf_sysfini();
 
-	/* Note: worker is the last. */
-	npf_worker_sysfini(npf);
 	percpu_free(npf->stats_percpu, NPF_STATS_SIZE);
 }
 

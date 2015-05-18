@@ -347,6 +347,7 @@ main(int argc, char **argv)
 	}
 
 	npf_kern_fini();
+	npf_test_fini();
 
 	if (testname && !tname_matched)
 		errx(EXIT_FAILURE, "test \"%s\" unknown", testname);

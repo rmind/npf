@@ -16,6 +16,7 @@
 #define	rumpns_npf_test_addif		npf_test_addif
 #define	rumpns_npf_test_load		npf_test_load
 #define	rumpns_npf_test_init		npf_test_init
+#define	rumpns_npf_test_fini		npf_test_fini
 #define	rumpns_npf_test_getif		npf_test_getif
 #define	rumpns_npf_nbuf_test		npf_nbuf_test
 #define	rumpns_npf_bpf_test		npf_bpf_test
@@ -32,6 +33,7 @@
 void		rumpns_npf_test_init(int (*)(int, const char *, void *),
 		    const char *(*)(int, const void *, char *, socklen_t),
 		    long (*)(void));
+void		rumpns_npf_test_fini(void);
 int		rumpns_npf_test_load(const void *);
 ifnet_t *	rumpns_npf_test_addif(const char *, bool, bool);
 ifnet_t *	rumpns_npf_test_getif(const char *);

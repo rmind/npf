@@ -48,6 +48,8 @@
 #include <pcap/pcap.h>
 #include "npf_dpdk.h"
 
+#define	NWORKERS		(4)
+
 #define MAX_MBUF_SIZE		(4096)
 #define	MAX_MBUFS		(8192 - 1)
 #define	MAX_LOCAL_MBUFS		(512)
@@ -227,6 +229,7 @@ main(int argc, char **argv)
 
 	/* Initialise DPDK and NPF. */
 	dpdk_init(argc, argv);
+	npf_sysinit(NWORKERS);
 	npf_dpdk_init(pktmbuf_pool);
 
 	/* Create a new NPF instance. */
@@ -249,5 +252,7 @@ main(int argc, char **argv)
 	process_packets(npf, ifp, PFIL_IN);
 
 	npf_destroy(npf);
+
+	npf_sysfini();
 	return 0;
 }

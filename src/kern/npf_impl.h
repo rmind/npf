@@ -189,17 +189,13 @@ struct npf {
 	struct npf_ifmap *	ifmap;
 	unsigned		ifmap_cnt;
 
+	/* Associated worker thread. */
+	unsigned		worker_id;
+	void *			worker_entry;
+
 	/* List of extensions and its lock. */
 	LIST_HEAD(, npf_ext)	ext_list;
 	kmutex_t		ext_lock;
-
-	/* Worker thread. */
-	kmutex_t		worker_lock;
-	kcondvar_t		worker_cv;
-	kcondvar_t		worker_event_cv;
-	lwp_t *			worker_lwp;
-	uint64_t		worker_loop;
-	npf_workfunc_t		work_funcs[NPF_MAX_WORKS];
 
 	/* Statistics. */
 	percpu_t *		stats_percpu;
@@ -228,8 +224,8 @@ npf_tableset_t *npf_config_tableset(npf_t *npf);
 npf_rprocset_t *npf_config_rprocs(npf_t *);
 bool		npf_default_pass(npf_t *);
 
-int		npf_worker_sysinit(npf_t *);
-void		npf_worker_sysfini(npf_t *);
+int		npf_worker_sysinit(unsigned);
+void		npf_worker_sysfini(void);
 void		npf_worker_signal(npf_t *);
 void		npf_worker_register(npf_t *, npf_workfunc_t);
 void		npf_worker_unregister(npf_t *, npf_workfunc_t);

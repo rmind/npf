@@ -59,6 +59,9 @@ typedef struct {
 	bool		(*ensure_writable)(struct mbuf **, size_t);
 } npf_mbufops_t;
 
+int	npf_sysinit(unsigned);
+void	npf_sysfini(void);
+
 npf_t *	npf_create(const npf_mbufops_t *, const npf_ifops_t *);
 int	npf_load(npf_t *, void *, npf_error_t *);
 void	npf_destroy(npf_t *);

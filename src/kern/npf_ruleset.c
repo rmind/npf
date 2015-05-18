@@ -175,6 +175,8 @@ npf_ruleset_destroy(npf_ruleset_t *rlset)
 		npf_rule_free(rl);
 	}
 	KASSERT(LIST_EMPTY(&rlset->rs_dynamic));
+
+	npf_ruleset_gc(rlset);
 	KASSERT(LIST_EMPTY(&rlset->rs_gc));
 	kmem_free(rlset, len);
 }
