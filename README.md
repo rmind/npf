@@ -1,5 +1,3 @@
-**INFO**: The standalone port of NPF is a work-in-progress -- 19 February 2015
-
 # NPF -- NetBSD packet filter (standalone)
 
 NPF is a layer 3 packet filter, supporting IPv4 and IPv6 as well as layer
