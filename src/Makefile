@@ -1,6 +1,8 @@
+NJOBS:=	$(shell getconf _NPROCESSORS_ONLN)
+
 all:
-	make -C kern lib
-	make -C libnpf lib
+	make -j $(NJOBS) -C kern lib
+	make -j $(NJOBS) -C libnpf lib
 
 install:
 	make -C kern install

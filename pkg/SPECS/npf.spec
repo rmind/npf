@@ -8,11 +8,13 @@ Source0:	npf.tar.gz
 
 BuildRequires:	make
 BuildRequires:	libtool
+Requires:	libbpfjit
 #BuildRequires:	libcdb-devel
 #BuildRequires:	libprop-devel
 
 Requires:	libcdb
 Requires:	libprop
+Requires:	libbpfjit
 
 %description
 
@@ -35,6 +37,12 @@ make %{?_smp_mflags} LIBDIR=%{_libdir}
 
 %install
 make install \
+    DESTDIR=%{buildroot} \
+    LIBDIR=%{_libdir} \
+    INCDIR=%{_includedir} \
+    MANDIR=%{_mandir}
+cd kern && make clean && make install \
+    DEBUG=1 \
     DESTDIR=%{buildroot} \
     LIBDIR=%{_libdir} \
     INCDIR=%{_includedir} \

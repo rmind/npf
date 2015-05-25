@@ -23,7 +23,7 @@ CFLAGS+=	-fvisibility=hidden
 CFLAGS+=	-DNDEBUG
 LDFLAGS=	-flto
 endif
-LDFLAGS+=	-lpthread -lpcap -lcdb -lprop
+LDFLAGS+=	-lpthread -lpcap -lcdb -lprop -lbpfjit
 
 #
 # System specific flags

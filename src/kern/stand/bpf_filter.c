@@ -59,6 +59,9 @@ static const char rcsid[] =
  */
 #include "npf_stand.h"
 
+#define	BPF_COP_EXTMEM_RELEASE
+#include <bpfjit.h>
+
 #if 0
 #define	_KERNEL
 
@@ -106,14 +109,13 @@ bpf_set_extmem(bpf_ctx_t *bc, size_t nwords, bpf_memword_init_t preinited)
 bpfjit_func_t
 bpf_jit_generate(bpf_ctx_t *bc, void *code, size_t size)
 {
-	(void)bc; (void)code; (void)size;
-	return NULL;
+	return bpfjit_generate_code(bc, code, size);
 }
 
 void
 bpf_jit_freecode(bpfjit_func_t func)
 {
-	(void)func;
+	bpfjit_free_code(func);
 }
 
 #endif
