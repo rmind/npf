@@ -61,7 +61,7 @@ LIB=		libnpfkern-dbg
 endif
 
 INCS=		npf.h npfkern.h
-#MANS=		npfkern.3
+MANS=		npfkern.3
 
 $(LIB).la:	LDFLAGS+=	-rpath $(LIBDIR)
 install/%.la:	ILIBDIR=	$(DESTDIR)/$(LIBDIR)
@@ -87,7 +87,7 @@ install/%.la: %.la
 install: $(addprefix install/,$(LIB).la)
 	libtool --mode=finish $(LIBDIR)
 	mkdir -p $(IINCDIR)/net && install -c $(INCS) $(IINCDIR)/net
-	#mkdir -p $(IMANDIR) && install -c $(MANS) $(IMANDIR)
+	mkdir -p $(IMANDIR) && install -c $(MANS) $(IMANDIR)
 
 clean:
 	libtool --mode=clean rm

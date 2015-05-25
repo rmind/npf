@@ -1,0 +1,178 @@
+.\"
+.\" Copyright (c) 2015 Mindaugas Rasiukevicius <rmind at netbsd org>
+.\" All rights reserved.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
+.\" ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+.\" ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
+.\" FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+.\" DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+.\" OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+.\" HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+.\" LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+.\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.Dd April 14, 2015
+.Dt libnpfkern 3
+.Os
+.Sh NAME
+.Nm libnpfkern
+.Nd standalone NPF packet filter (kernel component) as library
+.Sh LIBRARY
+.Lb libnpfkern
+.Sh SYNOPSIS
+.In net/npf.h
+.In net/npfkern.h
+.\" ---
+.Ft int
+.Fn npf_sysinit "unsigned nworkers"
+.Ft void
+.Fn npf_sysfini "void"
+.Ft npf_t *
+.Fn npf_create "const npf_mbufops_t *mbufops" "const npf_ifops_t *ifops"
+.Ft int
+.Fn npf_load "npf_t *npf" "void *ref" "npf_error_t *err"
+.Ft void
+.Fn npf_destroy "npf_t *npf"
+.Ft void
+.Fn npf_thread_register "npf_t *npf"
+.Ft int
+.Fn npf_packet_handler "npf_t *npf" "struct mbuf **mp" "struct ifnet *ifp" "int di"
+.Ft void
+.Fn npf_ifmap_attach "npf_t *npf" "struct ifnet *ifp"
+.Ft void
+.Fn npf_ifmap_detach "npf_t *npf" "struct ifnet *ifp"
+.\" -----
+.Sh DESCRIPTION
+The
+.Nm
+library provides an interface to kernel component of the NPF packet filter.
+.\" -----
+.Sh FUNCTIONS
+.Bl -tag -width 4n
+.\" ---
+.It Fn npf_sysinit "nworkers"
+Initialize the NPF kernel component system.
+This must be called before starting the use of
+.Nm
+library.
+The
+.Fa nworkers
+parameter specifies how many worker threads should be spawned.
+The workers perform such operations as connection expiration and destruction
+amongst all the instances.
+.Pp
+Returns zero on success and the error number on failure.
+.\" ---
+.It Fn npf_sysfini
+Destroy any resources used by the
+.Fm
+library, e.g. stop and exit the worker threads.
+This function must be called once finished using the component.
+.\" ---
+.It Fn npf_create "mbufops" "ifops"
+Construct and return a new instance of the NPF kernel component.
+The paremeters
+.Fa mbufops
+and
+.Fa ifops
+specify the operation vectors, that is, structures containing the set of
+functions required to operate a network buffer (mbuf) or a network interface.
+This functions abstract the real representation and shall be provided by
+the caller.
+.Pp
+Returns a reference (pointer) to the instance on success and
+.Dv NULL
+on failure.
+.\" ---
+.It Fn npf_destroy "npf"
+Destroy the instance of the NPF kernel compaining, freeing all resources
+used by it.
+.\" ---
+.It Fn npf_load "npf" "ref" "err"
+Load a new configuration into the NPF instance.
+The new configuration is specified by a
+.Fa ref
+parameter.
+It is a reference to the configuration built by the
+.Fn npf_config_build
+function from the
+.Xr libnpf 3
+library.
+.Pp
+Returns zero on success and error number on failure.
+In a case of failure, additionally returns extra information in a
+structure specified by the
+.Fa err
+parameter.
+.\" ---
+.It Fn npf_thread_register "npf"
+Register a "processing context" i.e. threads which will perform the
+.Fn npf_packet_handler
+calls.
+All threads processing the packets (invoking the handler) must register.
+Failure to register may abort the program.
+.\" ---
+.It Fn npf_packet_handler "npf" "mp" "ifp" "di"
+Inspect the packet, matching and processing it against the configuration
+loaded in the specified NPF instance.
+This is the main routine performing packet filtering (as well as any other
+operations).
+.Pp
+The packet is specified by the
+.Fa mp
+parameter.
+The NPF instance may destroy the packet and set this parameter to
+.Dv NULL .
+This is done on block, but may also be done on other operations (e.g.
+if the rule procedure decides to consume the packet).
+The network interface packet is passing-through is specified by the
+.Fa ifp
+parameter.
+The packet direction is specified by the
+.Fa di
+parameter and may be either
+.Dv PFIL_IN
+or
+.Dv PFIL_OUT .
+.Pp
+This function returns zero if the packet was "passed" and error number
+otherwise.
+A regular "block" is indicated by the
+.Dv ENETUNREACH
+error nubmer.
+.\" ---
+.It Fn npf_ifmap_attach "npf" "ifp"
+Attach the virtual network interface to the NPF instance.
+This indicates that the packets on this interface shall be processed.
+.It Fn npf_ifmap_detach "npf" "ifp"
+Detach the virtual network interface from the NPF instance.
+.\" ---
+.El
+.\" -----
+.Sh SEE ALSO
+.Xr libnpf 3 ,
+.Xr bpf 4 ,
+.Xr bpfjit 4 ,
+.Xr npf.conf 5 ,
+.Xr pcap-filter 7 ,
+.Xr npfctl 8
+.Sh HISTORY
+NPF
+first appeared in
+.Nx 6.0 .
+.Sh AUTHORS
+NPF
+was designed and implemented by
+.An Mindaugas Rasiukevicius .
