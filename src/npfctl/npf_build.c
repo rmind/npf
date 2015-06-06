@@ -387,6 +387,10 @@ npfctl_build_code(nl_rule_t *rl, sa_family_t family, const opt_proto_t *op,
 
 	/* Complete BPF byte-code and pass to the rule. */
 	struct bpf_program *bf = npfctl_bpf_complete(bc);
+	if (bf == NULL) {
+		npfctl_bpf_destroy(bc);
+		return true;
+	}
 	len = bf->bf_len * sizeof(struct bpf_insn);
 
 	if (npf_rule_setcode(rl, NPF_CODE_BPF, bf->bf_insns, len) == -1) {

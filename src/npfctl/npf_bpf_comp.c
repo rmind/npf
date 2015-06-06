@@ -194,6 +194,10 @@ npfctl_bpf_complete(npf_bpf_t *ctx)
 	struct bpf_program *bp = &ctx->prog;
 	const u_int retoff = bp->bf_len;
 
+	/* No instructions (optimised out). */
+	if (!bp->bf_len)
+		return NULL;
+
 	/* Add the return fragment (success and failure paths). */
 	struct bpf_insn insns_ret[] = {
 		BPF_STMT(BPF_RET+BPF_K, NPF_BPF_SUCCESS),
