@@ -162,15 +162,9 @@ npf_stats_collect(void *mem, void *arg, struct cpu_info *ci)
 /*
  * npf_stats: export collected statistics.
  */
-int
-npf_stats(npf_t *npf, void *data)
+__dso_public void
+npf_stats(npf_t *npf, uint64_t *buf)
 {
-	uint64_t *fullst, *uptr = *(uint64_t **)data;
-	int error;
-
-	fullst = kmem_zalloc(NPF_STATS_SIZE, KM_SLEEP);
-	percpu_foreach(npf->stats_percpu, npf_stats_collect, fullst);
-	error = copyout(fullst, uptr, NPF_STATS_SIZE);
-	kmem_free(fullst, NPF_STATS_SIZE);
-	return error;
+	memset(buf, 0, NPF_STATS_SIZE);
+	percpu_foreach(npf->stats_percpu, npf_stats_collect, buf);
 }

@@ -189,6 +189,19 @@ npf_dev_close(dev_t dev, int flag, int mode, lwp_t *l)
 }
 
 static int
+npf_stats_export(npf_t *npf, void *data)
+{
+	uint64_t *fullst, *uptr = *(uint64_t **)data;
+	int error;
+
+	fullst = kmem_alloc(NPF_STATS_SIZE, KM_SLEEP);
+	npf_stats(npf, fullst); /* will zero the buffer */
+	error = copyout(fullst, uptr, NPF_STATS_SIZE);
+	kmem_free(fullst, NPF_STATS_SIZE);
+	return error;
+}
+
+static int
 npf_dev_ioctl(dev_t dev, u_long cmd, void *data, int flag, lwp_t *l)
 {
 	int error;
@@ -207,7 +220,7 @@ npf_dev_ioctl(dev_t dev, u_long cmd, void *data, int flag, lwp_t *l)
 		error = npfctl_rule(npf, cmd, data);
 		break;
 	case IOC_NPF_STATS:
-		error = npf_stats(npf_kernel_ctx, data);
+		error = npf_stats_export(npf_kernel_ctx, data);
 		break;
 	case IOC_NPF_SAVE:
 		error = npfctl_save(npf_kernel_ctx, cmd, data);
