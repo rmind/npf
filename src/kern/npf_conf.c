@@ -79,7 +79,6 @@ npf_config_init(npf_t *npf)
 	npf_tableset_t *tset;
 
 	mutex_init(&npf->config_lock, MUTEX_DEFAULT, IPL_SOFTNET);
-	npf->config_psz = pserialize_create();
 
 	/* Load the empty configuration. */
 	tset = npf_tableset_create(0);
@@ -108,13 +107,12 @@ npf_config_fini(npf_t *npf)
 	/* Flush the connections. */
 	mutex_enter(&npf->config_lock);
 	npf_conn_tracking(npf, false);
-	pserialize_perform(npf->config_psz);
+	pserialize_perform(npf->qsbr);
 	npf_conn_load(npf, cd, false);
 	npf_ifmap_flush(npf);
 	mutex_exit(&npf->config_lock);
 
 	npf_config_destroy(npf->config);
-	pserialize_destroy(npf->config_psz);
 	mutex_destroy(&npf->config_lock);
 }
 
@@ -171,7 +169,7 @@ npf_config_load(npf_t *npf, npf_ruleset_t *rset, npf_tableset_t *tset,
 	}
 
 	/* Synchronise: drain all references. */
-	pserialize_perform(npf->config_psz);
+	pserialize_perform(npf->qsbr);
 	if (flush) {
 		npf_ifmap_flush(npf);
 	}
@@ -213,7 +211,7 @@ void
 npf_config_sync(npf_t *npf)
 {
 	KASSERT(npf_config_locked_p(npf));
-	pserialize_perform(npf->config_psz);
+	pserialize_perform(npf->qsbr);
 }
 
 /*

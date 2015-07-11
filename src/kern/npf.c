@@ -80,6 +80,7 @@ npf_create(const npf_mbufops_t *mbufops, const npf_ifops_t *ifops)
 	npf_ext_sysinit(npf);
 
 	/* Load an empty configuration. */
+	npf->qsbr = pserialize_create();
 	npf_config_init(npf);
 	return npf;
 }
@@ -91,6 +92,7 @@ npf_destroy(npf_t *npf)
 	 * Destroy the current configuration.  Note: at this point all
 	 * handlers must be deactivated; we will drain any processing.
 	 */
+	pserialize_destroy(npf->qsbr);
 	npf_config_fini(npf);
 
 	/* Finally, safe to destroy the subsystems. */
@@ -114,7 +116,7 @@ npf_load(npf_t *npf, void *ref, npf_error_t *err)
 __dso_public void
 npf_thread_register(npf_t *npf)
 {
-	(void)npf;
+	pserialize_register(npf->qsbr);
 }
 
 void

@@ -52,7 +52,7 @@ typedef struct npf_worker {
 	npf_t *			instances;
 } npf_worker_t;
 
-#define	W_INTERVAL		mstohz(5 * 1000)
+#define	W_INTERVAL		mstohz(1 * 1000)
 
 static void			npf_worker(void *) __dead;
 

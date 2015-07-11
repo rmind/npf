@@ -165,7 +165,7 @@ struct nbuf {
 struct npf {
 	/* Active NPF configuration. */
 	kmutex_t		config_lock;
-	pserialize_t		config_psz;
+	pserialize_t		qsbr;
 	npf_config_t *		config;
 
 	/* BPF byte-code context. */

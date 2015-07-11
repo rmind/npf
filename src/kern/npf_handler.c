@@ -137,6 +137,8 @@ npf_packet_handler(npf_t *npf, struct mbuf **mp, ifnet_t *ifp, int di)
 	int error, retfl;
 	int decision;
 
+	/* QSBR checkpoint. */
+	pserialize_checkpoint(npf->qsbr);
 	KASSERT(ifp != NULL);
 
 	/*

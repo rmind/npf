@@ -56,6 +56,7 @@
 #endif
 
 #include <prop/proplib.h>
+#include <qsbr/qsbr.h>
 #include <cdbr.h>
 
 #include "cext.h"
@@ -108,13 +109,26 @@ npfkern_pthread_cond_timedwait(pthread_cond_t *t, pthread_mutex_t *l,
 #define	cv_destroy(c)		pthread_cond_destroy(c)
 
 /*
- * FIXME/TODO: To be implemented ..
+ * Passive serialization based on QSBR.
  */
-typedef int pserialize_t;
+typedef qsbr_t *		pserialize_t;
 
-#define	pserialize_create()	0
-#define	pserialize_destroy(p)
-#define	pserialize_perform(p)
+static inline void
+npfkern_qsbr_wait(qsbr_t *qsbr)
+{
+	const struct timespec dtime = { 0, 1 * 1000 * 1000 }; /* 1 ms */
+	qsbr_epoch_t target = qsbr_barrier(qsbr);
+
+	while (!qsbr_sync(qsbr, target)) {
+		(void)nanosleep(&dtime, NULL);
+	}
+}
+
+#define	pserialize_create()	qsbr_create()
+#define	pserialize_destroy(p)	qsbr_destroy(p)
+#define	pserialize_register(p)	qsbr_register(p)
+#define	pserialize_checkpoint(p) qsbr_checkpoint(p)
+#define	pserialize_perform(p)	npfkern_qsbr_wait(p)
 #define	pserialize_read_enter()	0x50505050
 #define	pserialize_read_exit(s)	assert((s) == 0x50505050)
 

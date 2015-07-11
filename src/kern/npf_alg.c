@@ -62,7 +62,6 @@ struct npf_alg {
 
 struct npf_algset {
 	/* List of ALGs and the count. */
-	pserialize_t	alg_psz;
 	npf_alg_t	alg_list[NPF_MAX_ALGS];
 	u_int		alg_count;
 
@@ -79,7 +78,6 @@ npf_alg_sysinit(npf_t *npf)
 	npf_algset_t *aset;
 
 	aset = kmem_zalloc(sizeof(npf_algset_t), KM_SLEEP);
-	aset->alg_psz = pserialize_create();
 	npf->algset = aset;
 }
 
@@ -88,7 +86,6 @@ npf_alg_sysfini(npf_t *npf)
 {
 	npf_algset_t *aset = npf->algset;
 
-	pserialize_destroy(aset->alg_psz);
 	kmem_free(aset, sizeof(npf_algset_t));
 }
 
@@ -191,7 +188,7 @@ npf_alg_unregister(npf_t *npf, npf_alg_t *alg)
 	afuncs->match = NULL;
 	afuncs->translate = NULL;
 	afuncs->inspect = NULL;
-	pserialize_perform(alg_psz);
+	pserialize_perform(npf->qsbr);
 
 	/* Finally, unregister the ALG. */
 	npf_ruleset_freealg(npf_config_natset(npf), alg);

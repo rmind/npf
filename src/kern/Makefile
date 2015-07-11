@@ -23,7 +23,7 @@ CFLAGS+=	-fvisibility=hidden
 CFLAGS+=	-DNDEBUG
 LDFLAGS=	-flto
 endif
-LDFLAGS+=	-lpthread -lpcap -lcdb -lprop -lbpfjit
+LDFLAGS+=	-lpthread -lpcap -lqsbr -lcdb -lprop -lbpfjit
 ifeq ($(SYSNAME),Linux)
 LDFLAGS+=	-ljemalloc
 endif

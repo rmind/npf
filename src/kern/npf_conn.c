@@ -471,6 +471,7 @@ npf_conn_establish(npf_cache_t *npc, int di, bool per_if)
 	/* Allocate and initialise the new connection. */
 	con = pool_cache_get(conn_cache, PR_NOWAIT);
 	if (__predict_false(!con)) {
+		npf_worker_signal(npf);
 		return NULL;
 	}
 	NPF_PRINTF(("NPF: create conn %p\n", con));

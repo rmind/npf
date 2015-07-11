@@ -76,4 +76,4 @@ install: $(addprefix install/,$(LIB).la)
 
 clean:
 	libtool --mode=clean rm
-	@ rm -rf .libs *.{l,}o *.la
+	@ rm -rf .libs *.o *.lo *.la
