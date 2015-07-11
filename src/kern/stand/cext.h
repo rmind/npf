@@ -41,7 +41,9 @@
 #define	_SYS_CEXT_H_
 
 #include <sys/types.h>
+#include <inttypes.h>
 #include <limits.h>
+#include <assert.h>
 
 #ifndef __predict_true
 #define	__predict_true(x)	__builtin_expect((x) != 0, 1)
@@ -221,5 +223,11 @@ fast_rem32(uint32_t v, uint32_t div, uint64_t inv)
 }
 
 #endif
+
+#define	zalloc(len)	calloc(1, (len))
+#define	ASSERT		assert
+
+#define atomic_compare_exchange_weak(ptr, expected, desired) \
+    __sync_bool_compare_and_swap(ptr, expected, desired)
 
 #endif

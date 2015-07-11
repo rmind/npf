@@ -15,6 +15,7 @@ Requires:	libbpfjit
 Requires:	libcdb
 Requires:	libprop
 Requires:	libbpfjit
+Requires:	jemalloc
 
 %description
 

@@ -60,6 +60,7 @@
 
 #include "cext.h"
 
+#include "mempool.h"
 #include "ptree.h"
 #include "rbtree.h"
 #include "bpf.h"
@@ -178,35 +179,16 @@ npfkern_pthread_create(lwp_t **lret, void (*func)(void *), void *arg)
 #define	PR_WAITOK	KM_SLEEP
 #define PR_NOWAIT	KM_NOSLEEP
 
-/*
- * TODO: To be converted to use memory pool ..
- */
-struct pool_cache {
-	size_t		obj_size;
-};
-
 #ifndef pool_cache_t
-typedef struct pool_cache *pool_cache_t;
+typedef mempool_t *	pool_cache_t;
 #endif
 
-static inline pool_cache_t
-npfkern_pool_cache_init(size_t size)
-{
-	pool_cache_t p;
-
-	p = calloc(1, sizeof(struct pool_cache));
-	if (p) {
-		p->obj_size = size;
-	}
-	return p;
-}
-
 #define	pool_cache_init(size, align, a, b, c, d, p, e, f, g) \
-    npfkern_pool_cache_init(size)
-#define	pool_cache_destroy(p)		free(p)
-#define	pool_cache_get(p, flags)	malloc((p)->obj_size)
-#define	pool_cache_put(p, obj)		free(obj)
-#define	pool_cache_invalidate(p)
+    mempool_create(NULL, size, 64);
+#define	pool_cache_destroy(p)		mempool_destroy(p)
+#define	pool_cache_get(p, flags)	mempool_alloc((p), MEMP_WAITOK)
+#define	pool_cache_put(p, obj)		mempool_free((p), (obj))
+#define	pool_cache_invalidate(p)	mempool_cancel((p))
 
 #define	kmem_zalloc(len, flags)		calloc(1, len)
 #define	kmem_alloc(len, flags)		malloc(len)
