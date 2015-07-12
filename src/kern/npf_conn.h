@@ -128,7 +128,7 @@ npf_conn_t *	npf_conndb_lookup(npf_conndb_t *, const npf_connkey_t *,
 		    bool *);
 bool		npf_conndb_insert(npf_conndb_t *, npf_connkey_t *,
 		    npf_conn_t *);
-npf_conn_t *	npf_conndb_remove(npf_conndb_t *, const npf_connkey_t *);
+npf_conn_t *	npf_conndb_remove(npf_conndb_t *, npf_connkey_t *);
 
 void		npf_conndb_enqueue(npf_conndb_t *, npf_conn_t *);
 void		npf_conndb_dequeue(npf_conndb_t *, npf_conn_t *,

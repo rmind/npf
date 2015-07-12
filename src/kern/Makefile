@@ -5,11 +5,13 @@
 
 CFLAGS=		-std=gnu99 -O2 -flto -g -Wall -Wextra -Werror
 CFLAGS+=	-Wstrict-prototypes -Wmissing-prototypes -Wpointer-arith
-CFLAGS+=	-I stand -D_NPF_STANDALONE
+CFLAGS+=	-I stand -D_NPF_STANDALONE #-DUSE_JUDY
 CFLAGS+=	-D__RCSID\(x\)=
 
 CFLAGS+=	-Wno-unused-parameter -Wno-unused-variable -Wno-unused-function
 CFLAGS+=	-Wno-unused
+
+SYSNAME:=	$(shell uname -s)
 
 #
 # WARNING: All symbols must be hidden by default to not conflict with
@@ -25,14 +27,12 @@ LDFLAGS=	-flto
 endif
 LDFLAGS+=	-lpthread -lpcap -lqsbr -lcdb -lprop -lbpfjit
 ifeq ($(SYSNAME),Linux)
-LDFLAGS+=	-ljemalloc
+LDFLAGS+=	-ljemalloc #-lJudy
 endif
 
 #
 # System specific flags
 #
-
-SYSNAME:=	$(shell uname -s)
 
 ifeq ($(SYSNAME),Linux)
 CFLAGS+=	-D_POSIX_C_SOURCE=200809L
