@@ -35,7 +35,10 @@
  * NPF uses its own interface IDs (npf-if-id).  When NPF configuration is
  * (re)loaded, each required interface name is registered and a matching
  * network interface gets an ID assigned.  If an interface is not present,
- * it gets an ID on attach.  Any other interfaces get INACTIVE_ID.
+ * it gets an ID on attach.
+ *
+ * IDs start from 1.  Zero is reserved to indicate "no interface" case or
+ * an interface of no interest (i.e. not registered).
  *
  * The IDs are mapped synchronously based on interface events which are
  * monitored using pfil(9) hooks.
@@ -53,8 +56,6 @@ __KERNEL_RCSID(0, "$NetBSD: npf_if.c,v 1.4 2014/08/10 19:09:43 rmind Exp $");
 
 #include "npf_impl.h"
 
-#define	INACTIVE_ID	((u_int)-1)
-
 typedef struct npf_ifmap {
 	char		n_ifname[IFNAMSIZ];
 } npf_ifmap_t;
@@ -65,7 +66,7 @@ npf_ifmap_sysinit(npf_t *npf, const npf_ifops_t *ifops)
 	const size_t nbytes = sizeof(npf_ifmap_t) * NPF_MAX_IFMAP;
 
 	KASSERT(ifops != NULL);
-	ifops->flush((void *)(uintptr_t)INACTIVE_ID);
+	ifops->flush((void *)(uintptr_t)0);
 
 	npf->ifmap = kmem_zalloc(nbytes, KM_SLEEP);
 	npf->ifmap_cnt = 0;
@@ -79,12 +80,6 @@ npf_ifmap_sysfini(npf_t *npf)
 	kmem_free(npf->ifmap, nbytes);
 }
 
-/*
- * NOTE: IDs start from 1.  Zero is reserved for "no interface" and
- * (unsigned)-1 for "inactive interface".  Therefore, an interface
- * can have either INACTIVE_ID or non-zero ID.
- */
-
 static u_int
 npf_ifmap_new(npf_t *npf)
 {
@@ -96,7 +91,7 @@ npf_ifmap_new(npf_t *npf)
 
 	if (npf->ifmap_cnt == NPF_MAX_IFMAP) {
 		printf("npf_ifmap_new: out of slots; bump NPF_MAX_IFMAP\n");
-		return INACTIVE_ID;
+		return 0;
 	}
 	return ++npf->ifmap_cnt;
 }
@@ -112,7 +107,7 @@ npf_ifmap_lookup(npf_t *npf, const char *ifname)
 		if (nim->n_ifname[0] && strcmp(nim->n_ifname, ifname) == 0)
 			return i + 1;
 	}
-	return INACTIVE_ID;
+	return 0;
 }
 
 u_int
@@ -123,11 +118,10 @@ npf_ifmap_register(npf_t *npf, const char *ifname)
 	u_int i;
 
 	npf_config_enter(npf);
-	if ((i = npf_ifmap_lookup(npf, ifname)) != INACTIVE_ID) {
+	if ((i = npf_ifmap_lookup(npf, ifname)) != 0) {
 		goto out;
 	}
-	if ((i = npf_ifmap_new(npf)) == INACTIVE_ID) {
-		i = INACTIVE_ID;
+	if ((i = npf_ifmap_new(npf)) == 0) {
 		goto out;
 	}
 	nim = &npf->ifmap[i - 1];
@@ -152,15 +146,14 @@ npf_ifmap_flush(npf_t *npf)
 		npf->ifmap[i].n_ifname[0] = '\0';
 	}
 	npf->ifmap_cnt = 0;
-	npf->ifops->flush((void *)(uintptr_t)INACTIVE_ID);
+	npf->ifops->flush((void *)(uintptr_t)0);
 }
 
 u_int
 npf_ifmap_getid(npf_t *npf, const ifnet_t *ifp)
 {
 	const u_int i = (uintptr_t)npf->ifops->getmeta(ifp);
-
-	KASSERT(i == INACTIVE_ID || (i > 0 && i <= npf->ifmap_cnt));
+	KASSERT(i <= npf->ifmap_cnt);
 	return i;
 }
 
@@ -194,6 +187,6 @@ npf_ifmap_detach(npf_t *npf, ifnet_t *ifp)
 {
 	/* Diagnostic. */
 	npf_config_enter(npf);
-	npf->ifops->setmeta(ifp, (void *)(uintptr_t)INACTIVE_ID);
+	npf->ifops->setmeta(ifp, (void *)(uintptr_t)0);
 	npf_config_exit(npf);
 }

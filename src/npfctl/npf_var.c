@@ -239,13 +239,13 @@ npfvar_get_type1(const npfvar_t *vp, size_t idx, size_t level)
 {
 	npf_element_t *el;
 
+	if (vp == NULL)
+		return -1;
+
 	if (level >= var_num) {
 		yyerror("variable loop for '%s'", vp->v_key);
 		return -1;
 	}
-
-	if (vp == NULL)
-		return -1;
 
 	if (vp->v_count <= idx) {
 		yyerror("variable '%s' has only %zu elements, requested %zu",
