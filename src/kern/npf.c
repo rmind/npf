@@ -68,6 +68,7 @@ npf_create(const npf_mbufops_t *mbufops, const npf_ifops_t *ifops)
 	npf_t *npf;
 
 	npf = kmem_zalloc(sizeof(npf_t), KM_SLEEP);
+	npf->qsbr = pserialize_create();
 	npf->stats_percpu = percpu_alloc(NPF_STATS_SIZE);
 	npf->mbufops = mbufops;
 
@@ -80,7 +81,6 @@ npf_create(const npf_mbufops_t *mbufops, const npf_ifops_t *ifops)
 	npf_ext_sysinit(npf);
 
 	/* Load an empty configuration. */
-	npf->qsbr = pserialize_create();
 	npf_config_init(npf);
 	return npf;
 }
@@ -92,7 +92,6 @@ npf_destroy(npf_t *npf)
 	 * Destroy the current configuration.  Note: at this point all
 	 * handlers must be deactivated; we will drain any processing.
 	 */
-	pserialize_destroy(npf->qsbr);
 	npf_config_fini(npf);
 
 	/* Finally, safe to destroy the subsystems. */
@@ -104,6 +103,7 @@ npf_destroy(npf_t *npf)
 	npf_ifmap_sysfini(npf);
 	npf_bpf_sysfini();
 
+	pserialize_destroy(npf->qsbr);
 	percpu_free(npf->stats_percpu, NPF_STATS_SIZE);
 }
 
