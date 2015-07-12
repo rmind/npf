@@ -117,10 +117,10 @@ create_npf_config(void)
 	 * Create a "pass" rule, accepting both incoming and outgoing
 	 * packets where either source or destination is 10.1.1.1 .
 	 */
-	rl = npf_rule_create(NULL, NPF_RULE_PASS |
+	rl = npf_rule_create(NULL, NPF_RULE_PASS | NPF_RULE_STATEFUL |
 	    NPF_RULE_IN | NPF_RULE_OUT, NULL);
 	assert(rl != NULL);
-	build_pcap_filter(rl, "host 10.1.1.1");
+	build_pcap_filter(rl, "host 10.1.1.1 and dst port 53");
 
 	/* Insert a rule into it. */
 	npf_rule_setprio(rl, NPF_PRI_LAST);
@@ -178,8 +178,8 @@ get_packet(void)
 
 	/* UDP header. */
 	uh = (struct udphdr *)(ip + 1);
-	uh->uh_sport = htons(25000);
-	uh->uh_dport = htons(80);
+	uh->uh_sport = htons(1024 + (random() & 0x7fff));
+	uh->uh_dport = htons(53);
 	uh->uh_ulen = htons(1);
 
 	m->pkt_len = m->data_len = len;
@@ -189,7 +189,7 @@ get_packet(void)
 }
 
 static void
-process_packets(npf_t *npf, struct ifnet *ifp, int di)
+process_packets(npf_t *npf, struct ifnet *ifp, int di, int *c)
 {
 	struct rte_mbuf *in_pkts[PKT_BATCH];
 	struct rte_mbuf *out_pkts[PKT_BATCH];
@@ -205,7 +205,8 @@ process_packets(npf_t *npf, struct ifnet *ifp, int di)
 
 		ret = npf_packet_handler(npf,
 		    (struct mbuf **)&in_pkts[i], ifp, di);
-		puts(ret ? "block" : "allow");
+		c[!!ret]++;
+
 		if (ret) {
 			/* The packet was blocked or destroyed. */
 			continue;
@@ -226,6 +227,7 @@ main(int argc, char **argv)
 	npf_t *npf;
 	struct ifnet *ifp;
 	nl_config_t *ncf;
+	int c[2] = { 0, 0 };
 
 	/* Initialise DPDK and NPF. */
 	dpdk_init(argc, argv);
@@ -249,10 +251,11 @@ main(int argc, char **argv)
 	 * each thread doing that must register with NPF instance.
 	 */
 	npf_thread_register(npf);
-	process_packets(npf, ifp, PFIL_IN);
-
+	for (unsigned i = 0; i < (16 * 1024); i++) {
+		process_packets(npf, ifp, PFIL_IN, c);
+	}
+	printf("allow\t%d\nblock\t%d\n", c[0], c[1]);
 	npf_destroy(npf);
-
 	npf_sysfini();
 	return 0;
 }
