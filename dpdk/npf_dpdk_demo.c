@@ -235,7 +235,7 @@ main(int argc, char **argv)
 	npf_dpdk_init(pktmbuf_pool);
 
 	/* Create a new NPF instance. */
-	npf = npf_dpdk_create();
+	npf = npf_dpdk_create(0);
 	assert(npf != NULL);
 
 	/* Attach a virtual interface to NPF. */

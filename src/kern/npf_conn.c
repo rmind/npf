@@ -134,9 +134,6 @@ CTASSERT(PFIL_ALL == (0x001 | 0x002));
 
 enum { CONN_TRACKING_OFF, CONN_TRACKING_ON };
 
-static pool_cache_t	conn_cache	__read_mostly;
-
-static void	npf_conn_worker(npf_t *);
 static void	npf_conn_destroy(npf_t *, npf_conn_t *);
 
 /*
@@ -144,15 +141,17 @@ static void	npf_conn_destroy(npf_t *, npf_conn_t *);
  */
 
 void
-npf_conn_sysinit(npf_t *npf)
+npf_conn_sysinit(npf_t *npf, int flags)
 {
-	conn_cache = pool_cache_init(sizeof(npf_conn_t), coherency_unit,
+	npf->conn_cache = pool_cache_init(sizeof(npf_conn_t), coherency_unit,
 	    0, 0, "npfconpl", NULL, IPL_NET, NULL, NULL, NULL);
 	mutex_init(&npf->conn_lock, MUTEX_DEFAULT, IPL_NONE);
 	npf->conn_tracking = CONN_TRACKING_OFF;
 	npf->conn_db = npf_conndb_create();
 
-	npf_worker_register(npf, npf_conn_worker);
+	if ((flags & NPF_NO_GC) == 0) {
+		npf_worker_register(npf, npf_conn_worker);
+	}
 }
 
 void
@@ -163,7 +162,7 @@ npf_conn_sysfini(npf_t *npf)
 	npf_worker_unregister(npf, npf_conn_worker);
 
 	npf_conndb_destroy(npf->conn_db);
-	pool_cache_destroy(conn_cache);
+	pool_cache_destroy(npf->conn_cache);
 	mutex_destroy(&npf->conn_lock);
 }
 
@@ -205,7 +204,7 @@ npf_conn_load(npf_t *npf, npf_conndb_t *ndb, bool track)
 		 */
 		npf_conn_gc(npf, odb, true, false);
 		npf_conndb_destroy(odb);
-		pool_cache_invalidate(conn_cache);
+		pool_cache_invalidate(npf->conn_cache);
 	}
 }
 
@@ -469,7 +468,7 @@ npf_conn_establish(npf_cache_t *npc, int di, bool per_if)
 	}
 
 	/* Allocate and initialise the new connection. */
-	con = pool_cache_get(conn_cache, PR_NOWAIT);
+	con = pool_cache_get(npf->conn_cache, PR_NOWAIT);
 	if (__predict_false(!con)) {
 		npf_worker_signal(npf);
 		return NULL;
@@ -570,7 +569,7 @@ npf_conn_destroy(npf_t *npf, npf_conn_t *con)
 	mutex_destroy(&con->c_lock);
 
 	/* Free the structure, increase the counter. */
-	pool_cache_put(conn_cache, con);
+	pool_cache_put(npf->conn_cache, con);
 	npf_stats_inc(npf, NPF_STAT_CONN_DESTROY);
 	NPF_PRINTF(("NPF: conn %p destroyed\n", con));
 }
@@ -834,7 +833,7 @@ npf_conn_gc(npf_t *npf, npf_conndb_t *cd, bool flush, bool sync)
 /*
  * npf_conn_worker: G/C to run from a worker thread.
  */
-static void
+void
 npf_conn_worker(npf_t *npf)
 {
 	mutex_enter(&npf->conn_lock);
@@ -930,7 +929,7 @@ npf_conn_import(npf_t *npf, npf_conndb_t *cd, prop_dictionary_t cdict,
 	const void *d;
 
 	/* Allocate a connection and initialise it (clear first). */
-	con = pool_cache_get(conn_cache, PR_WAITOK);
+	con = pool_cache_get(npf->conn_cache, PR_WAITOK);
 	memset(con, 0, sizeof(npf_conn_t));
 	mutex_init(&con->c_lock, MUTEX_DEFAULT, IPL_SOFTNET);
 	npf_stats_inc(npf, NPF_STAT_CONN_CREATE);

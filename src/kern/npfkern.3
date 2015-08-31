@@ -23,7 +23,7 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.Dd July 11, 2015
+.Dd August 31, 2015
 .Dt libnpfkern 3
 .Os
 .Sh NAME
@@ -40,9 +40,11 @@
 .Ft void
 .Fn npf_sysfini "void"
 .Ft npf_t *
-.Fn npf_create "const npf_mbufops_t *mbufops" "const npf_ifops_t *ifops"
+.Fn npf_create "int flags" "const npf_mbufops_t *mbufops" "const npf_ifops_t *ifops"
 .Ft int
 .Fn npf_load "npf_t *npf" "void *ref" "npf_error_t *err"
+.Ft void
+.Fn npf_gc "npf_t *npf"
 .Ft void
 .Fn npf_destroy "npf_t *npf"
 .Ft void
@@ -83,9 +85,16 @@ Destroy any resources used by the
 library, e.g. stop and exit the worker threads.
 This function must be called once finished using the component.
 .\" ---
-.It Fn npf_create "mbufops" "ifops"
+.It Fn npf_create "flags" "mbufops" "ifops"
 Construct and return a new instance of the NPF kernel component.
-The paremeters
+The parameter
+.Fa flags
+should be 0 or
+.Dv NPF_NO_GC .
+The
+.Dv NPF_NO_GC
+flag disables garbage collection of connections and other objects.
+The parameters
 .Fa mbufops
 and
 .Fa ifops
@@ -97,6 +106,13 @@ the caller.
 Returns a reference (pointer) to the instance on success and
 .Dv NULL
 on failure.
+.\" ---
+.It Fn npf_gc "npf"
+Perform the garbage collection of connection and/or any other objects
+related to the specified NPF instance.
+This routine should only be used if the instance was created with
+.Dv NPF_NO_GC
+flag.
 .\" ---
 .It Fn npf_destroy "npf"
 Destroy the instance of the NPF kernel compaining, freeing all resources

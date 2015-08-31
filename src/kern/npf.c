@@ -63,7 +63,7 @@ npf_sysfini(void)
 }
 
 __dso_public npf_t *
-npf_create(const npf_mbufops_t *mbufops, const npf_ifops_t *ifops)
+npf_create(int flags, const npf_mbufops_t *mbufops, const npf_ifops_t *ifops)
 {
 	npf_t *npf;
 
@@ -75,7 +75,7 @@ npf_create(const npf_mbufops_t *mbufops, const npf_ifops_t *ifops)
 	npf_bpf_sysinit();
 	npf_ifmap_sysinit(npf, ifops);
 	npf_tableset_sysinit();
-	npf_conn_sysinit(npf);
+	npf_conn_sysinit(npf, flags);
 	npf_nat_sysinit();
 	npf_alg_sysinit(npf);
 	npf_ext_sysinit(npf);
@@ -111,6 +111,12 @@ __dso_public int
 npf_load(npf_t *npf, void *ref, npf_error_t *err)
 {
 	return npfctl_load(npf, 0, ref);
+}
+
+__dso_public void
+npf_gc(npf_t *npf)
+{
+	npf_conn_worker(npf);
 }
 
 __dso_public void

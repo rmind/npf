@@ -96,7 +96,7 @@ struct npf_conn {
 /*
  * Connection tracking interface.
  */
-void		npf_conn_sysinit(npf_t *);
+void		npf_conn_sysinit(npf_t *, int);
 void		npf_conn_sysfini(npf_t *);
 void		npf_conn_tracking(npf_t *, bool);
 void		npf_conn_load(npf_t *, npf_conndb_t *, bool);
@@ -113,6 +113,7 @@ int		npf_conn_setnat(const npf_cache_t *, npf_conn_t *,
 		    npf_nat_t *, u_int);
 npf_nat_t *	npf_conn_getnat(npf_conn_t *, const int, bool *);
 void		npf_conn_gc(npf_t *, npf_conndb_t *, bool, bool);
+void		npf_conn_worker(npf_t *);
 int		npf_conn_import(npf_t *, npf_conndb_t *, prop_dictionary_t,
 		    npf_ruleset_t *);
 prop_dictionary_t npf_conn_export(npf_t *, const npf_conn_t *);
