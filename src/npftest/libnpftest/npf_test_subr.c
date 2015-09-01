@@ -55,7 +55,7 @@ npf_test_init(int (*pton_func)(int, const char *, void *),
 {
 	npf_t *npf;
 
-	npf_worker_sysinit(1);
+	npf_sysinit(1);
 	npf = npf_create(0, &npftest_mbufops, &npftest_ifops);
 	npf_setkernctx(npf);
 

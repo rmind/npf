@@ -141,7 +141,7 @@ static void	npf_conn_destroy(npf_t *, npf_conn_t *);
  */
 
 void
-npf_conn_sysinit(npf_t *npf, int flags)
+npf_conn_init(npf_t *npf, int flags)
 {
 	npf->conn_cache = pool_cache_init(sizeof(npf_conn_t), coherency_unit,
 	    0, 0, "npfconpl", NULL, IPL_NET, NULL, NULL, NULL);
@@ -155,7 +155,7 @@ npf_conn_sysinit(npf_t *npf, int flags)
 }
 
 void
-npf_conn_sysfini(npf_t *npf)
+npf_conn_fini(npf_t *npf)
 {
 	/* Note: the caller should have flushed the connections. */
 	KASSERT(npf->conn_tracking == CONN_TRACKING_OFF);

@@ -242,8 +242,8 @@ int		npfctl_table(npf_t *, void *);
 void		npf_stats_inc(npf_t *, npf_stats_t);
 void		npf_stats_dec(npf_t *, npf_stats_t);
 
-void		npf_ifmap_sysinit(npf_t *, const npf_ifops_t *);
-void		npf_ifmap_sysfini(npf_t *);
+void		npf_ifmap_init(npf_t *, const npf_ifops_t *);
+void		npf_ifmap_fini(npf_t *);
 u_int		npf_ifmap_register(npf_t *, const char *);
 void		npf_ifmap_flush(npf_t *);
 u_int		npf_ifmap_getid(npf_t *, const ifnet_t *);
@@ -349,8 +349,8 @@ npf_natpolicy_t *npf_rule_getnat(const npf_rule_t *);
 void		npf_rule_setnat(npf_rule_t *, npf_natpolicy_t *);
 npf_rproc_t *	npf_rule_getrproc(const npf_rule_t *);
 
-void		npf_ext_sysinit(npf_t *);
-void		npf_ext_sysfini(npf_t *);
+void		npf_ext_init(npf_t *);
+void		npf_ext_fini(npf_t *);
 int		npf_ext_construct(npf_t *, const char *,
 		    npf_rproc_t *, prop_dictionary_t);
 
@@ -397,8 +397,8 @@ npf_nat_t *	npf_nat_import(npf_t *, prop_dictionary_t, npf_ruleset_t *,
 		    npf_conn_t *);
 
 /* ALG interface. */
-void		npf_alg_sysinit(npf_t *);
-void		npf_alg_sysfini(npf_t *);
+void		npf_alg_init(npf_t *);
+void		npf_alg_fini(npf_t *);
 npf_alg_t *	npf_alg_register(npf_t *, const char *, const npfa_funcs_t *);
 int		npf_alg_unregister(npf_t *, npf_alg_t *);
 npf_alg_t *	npf_alg_construct(npf_t *, const char *);

@@ -80,14 +80,14 @@ struct npf_rproc {
 };
 
 void
-npf_ext_sysinit(npf_t *npf)
+npf_ext_init(npf_t *npf)
 {
 	mutex_init(&npf->ext_lock, MUTEX_DEFAULT, IPL_NONE);
 	LIST_INIT(&npf->ext_list);
 }
 
 void
-npf_ext_sysfini(npf_t *npf)
+npf_ext_fini(npf_t *npf)
 {
 	KASSERT(LIST_EMPTY(&npf->ext_list));
 	mutex_destroy(&npf->ext_lock);

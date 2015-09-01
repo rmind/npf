@@ -185,8 +185,8 @@ npfkern_pthread_create(lwp_t **lret, void (*func)(void *), void *arg)
 
 #define	kthread_create(pri, flags, ci, func, arg, thr, fmt) \
     npfkern_pthread_create(thr, func, arg)
-#define	kthread_join(t)		{ void *__r; pthread_join((t)->thr, &__r); }
-#define	kthread_exit(x)		pthread_exit(NULL);
+#define	kthread_join(t)	{ void *__r; pthread_join((t)->thr, &__r); free(t); }
+#define	kthread_exit(x)	pthread_exit(NULL);
 
 /*
  * Memory allocators and management.

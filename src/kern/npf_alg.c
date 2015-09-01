@@ -73,7 +73,7 @@ static const char	alg_prefix[] = "npf_alg_";
 #define	NPF_EXT_PREFLEN	(sizeof(alg_prefix) - 1)
 
 void
-npf_alg_sysinit(npf_t *npf)
+npf_alg_init(npf_t *npf)
 {
 	npf_algset_t *aset;
 
@@ -82,7 +82,7 @@ npf_alg_sysinit(npf_t *npf)
 }
 
 void
-npf_alg_sysfini(npf_t *npf)
+npf_alg_fini(npf_t *npf)
 {
 	npf_algset_t *aset = npf->algset;
 

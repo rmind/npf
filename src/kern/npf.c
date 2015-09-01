@@ -53,6 +53,9 @@ static npf_t *	npf_kernel_ctx = NULL __read_mostly;
 __dso_public int
 npf_sysinit(unsigned nworkers)
 {
+	npf_bpf_sysinit();
+	npf_tableset_sysinit();
+	npf_nat_sysinit();
 	return npf_worker_sysinit(nworkers);
 }
 
@@ -60,6 +63,9 @@ __dso_public void
 npf_sysfini(void)
 {
 	npf_worker_sysfini();
+	npf_nat_sysfini();
+	npf_tableset_sysfini();
+	npf_bpf_sysfini();
 }
 
 __dso_public npf_t *
@@ -69,16 +75,17 @@ npf_create(int flags, const npf_mbufops_t *mbufops, const npf_ifops_t *ifops)
 
 	npf = kmem_zalloc(sizeof(npf_t), KM_SLEEP);
 	npf->qsbr = pserialize_create();
+	if (!npf->qsbr) {
+		kmem_free(npf, sizeof(npf_t));
+		return NULL;
+	}
 	npf->stats_percpu = percpu_alloc(NPF_STATS_SIZE);
 	npf->mbufops = mbufops;
 
-	npf_bpf_sysinit();
-	npf_ifmap_sysinit(npf, ifops);
-	npf_tableset_sysinit();
-	npf_conn_sysinit(npf, flags);
-	npf_nat_sysinit();
-	npf_alg_sysinit(npf);
-	npf_ext_sysinit(npf);
+	npf_ifmap_init(npf, ifops);
+	npf_conn_init(npf, flags);
+	npf_alg_init(npf);
+	npf_ext_init(npf);
 
 	/* Load an empty configuration. */
 	npf_config_init(npf);
@@ -95,16 +102,14 @@ npf_destroy(npf_t *npf)
 	npf_config_fini(npf);
 
 	/* Finally, safe to destroy the subsystems. */
-	npf_ext_sysfini(npf);
-	npf_alg_sysfini(npf);
-	npf_nat_sysfini();
-	npf_conn_sysfini(npf);
-	npf_tableset_sysfini();
-	npf_ifmap_sysfini(npf);
-	npf_bpf_sysfini();
+	npf_ext_fini(npf);
+	npf_alg_fini(npf);
+	npf_conn_fini(npf);
+	npf_ifmap_fini(npf);
 
 	pserialize_destroy(npf->qsbr);
 	percpu_free(npf->stats_percpu, NPF_STATS_SIZE);
+	kmem_free(npf, sizeof(npf_t));
 }
 
 __dso_public int

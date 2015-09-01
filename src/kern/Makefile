@@ -53,7 +53,7 @@ OBJS+=		stand/bpf_filter.o
 
 OBJS+=		stand/rb.o stand/ptree.o
 OBJS+=		stand/murmurhash.o stand/subr_hash.o
-OBJS+=		stand/mempool.o stand/tls.o
+OBJS+=		stand/mempool.o stand/tls_pth.o
 
 #
 # Flags for the library target

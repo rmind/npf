@@ -96,8 +96,8 @@ struct npf_conn {
 /*
  * Connection tracking interface.
  */
-void		npf_conn_sysinit(npf_t *, int);
-void		npf_conn_sysfini(npf_t *);
+void		npf_conn_init(npf_t *, int);
+void		npf_conn_fini(npf_t *);
 void		npf_conn_tracking(npf_t *, bool);
 void		npf_conn_load(npf_t *, npf_conndb_t *, bool);
 

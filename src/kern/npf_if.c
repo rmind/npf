@@ -61,7 +61,7 @@ typedef struct npf_ifmap {
 } npf_ifmap_t;
 
 void
-npf_ifmap_sysinit(npf_t *npf, const npf_ifops_t *ifops)
+npf_ifmap_init(npf_t *npf, const npf_ifops_t *ifops)
 {
 	const size_t nbytes = sizeof(npf_ifmap_t) * NPF_MAX_IFMAP;
 
@@ -74,7 +74,7 @@ npf_ifmap_sysinit(npf_t *npf, const npf_ifops_t *ifops)
 }
 
 void
-npf_ifmap_sysfini(npf_t *npf)
+npf_ifmap_fini(npf_t *npf)
 {
 	const size_t nbytes = sizeof(npf_ifmap_t) * NPF_MAX_IFMAP;
 	kmem_free(npf->ifmap, nbytes);
