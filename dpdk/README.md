@@ -33,5 +33,3 @@ describe how to build and run a quick NPF + DPDK demo.
 ## Run the program
 
 	sudo ./build/npf_dpdk_demo -c1 -n1
-
-	This test will generate and process ~1 million packets.
