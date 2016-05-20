@@ -192,6 +192,8 @@ static const uint8_t npf_tcp_fsm[NPF_TCP_NSTATES][2][TCPFC_COUNT] = {
 			[TCPFC_ACK]	= NPF_TCPS_ESTABLISHED,
 			/* FIN may be sent early. */
 			[TCPFC_FIN]	= NPF_TCPS_FIN_SENT,
+			/* Late SYN re-re-transmission. */
+			[TCPFC_SYN]	= NPF_TCPS_OK,
 		},
 		[NPF_FLOW_BACK] = {
 			/* SYN-ACK may be retransmitted. */
