@@ -732,13 +732,20 @@ npf_conn_getnat(npf_conn_t *con, const int di, bool *forw)
 static inline bool
 npf_conn_expired(const npf_conn_t *con, uint64_t tsnow)
 {
-	const u_int etime = npf_state_etime(&con->c_state, con->c_proto);
+	const int etime = npf_state_etime(&con->c_state, con->c_proto);
+	int elapsed;
 
 	if (__predict_false(con->c_flags & CONN_EXPIRE)) {
 		/* Explicitly marked to be expired. */
 		return true;
 	}
-	return (tsnow - con->c_atime) > etime;
+
+	/*
+	 * Note: another thread may update 'atime' and it might
+	 * become greater than 'now'.
+	 */
+	elapsed = (int64_t)tsnow - con->c_atime;
+	return elapsed > etime;
 }
 
 /*
