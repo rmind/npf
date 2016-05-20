@@ -1,4 +1,4 @@
-/*	$NetBSD: npf_nat.c,v 1.39 2014/12/30 19:11:44 christos Exp $	*/
+/*	$NetBSD: npf_nat.c,v 1.40 2016/03/18 10:09:46 mrg Exp $	*/
 
 /*-
  * Copyright (c) 2014 Mindaugas Rasiukevicius <rmind at netbsd org>
@@ -72,7 +72,7 @@
 
 #ifdef _KERNEL
 #include <sys/cdefs.h>
-__KERNEL_RCSID(0, "$NetBSD: npf_nat.c,v 1.39 2014/12/30 19:11:44 christos Exp $");
+__KERNEL_RCSID(0, "$NetBSD: npf_nat.c,v 1.40 2016/03/18 10:09:46 mrg Exp $");
 
 #include <sys/param.h>
 #include <sys/types.h>

@@ -305,6 +305,7 @@ typedef struct ifnet ifnet_t;
 #define	icmp_error(m, t, c, a, b)
 #define	in_cksum(m, len)	0
 
+#define	ip6_sprintf(a)		"[IPv6]"
 #define	ip_defttl		64
 #define	max_linkhdr		0
 
