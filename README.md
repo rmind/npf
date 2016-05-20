@@ -4,8 +4,8 @@ NPF is a layer 3 packet filter, supporting IPv4 and IPv6 as well as layer
 4 protocols such as TCP, UDP, and ICMP.  It was designed with a focus on
 high performance, scalability, and modularity.
 
-NPF was written from scratch in 2009 and is distributed under the
-2-clause BSD license.
+NPF was started from scratch in 2009.  It is written in C99 and is
+distributed under the 2-clause BSD license.
 
 This repository contains a **standalone** version of NPF.
 
