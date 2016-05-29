@@ -1,7 +1,7 @@
-/*	$NetBSD: npf_if.c,v 1.6 2016/05/12 02:24:17 ozaki-r Exp $	*/
+/*	$NetBSD: npf.c,v 1.31 2015/10/29 15:19:43 christos Exp $	*/
 
 /*-
- * Copyright (c) 2009-2013 The NetBSD Foundation, Inc.
+ * Copyright (c) 2009-2016 The NetBSD Foundation, Inc.
  * All rights reserved.
  *
  * This material is based upon work partially supported by The
@@ -35,7 +35,7 @@
 
 #ifdef _KERNEL
 #include <sys/cdefs.h>
-__KERNEL_RCSID(0, "$NetBSD: npf_if.c,v 1.6 2016/05/12 02:24:17 ozaki-r Exp $");
+__KERNEL_RCSID(0, "$NetBSD: npf.c,v 1.31 2015/10/29 15:19:43 christos Exp $");
 
 #ifdef _KERNEL_OPT
 #include "pf.h"
@@ -57,12 +57,28 @@ __KERNEL_RCSID(0, "$NetBSD: npf_if.c,v 1.6 2016/05/12 02:24:17 ozaki-r Exp $");
 
 #include "npf_impl.h"
 
+#ifdef _KERNEL
+#ifndef _MODULE
+#include "opt_modular.h"
+#endif
+#include "ioconf.h"
+#endif
+
 /*
  * Module and device structures.
  */
+#ifndef _MODULE
+/*
+ * Modular kernels load drivers too early, and we need percpu to be inited
+ * So we make this misc; a better way would be to have early boot and late
+ * boot drivers.
+ */
+MODULE(MODULE_CLASS_MISC, npf, NULL);
+#else
+/* This module autoloads via /dev/npf so it needs to be a driver */
 MODULE(MODULE_CLASS_DRIVER, npf, NULL);
+#endif
 
-void		npfattach(int);
 static int	npf_dev_open(dev_t, int, int, lwp_t *);
 static int	npf_dev_close(dev_t, int, int, lwp_t *);
 static int	npf_dev_ioctl(dev_t, u_long, void *, int, lwp_t *);
@@ -103,9 +119,6 @@ static const npf_ifops_t kern_ifops = {
 static int
 npf_init(void)
 {
-#ifdef _MODULE
-	devmajor_t bmajor = NODEVMAJOR, cmajor = NODEVMAJOR;
-#endif
 	npf_t *npf;
 	int error = 0;
 
@@ -117,6 +130,8 @@ npf_init(void)
 	npf_pfil_register(true);
 
 #ifdef _MODULE
+	devmajor_t bmajor = NODEVMAJOR, cmajor = NODEVMAJOR;
+
 	/* Attach /dev/npf device. */
 	error = devsw_attach("npf", NULL, &bmajor, &npf_cdevsw, &cmajor);
 	if (error) {
@@ -167,7 +182,7 @@ npf_modcmd(modcmd_t cmd, void *arg)
 void
 npfattach(int nunits)
 {
-	/* Void. */
+	/* Nothing */
 }
 
 static int
