@@ -20,7 +20,6 @@ file	net/npf/npf_bpf.c			npf
 file	net/npf/npf_ruleset.c			npf
 file	net/npf/npf_rproc.c			npf
 file	net/npf/npf_tableset.c			npf
-file	net/npf/npf_tableset_ptree.c		npf
 file	net/npf/npf_if.c			npf
 file	net/npf/npf_inet.c			npf
 file	net/npf/npf_conn.c			npf

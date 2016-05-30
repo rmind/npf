@@ -25,7 +25,7 @@ CFLAGS+=	-fvisibility=hidden
 CFLAGS+=	-DNDEBUG
 LDFLAGS=	-flto
 endif
-LDFLAGS+=	-lpthread -lpcap -lqsbr -lcdb -lprop -lbpfjit
+LDFLAGS+=	-lpthread -lpcap -lqsbr -llpm -lcdb -lprop -lbpfjit
 ifeq ($(SYSNAME),Linux)
 LDFLAGS+=	-ljemalloc #-lJudy
 endif
@@ -51,8 +51,7 @@ OBJS=		$(shell grep ^file files.npf | cut -f2 | \
 
 OBJS+=		stand/bpf_filter.o
 
-OBJS+=		stand/rb.o stand/ptree.o
-OBJS+=		stand/murmurhash.o stand/subr_hash.o
+OBJS+=		stand/rb.o stand/murmurhash.o stand/subr_hash.o
 OBJS+=		stand/mempool.o stand/tls_pth.o
 
 #

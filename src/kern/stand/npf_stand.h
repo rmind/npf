@@ -57,6 +57,7 @@
 
 #include <prop/proplib.h>
 #include <qsbr/qsbr.h>
+#include <lpm.h>
 #include <cdbr.h>
 
 #ifdef USE_JUDY
@@ -66,7 +67,6 @@
 #include "cext.h"
 
 #include "mempool.h"
-#include "ptree.h"
 #include "rbtree.h"
 #include "bpf.h"
 

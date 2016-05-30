@@ -9,6 +9,11 @@ describe how to build and run a quick NPF + DPDK demo.
 
 	TBD
 
+- Install liblpm RPM package:
+
+	git clone https://github.com/rmind/liblpm
+	cd libcdb/pkg && make rpm && rpm -ihv RPMS/x86_64/liblpm-*
+
 - Install libcdb RPM package:
 
 	git clone https://github.com/rmind/libcdb

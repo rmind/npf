@@ -64,7 +64,7 @@ __KERNEL_RCSID(0, "$NetBSD: npf_tableset.c,v 1.23 2016/04/20 15:46:08 christos E
 typedef struct npf_tblent {
 	union {
 		LIST_ENTRY(npf_tblent) te_hashent;
-		pt_node_t	te_node;
+		unsigned	te_preflen;
 	} /* C11 */;
 	int			te_alen;
 	npf_addr_t		te_addr;
@@ -83,7 +83,8 @@ struct npf_table {
 			u_long		t_hashmask;
 		};
 		struct {
-			pt_tree_t	t_tree[2];
+			lpm_t *		t_lpm;
+			LIST_HEAD(, npf_tblent) t_list;
 		};
 		struct {
 			void *		t_blob;
@@ -322,14 +323,15 @@ table_hash_destroy(npf_table_t *t)
 }
 
 static void
-table_tree_destroy(pt_tree_t *tree)
+table_tree_destroy(npf_table_t *t)
 {
 	npf_tblent_t *ent;
 
-	while ((ent = ptree_iterate(tree, NULL, PT_ASCENDING)) != NULL) {
-		ptree_remove_node(tree, ent);
+	while ((ent = LIST_FIRST(&t->t_list)) != NULL) {
+		LIST_REMOVE(ent, te_hashent);
 		pool_cache_put(tblent_cache, ent);
 	}
+	lpm_flush(t->t_lpm, NULL, NULL);
 }
 
 /*
@@ -346,14 +348,11 @@ npf_table_create(const char *name, u_int tid, int type,
 
 	switch (type) {
 	case NPF_TABLE_TREE:
-		ptree_init(&t->t_tree[0], &npf_table_ptree_ops,
-		    (void *)(sizeof(struct in_addr) / sizeof(uint32_t)),
-		    offsetof(npf_tblent_t, te_node),
-		    offsetof(npf_tblent_t, te_addr));
-		ptree_init(&t->t_tree[1], &npf_table_ptree_ops,
-		    (void *)(sizeof(struct in6_addr) / sizeof(uint32_t)),
-		    offsetof(npf_tblent_t, te_node),
-		    offsetof(npf_tblent_t, te_addr));
+		if ((t->t_lpm = lpm_create()) == NULL) {
+			kmem_free(t, sizeof(npf_table_t));
+			return NULL;
+		}
+		LIST_INIT(&t->t_list);
 		break;
 	case NPF_TABLE_HASH:
 		t->t_hashl = hashinit(1024, HASH_LIST, true, &t->t_hashmask);
@@ -397,8 +396,8 @@ npf_table_destroy(npf_table_t *t)
 		hashdone(t->t_hashl, HASH_LIST, t->t_hashmask);
 		break;
 	case NPF_TABLE_TREE:
-		table_tree_destroy(&t->t_tree[0]);
-		table_tree_destroy(&t->t_tree[1]);
+		table_tree_destroy(t);
+		lpm_destroy(t->t_lpm);
 		break;
 	case NPF_TABLE_CDB:
 		cdbr_close(t->t_cdb);
@@ -504,16 +503,11 @@ npf_table_insert(npf_table_t *t, const int alen,
 		break;
 	}
 	case NPF_TABLE_TREE: {
-		pt_tree_t *tree = &t->t_tree[aidx];
-		bool ok;
-
-		/*
-		 * If no mask specified, use maximum mask.
-		 */
-		ok = (mask != NPF_NO_NETMASK) ?
-		    ptree_insert_mask_node(tree, ent, mask) :
-		    ptree_insert_node(tree, ent);
-		if (ok) {
+		const unsigned preflen =
+		    (mask == NPF_NO_NETMASK) ? mask : mask * 8;
+		if (lpm_insert(t->t_lpm, addr, alen, preflen, ent) == 0) {
+			LIST_INSERT_HEAD(&t->t_list, ent, te_hashent);
+			ent->te_preflen = preflen;
 			t->t_nitems++;
 			error = 0;
 		} else {
@@ -564,11 +558,11 @@ npf_table_remove(npf_table_t *t, const int alen,
 		break;
 	}
 	case NPF_TABLE_TREE: {
-		pt_tree_t *tree = &t->t_tree[aidx];
-
-		ent = ptree_find_node(tree, addr);
+		ent = lpm_lookup(t->t_lpm, addr, alen);
 		if (__predict_true(ent != NULL)) {
-			ptree_remove_node(tree, ent);
+			LIST_REMOVE(ent, te_hashent);
+			lpm_remove(t->t_lpm, &ent->te_addr,
+			    ent->te_alen, ent->te_preflen);
 			t->t_nitems--;
 		}
 		break;
@@ -613,7 +607,7 @@ npf_table_lookup(npf_table_t *t, const int alen, const npf_addr_t *addr)
 		break;
 	case NPF_TABLE_TREE:
 		rw_enter(&t->t_lock, RW_READER);
-		found = ptree_find_node(&t->t_tree[aidx], addr) != NULL;
+		found = lpm_lookup(t->t_lpm, addr, alen) != NULL;
 		rw_exit(&t->t_lock);
 		break;
 	case NPF_TABLE_CDB:
@@ -669,20 +663,15 @@ table_hash_list(const npf_table_t *t, void *ubuf, size_t len)
 }
 
 static int
-table_tree_list(pt_tree_t *tree, npf_netmask_t maxmask, void *ubuf,
-    size_t len, size_t *off)
+table_tree_list(const npf_table_t *t, void *ubuf, size_t len)
 {
-	npf_tblent_t *ent = NULL;
+	npf_tblent_t *ent;
+	size_t off = 0;
 	int error = 0;
 
-	while ((ent = ptree_iterate(tree, ent, PT_ASCENDING)) != NULL) {
-		pt_bitlen_t blen;
-
-		if (!ptree_mask_node_p(tree, ent, &blen)) {
-			blen = maxmask;
-		}
-		error = table_ent_copyout(&ent->te_addr, ent->te_alen,
-		    blen, ubuf, len, off);
+	LIST_FOREACH(ent, &t->t_list, te_hashent) {
+		error = table_ent_copyout(&ent->te_addr,
+		    ent->te_alen, 0, ubuf, len, &off);
 		if (error)
 			break;
 	}
@@ -722,10 +711,7 @@ npf_table_list(npf_table_t *t, void *ubuf, size_t len)
 		error = table_hash_list(t, ubuf, len);
 		break;
 	case NPF_TABLE_TREE:
-		error = table_tree_list(&t->t_tree[0], 32, ubuf, len, &off);
-		if (error)
-			break;
-		error = table_tree_list(&t->t_tree[1], 128, ubuf, len, &off);
+		error = table_tree_list(t, ubuf, len);
 		break;
 	case NPF_TABLE_CDB:
 		error = table_cdb_list(t, ubuf, len);
@@ -753,8 +739,7 @@ npf_table_flush(npf_table_t *t)
 		t->t_nitems = 0;
 		break;
 	case NPF_TABLE_TREE:
-		table_tree_destroy(&t->t_tree[0]);
-		table_tree_destroy(&t->t_tree[1]);
+		table_tree_destroy(t);
 		t->t_nitems = 0;
 		break;
 	case NPF_TABLE_CDB:

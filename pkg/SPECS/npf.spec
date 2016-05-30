@@ -1,5 +1,5 @@
 Name:		npf
-Version:	0.1
+Version:	0.2.0
 Release:	1%{?dist}
 Summary:	Standalone NPF package
 License:	BSD
@@ -8,12 +8,14 @@ Source0:	npf.tar.gz
 
 BuildRequires:	make
 BuildRequires:	libtool
+BuildRequires:	liblpm
 BuildRequires:	libqsbr
 Requires:	libbpfjit
 #BuildRequires:	libcdb-devel
 #BuildRequires:	libprop-devel
 
 Requires:	libqsbr
+Requires:	liblpm
 Requires:	libcdb
 Requires:	libprop
 Requires:	libbpfjit

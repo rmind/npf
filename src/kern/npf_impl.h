@@ -50,7 +50,6 @@
 #ifdef _KERNEL
 #include <sys/types.h>
 #include <sys/queue.h>
-#include <sys/ptree.h>
 #include <sys/rbtree.h>
 
 #include <net/bpf.h>
@@ -293,8 +292,6 @@ bool		npf_bpf_validate(const void *, size_t);
 /* Tableset interface. */
 void		npf_tableset_sysinit(void);
 void		npf_tableset_sysfini(void);
-
-extern const pt_tree_ops_t npf_table_ptree_ops;
 
 npf_tableset_t *npf_tableset_create(u_int);
 void		npf_tableset_destroy(npf_tableset_t *);
