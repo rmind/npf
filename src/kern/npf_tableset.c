@@ -1,7 +1,7 @@
 /*	$NetBSD: npf_tableset.c,v 1.23 2016/04/20 15:46:08 christos Exp $	*/
 
 /*-
- * Copyright (c) 2009-2014 The NetBSD Foundation, Inc.
+ * Copyright (c) 2009-2016 The NetBSD Foundation, Inc.
  * All rights reserved.
  *
  * This material is based upon work partially supported by The
@@ -62,11 +62,9 @@ __KERNEL_RCSID(0, "$NetBSD: npf_tableset.c,v 1.23 2016/04/20 15:46:08 christos E
 #include "npf_impl.h"
 
 typedef struct npf_tblent {
-	union {
-		LIST_ENTRY(npf_tblent) te_hashent;
-		unsigned	te_preflen;
-	} /* C11 */;
-	int			te_alen;
+	LIST_ENTRY(npf_tblent)	te_listent;
+	uint16_t		te_preflen;
+	uint16_t		te_alen;
 	npf_addr_t		te_addr;
 } npf_tblent_t;
 
@@ -297,7 +295,7 @@ table_hash_lookup(const npf_table_t *t, const npf_addr_t *addr,
 	 * Lookup the hash table and check for duplicates.
 	 * Note: mask is ignored for the hash storage.
 	 */
-	LIST_FOREACH(ent, htbl, te_hashent) {
+	LIST_FOREACH(ent, htbl, te_listent) {
 		if (ent->te_alen != alen) {
 			continue;
 		}
@@ -310,25 +308,25 @@ table_hash_lookup(const npf_table_t *t, const npf_addr_t *addr,
 }
 
 static void
-table_hash_destroy(npf_table_t *t)
+table_hash_flush(npf_table_t *t)
 {
 	for (unsigned n = 0; n <= t->t_hashmask; n++) {
 		npf_tblent_t *ent;
 
 		while ((ent = LIST_FIRST(&t->t_hashl[n])) != NULL) {
-			LIST_REMOVE(ent, te_hashent);
+			LIST_REMOVE(ent, te_listent);
 			pool_cache_put(tblent_cache, ent);
 		}
 	}
 }
 
 static void
-table_tree_destroy(npf_table_t *t)
+table_tree_flush(npf_table_t *t)
 {
 	npf_tblent_t *ent;
 
 	while ((ent = LIST_FIRST(&t->t_list)) != NULL) {
-		LIST_REMOVE(ent, te_hashent);
+		LIST_REMOVE(ent, te_listent);
 		pool_cache_put(tblent_cache, ent);
 	}
 	lpm_flush(t->t_lpm, NULL, NULL);
@@ -392,11 +390,11 @@ npf_table_destroy(npf_table_t *t)
 
 	switch (t->t_type) {
 	case NPF_TABLE_HASH:
-		table_hash_destroy(t);
+		table_hash_flush(t);
 		hashdone(t->t_hashl, HASH_LIST, t->t_hashmask);
 		break;
 	case NPF_TABLE_TREE:
-		table_tree_destroy(t);
+		table_tree_flush(t);
 		lpm_destroy(t->t_lpm);
 		break;
 	case NPF_TABLE_CDB:
@@ -495,7 +493,7 @@ npf_table_insert(npf_table_t *t, const int alen,
 			break;
 		}
 		if (!table_hash_lookup(t, addr, alen, &htbl)) {
-			LIST_INSERT_HEAD(htbl, ent, te_hashent);
+			LIST_INSERT_HEAD(htbl, ent, te_listent);
 			t->t_nitems++;
 		} else {
 			error = EEXIST;
@@ -504,9 +502,10 @@ npf_table_insert(npf_table_t *t, const int alen,
 	}
 	case NPF_TABLE_TREE: {
 		const unsigned preflen =
-		    (mask == NPF_NO_NETMASK) ? mask : mask * 8;
-		if (lpm_insert(t->t_lpm, addr, alen, preflen, ent) == 0) {
-			LIST_INSERT_HEAD(&t->t_list, ent, te_hashent);
+		    (mask == NPF_NO_NETMASK) ? (alen * 8) : mask;
+		if (lpm_lookup(t->t_lpm, addr, alen) == NULL &&
+		    lpm_insert(t->t_lpm, addr, alen, preflen, ent) == 0) {
+			LIST_INSERT_HEAD(&t->t_list, ent, te_listent);
 			ent->te_preflen = preflen;
 			t->t_nitems++;
 			error = 0;
@@ -552,7 +551,7 @@ npf_table_remove(npf_table_t *t, const int alen,
 
 		ent = table_hash_lookup(t, addr, alen, &htbl);
 		if (__predict_true(ent != NULL)) {
-			LIST_REMOVE(ent, te_hashent);
+			LIST_REMOVE(ent, te_listent);
 			t->t_nitems--;
 		}
 		break;
@@ -560,7 +559,7 @@ npf_table_remove(npf_table_t *t, const int alen,
 	case NPF_TABLE_TREE: {
 		ent = lpm_lookup(t->t_lpm, addr, alen);
 		if (__predict_true(ent != NULL)) {
-			LIST_REMOVE(ent, te_hashent);
+			LIST_REMOVE(ent, te_listent);
 			lpm_remove(t->t_lpm, &ent->te_addr,
 			    ent->te_alen, ent->te_preflen);
 			t->t_nitems--;
@@ -652,7 +651,7 @@ table_hash_list(const npf_table_t *t, void *ubuf, size_t len)
 	for (unsigned n = 0; n <= t->t_hashmask; n++) {
 		npf_tblent_t *ent;
 
-		LIST_FOREACH(ent, &t->t_hashl[n], te_hashent) {
+		LIST_FOREACH(ent, &t->t_hashl[n], te_listent) {
 			error = table_ent_copyout(&ent->te_addr,
 			    ent->te_alen, 0, ubuf, len, &off);
 			if (error)
@@ -669,7 +668,7 @@ table_tree_list(const npf_table_t *t, void *ubuf, size_t len)
 	size_t off = 0;
 	int error = 0;
 
-	LIST_FOREACH(ent, &t->t_list, te_hashent) {
+	LIST_FOREACH(ent, &t->t_list, te_listent) {
 		error = table_ent_copyout(&ent->te_addr,
 		    ent->te_alen, 0, ubuf, len, &off);
 		if (error)
@@ -735,11 +734,11 @@ npf_table_flush(npf_table_t *t)
 	rw_enter(&t->t_lock, RW_WRITER);
 	switch (t->t_type) {
 	case NPF_TABLE_HASH:
-		table_hash_destroy(t);
+		table_hash_flush(t);
 		t->t_nitems = 0;
 		break;
 	case NPF_TABLE_TREE:
-		table_tree_destroy(t);
+		table_tree_flush(t);
 		t->t_nitems = 0;
 		break;
 	case NPF_TABLE_CDB:
