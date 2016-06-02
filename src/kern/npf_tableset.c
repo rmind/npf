@@ -329,7 +329,7 @@ table_tree_flush(npf_table_t *t)
 		LIST_REMOVE(ent, te_listent);
 		pool_cache_put(tblent_cache, ent);
 	}
-	lpm_flush(t->t_lpm, NULL, NULL);
+	lpm_clear(t->t_lpm, NULL, NULL);
 }
 
 /*

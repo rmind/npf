@@ -8,7 +8,7 @@ Source0:	npf.tar.gz
 
 BuildRequires:	make
 BuildRequires:	libtool
-BuildRequires:	liblpm
+BuildRequires:	liblpm >= 0.2.0
 BuildRequires:	libqsbr
 Requires:	libbpfjit
 #BuildRequires:	libcdb-devel
