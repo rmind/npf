@@ -269,6 +269,8 @@ npf_rprocset_export(const npf_rprocset_t *rpset, prop_array_t rprocs)
 
 	LIST_FOREACH(rp, &rpset->rps_list, rp_entry) {
 		rpdict = prop_dictionary_create();
+		prop_array_t extcalls = prop_array_create();
+		prop_dictionary_set_and_rel(rpdict, "extcalls", extcalls);
 		prop_dictionary_set_cstring(rpdict, "name", rp->rp_name);
 		prop_dictionary_set_uint32(rpdict, "flags", rp->rp_flags);
 		prop_array_add(rprocs, rpdict);

@@ -42,7 +42,7 @@ __KERNEL_RCSID(0, "$NetBSD: npf_ext_rndblock.c,v 1.5 2014/07/20 00:37:41 rmind E
 #include <sys/kmem.h>
 #endif
 
-#include "npf.h"
+#include "npf_impl.h"
 
 /*
  * NPF extension module definition and the identifier.
@@ -148,6 +148,7 @@ npf_ext_rndblock_modcmd(modcmd_t cmd, void *arg)
 		.dtor		= npf_ext_rndblock_dtor,
 		.proc		= npf_ext_rndblock
 	};
+	npf_t *npf = npf_getkernctx();
 
 	switch (cmd) {
 	case MODULE_CMD_INIT:
@@ -156,7 +157,7 @@ npf_ext_rndblock_modcmd(modcmd_t cmd, void *arg)
 		 * "rndblock" extensions calls (constructor, destructor,
 		 * the processing * routine, etc).
 		 */
-		npf_ext_rndblock_id = npf_ext_register("rndblock",
+		npf_ext_rndblock_id = npf_ext_register(npf, "rndblock",
 		    &npf_rndblock_ops);
 		return npf_ext_rndblock_id ? 0 : EEXIST;
 
@@ -165,7 +166,7 @@ npf_ext_rndblock_modcmd(modcmd_t cmd, void *arg)
 		 * Unregister our rndblock extension.  NPF may return an
 		 * if there are references and it cannot drain them.
 		 */
-		return npf_ext_unregister(npf_ext_rndblock_id);
+		return npf_ext_unregister(npf, npf_ext_rndblock_id);
 
 	case MODULE_CMD_AUTOUNLOAD:
 		/* Allow auto-unload only if NPF permits it. */

@@ -423,7 +423,7 @@ npf_alg_icmp_init(void)
 		.translate	= npfa_icmp_nat,
 		.inspect	= npfa_icmp_conn,
 	};
-	alg_icmp = npf_alg_register("icmp", &icmp);
+	alg_icmp = npf_alg_register(npf_getkernctx(), "icmp", &icmp);
 	return alg_icmp ? 0 : ENOMEM;
 }
 
@@ -431,7 +431,7 @@ static int
 npf_alg_icmp_fini(void)
 {
 	KASSERT(alg_icmp != NULL);
-	return npf_alg_unregister(alg_icmp);
+	return npf_alg_unregister(npf_getkernctx(), alg_icmp);
 }
 
 static int

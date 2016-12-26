@@ -35,7 +35,7 @@
 
 #ifdef _KERNEL
 #include <sys/cdefs.h>
-__KERNEL_RCSID(0, "$NetBSD: npf.c,v 1.22 2014/07/25 08:10:40 dholland Exp $");
+__KERNEL_RCSID(0, "$NetBSD: npf.c,v 1.32 2016/12/10 05:41:10 christos Exp $");
 
 #include <sys/param.h>
 #include <sys/types.h>
@@ -48,7 +48,7 @@ __KERNEL_RCSID(0, "$NetBSD: npf.c,v 1.22 2014/07/25 08:10:40 dholland Exp $");
 #include "npf_impl.h"
 #include "npf_conn.h"
 
-static npf_t *	npf_kernel_ctx = NULL __read_mostly;
+__read_mostly static npf_t *	npf_kernel_ctx = NULL;
 
 __dso_public int
 npf_sysinit(unsigned nworkers)

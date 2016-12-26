@@ -58,11 +58,6 @@ __KERNEL_RCSID(0, "$NetBSD: npf_handler.c,v 1.33 2014/07/23 01:25:34 rmind Exp $
 #include "npf_impl.h"
 #include "npf_conn.h"
 
-static bool		pfil_registered = false;
-static pfil_head_t *	npf_ph_if = NULL;
-static pfil_head_t *	npf_ph_inet = NULL;
-static pfil_head_t *	npf_ph_inet6 = NULL;
-
 #if defined(_NPF_STANDALONE)
 #define	m_freem(m)		npf->mbufops->free(m)
 #define	m_clear_flag(m,f)
@@ -135,6 +130,7 @@ npf_packet_handler(npf_t *npf, struct mbuf **mp, ifnet_t *ifp, int di)
 	npf_rule_t *rl;
 	npf_rproc_t *rp;
 	int error, retfl;
+	uint32_t ntag;
 	int decision;
 
 	/* QSBR checkpoint. */
@@ -169,6 +165,12 @@ npf_packet_handler(npf_t *npf, struct mbuf **mp, ifnet_t *ifp, int di)
 			/* More fragments should come; return. */
 			return 0;
 		}
+	}
+
+	/* Just pass-through if specially tagged. */
+	if (nbuf_find_tag(&nbuf, &ntag) == 0 && (ntag & NPF_NTAG_PASS) != 0) {
+		con = NULL;
+		goto pass;
 	}
 
 	/* Inspect the list of connections (if found, acquires a reference). */
@@ -302,121 +304,3 @@ out:
 	}
 	return error;
 }
-
-#ifdef _KERNEL
-/*
- * npf_ifhook: hook handling interface changes.
- */
-static int
-npf_ifhook(void *arg, struct mbuf **mp, ifnet_t *ifp, int di)
-{
-	u_long cmd = (u_long)mp;
-
-	if (di == PFIL_IFNET) {
-		switch (cmd) {
-		case PFIL_IFNET_ATTACH:
-			npf_ifmap_attach(ifp);
-			break;
-		case PFIL_IFNET_DETACH:
-			npf_ifmap_detach(ifp);
-			break;
-		}
-	}
-	return 0;
-}
-
-/*
- * npf_pfil_register: register pfil(9) hooks.
- */
-int
-npf_pfil_register(bool init)
-{
-	npf_t *npf = npf_getkernctx();
-	int error = 0;
-
-	mutex_enter(softnet_lock);
-	KERNEL_LOCK(1, NULL);
-
-	/* Init: interface re-config and attach/detach hook. */
-	if (!npf_ph_if) {
-		npf_ph_if = pfil_head_get(PFIL_TYPE_IFNET, 0);
-		if (!npf_ph_if) {
-			error = ENOENT;
-			goto out;
-		}
-		error = pfil_add_hook(npf_ifhook, NULL,
-		    PFIL_IFADDR | PFIL_IFNET, npf_ph_if);
-		KASSERT(error == 0);
-	}
-	if (init) {
-		goto out;
-	}
-
-	/* Check if pfil hooks are not already registered. */
-	if (pfil_registered) {
-		error = EEXIST;
-		goto out;
-	}
-
-	/* Capture points of the activity in the IP layer. */
-	npf_ph_inet = pfil_head_get(PFIL_TYPE_AF, (void *)AF_INET);
-	npf_ph_inet6 = pfil_head_get(PFIL_TYPE_AF, (void *)AF_INET6);
-	if (!npf_ph_inet && !npf_ph_inet6) {
-		error = ENOENT;
-		goto out;
-	}
-
-	/* Packet IN/OUT handlers for IP layer. */
-	if (npf_ph_inet) {
-		error = pfil_add_hook(npf_packet_handler, npf,
-		    PFIL_ALL, npf_ph_inet);
-		KASSERT(error == 0);
-	}
-	if (npf_ph_inet6) {
-		error = pfil_add_hook(npf_packet_handler, npf,
-		    PFIL_ALL, npf_ph_inet6);
-		KASSERT(error == 0);
-	}
-	pfil_registered = true;
-out:
-	KERNEL_UNLOCK_ONE(NULL);
-	mutex_exit(softnet_lock);
-
-	return error;
-}
-
-/*
- * npf_pfil_unregister: unregister pfil(9) hooks.
- */
-void
-npf_pfil_unregister(bool fini)
-{
-	npf_t *npf = npf_getkernctx();
-
-	mutex_enter(softnet_lock);
-	KERNEL_LOCK(1, NULL);
-
-	if (fini && npf_ph_if) {
-		(void)pfil_remove_hook(npf_ifhook, NULL,
-		    PFIL_IFADDR | PFIL_IFNET, npf_ph_if);
-	}
-	if (npf_ph_inet) {
-		(void)pfil_remove_hook(npf_packet_handler, npf,
-		    PFIL_ALL, npf_ph_inet);
-	}
-	if (npf_ph_inet6) {
-		(void)pfil_remove_hook(npf_packet_handler, npf,
-		    PFIL_ALL, npf_ph_inet6);
-	}
-	pfil_registered = false;
-
-	KERNEL_UNLOCK_ONE(NULL);
-	mutex_exit(softnet_lock);
-}
-
-bool
-npf_pfil_registered_p(void)
-{
-	return pfil_registered;
-}
-#endif

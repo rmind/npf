@@ -110,6 +110,7 @@ npf_return_tcp(npf_cache_t *npc)
 	m->m_data += max_linkhdr;
 	m->m_len = len;
 	m->m_pkthdr.len = len;
+	(void)npf;
 #endif
 	if (npf_iscached(npc, NPC_IP4)) {
 		struct ip *oip = npc->npc_ip.v4;

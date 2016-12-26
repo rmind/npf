@@ -1,4 +1,4 @@
-/*	$NetBSD: npf_mbuf.c,v 1.16 2016/03/18 10:09:46 mrg Exp $	*/
+/*	$NetBSD: npf_mbuf.c,v 1.17 2016/12/08 23:07:11 rmind Exp $	*/
 
 /*-
  * Copyright (c) 2009-2012 The NetBSD Foundation, Inc.
@@ -38,7 +38,7 @@
 
 #ifdef _KERNEL
 #include <sys/cdefs.h>
-__KERNEL_RCSID(0, "$NetBSD: npf_mbuf.c,v 1.16 2016/03/18 10:09:46 mrg Exp $");
+__KERNEL_RCSID(0, "$NetBSD: npf_mbuf.c,v 1.17 2016/12/08 23:07:11 rmind Exp $");
 
 #include <sys/param.h>
 #include <sys/mbuf.h>
@@ -49,13 +49,13 @@ __KERNEL_RCSID(0, "$NetBSD: npf_mbuf.c,v 1.16 2016/03/18 10:09:46 mrg Exp $");
 #if defined(_NPF_STANDALONE)
 #define	m_length(m)		(nbuf)->nb_mops->getchainlen(m)
 #define	m_buflen(m)		(nbuf)->nb_mops->getlen(m)
-#define	m_next(m)		(nbuf)->nb_mops->getnext(m)
+#define	m_next_ptr(m)		(nbuf)->nb_mops->getnext(m)
 #define	m_ensure_contig(m,t)	(nbuf)->nb_mops->ensure_contig((m), (t))
 #define	m_makewritable(m,o,l,f)	(nbuf)->nb_mops->ensure_writable((m), (o+l))
 #define	mtod(m,t)		((t)((nbuf)->nb_mops->getdata(m)))
 #define	m_flags_p(m,f)		true
 #else
-#define	m_next(m)		(m)->m_next
+#define	m_next_ptr(m)		(m)->m_next
 #define	m_buflen(m)		(m)->m_len
 #define	m_flags_p(m,f)		(((m)->m_flags & (f)) != 0)
 #endif
@@ -142,7 +142,7 @@ nbuf_advance(nbuf_t *nbuf, size_t len, size_t ensure)
 
 	/* Find the mbuf according to offset. */
 	while (__predict_false(wmark <= off)) {
-		m = m_next(m);
+		m = m_next_ptr(m);
 		if (__predict_false(m == NULL)) {
 			/*
 			 * If end of the chain, then the offset is
@@ -289,15 +289,15 @@ nbuf_cksum_barrier(nbuf_t *nbuf, int di)
 	return false;
 }
 
-#ifdef _KERNEL
 /*
  * nbuf_add_tag: add a tag to specified network buffer.
  *
  * => Returns 0 on success or errno on failure.
  */
 int
-nbuf_add_tag(nbuf_t *nbuf, uint32_t key, uint32_t val)
+nbuf_add_tag(nbuf_t *nbuf, uint32_t val)
 {
+#ifdef _KERNEL
 	struct mbuf *m = nbuf->nb_mbuf0;
 	struct m_tag *mt;
 	uint32_t *dat;
@@ -312,6 +312,10 @@ nbuf_add_tag(nbuf_t *nbuf, uint32_t key, uint32_t val)
 	*dat = val;
 	m_tag_prepend(m, mt);
 	return 0;
+#else
+	(void)nbuf; (void)val;
+	return ENOTSUP;
+#endif
 }
 
 /*
@@ -320,8 +324,9 @@ nbuf_add_tag(nbuf_t *nbuf, uint32_t key, uint32_t val)
  * => Returns 0 on success or errno on failure.
  */
 int
-nbuf_find_tag(nbuf_t *nbuf, uint32_t key, void **data)
+nbuf_find_tag(nbuf_t *nbuf, uint32_t *val)
 {
+#ifdef _KERNEL
 	struct mbuf *m = nbuf->nb_mbuf0;
 	struct m_tag *mt;
 
@@ -331,7 +336,10 @@ nbuf_find_tag(nbuf_t *nbuf, uint32_t key, void **data)
 	if (mt == NULL) {
 		return EINVAL;
 	}
-	*data = (void *)(mt + 1);
+	*val = *(uint32_t *)(mt + 1);
 	return 0;
-}
+#else
+	(void)nbuf; (void)val;
+	return ENOTSUP;
 #endif
+}

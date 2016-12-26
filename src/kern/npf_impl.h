@@ -229,13 +229,12 @@ void		npf_worker_signal(npf_t *);
 void		npf_worker_register(npf_t *, npf_workfunc_t);
 void		npf_worker_unregister(npf_t *, npf_workfunc_t);
 
-void		npflogattach(int);
-void		npflogdetach(void);
 int		npfctl_switch(void *);
 int		npfctl_reload(u_long, void *);
 int		npfctl_save(npf_t *, u_long, void *);
 int		npfctl_load(npf_t *, u_long, void *);
 int		npfctl_rule(npf_t *, u_long, void *);
+int		npfctl_conn_lookup(npf_t *, u_long, void *);
 int		npfctl_table(npf_t *, void *);
 
 void		npf_stats_inc(npf_t *, npf_stats_t);
@@ -405,12 +404,19 @@ npf_conn_t *	npf_alg_conn(npf_cache_t *, int);
 prop_array_t	npf_alg_export(npf_t *);
 
 /* Debugging routines. */
-void		npf_setkernctx(npf_t *);
-npf_t *		npf_getkernctx(void);
 const char *	npf_addr_dump(const npf_addr_t *, int);
 void		npf_state_dump(const npf_state_t *);
 void		npf_nat_dump(const npf_nat_t *);
 void		npf_ruleset_dump(npf_t *, const char *);
 void		npf_state_setsampler(void (*)(npf_state_t *, bool));
+
+/* In-kernel routines. */
+void		npf_setkernctx(npf_t *);
+npf_t *		npf_getkernctx(void);
+
+#ifdef __NetBSD__
+#define	pserialize_register(x)
+#define	pserialize_checkpoint(x)
+#endif
 
 #endif	/* _NPF_IMPL_H_ */

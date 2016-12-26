@@ -85,6 +85,7 @@ npf_log(npf_cache_t *npc, void *meta, int *decision)
 {
 	struct mbuf *m = nbuf_head_mbuf(npc->npc_nbuf);
 	const npf_ext_log_t *log = meta;
+	struct psref psref;
 	ifnet_t *ifp;
 	int family;
 
@@ -100,7 +101,7 @@ npf_log(npf_cache_t *npc, void *meta, int *decision)
 	KERNEL_LOCK(1, NULL);
 
 	/* Find a pseudo-interface to log. */
-	ifp = if_byindex(log->if_idx);
+	ifp = if_get_byindex(log->if_idx, &psref);
 	if (ifp == NULL) {
 		/* No interface. */
 		KERNEL_UNLOCK_ONE(NULL);
@@ -111,6 +112,8 @@ npf_log(npf_cache_t *npc, void *meta, int *decision)
 	ifp->if_opackets++;
 	ifp->if_obytes += m->m_pkthdr.len;
 	bpf_mtap_af(ifp, family, m);
+	if_put(ifp, &psref);
+
 	KERNEL_UNLOCK_ONE(NULL);
 
 	return true;
@@ -129,6 +132,7 @@ npf_ext_log_modcmd(modcmd_t cmd, void *arg)
 		.dtor		= npf_log_dtor,
 		.proc		= npf_log
 	};
+	npf_t *npf = npf_getkernctx();
 	int error;
 
 	switch (cmd) {
@@ -136,14 +140,14 @@ npf_ext_log_modcmd(modcmd_t cmd, void *arg)
 		/*
 		 * Initialise the NPF logging extension.
 		 */
-		npf_ext_log_id = npf_ext_register("log", &npf_log_ops);
+		npf_ext_log_id = npf_ext_register(npf, "log", &npf_log_ops);
 		if (!npf_ext_log_id) {
 			return EEXIST;
 		}
 		break;
 
 	case MODULE_CMD_FINI:
-		error = npf_ext_unregister(npf_ext_log_id);
+		error = npf_ext_unregister(npf, npf_ext_log_id);
 		if (error) {
 			return error;
 		}

@@ -1,4 +1,4 @@
-/*	$NetBSD: npf_ctl.c,v 1.42 2015/06/08 01:00:43 rmind Exp $	*/
+/*	$NetBSD: npf_ctl.c,v 1.44 2016/12/10 05:41:10 christos Exp $	*/
 
 /*-
  * Copyright (c) 2009-2014 The NetBSD Foundation, Inc.
@@ -38,7 +38,7 @@
 
 #ifdef _KERNEL
 #include <sys/cdefs.h>
-__KERNEL_RCSID(0, "$NetBSD: npf_ctl.c,v 1.42 2015/06/08 01:00:43 rmind Exp $");
+__KERNEL_RCSID(0, "$NetBSD: npf_ctl.c,v 1.44 2016/12/10 05:41:10 christos Exp $");
 
 #include <sys/param.h>
 #include <sys/conf.h>
@@ -613,7 +613,6 @@ fail:
 	/*
 	 * Note: destroy rulesets first, to drop references to the tableset.
 	 */
-	KASSERT(error == 0 || (nset || rpset || rlset || tblset));
 	if (nset) {
 		npf_ruleset_destroy(nset);
 	}
@@ -714,6 +713,40 @@ out:
 		prop_object_release(npf_dict);
 #endif
 	}
+	return error;
+}
+
+/*
+ * npfctl_conn_lookup: lookup a connection in the list of connections
+ */
+int
+npfctl_conn_lookup(npf_t *npf, u_long cmd, void *data)
+{
+	struct plistref *pref = data;
+	prop_dictionary_t conn_data, conn_result;
+	int error;
+
+#if !defined(_NPF_STANDALONE)
+	error = prop_dictionary_copyin_ioctl(pref, cmd, &conn_data);
+	if (error) {
+		return error;
+	}
+#else
+	conn_data = (prop_dictionary_t)pref;
+#endif
+	error = npf_conn_find(npf, conn_data, &conn_result);
+	if (error) {
+		goto out;
+	}
+#if !defined(_NPF_STANDALONE)
+	prop_dictionary_copyout_ioctl(pref, cmd, conn_result);
+	prop_object_release(conn_result);
+#else
+	CTASSERT(sizeof(prop_dictionary_t) == sizeof(void *));
+	memcpy(data, conn_result, sizeof(void *));
+#endif
+out:
+	prop_object_release(conn_data);
 	return error;
 }
 

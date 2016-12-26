@@ -1,4 +1,4 @@
-/*	$NetBSD: npf_tableset.c,v 1.23 2016/04/20 15:46:08 christos Exp $	*/
+/*	$NetBSD: npf_tableset.c,v 1.24 2016/12/09 02:40:38 christos Exp $	*/
 
 /*-
  * Copyright (c) 2009-2016 The NetBSD Foundation, Inc.
@@ -42,7 +42,7 @@
 
 #ifdef _KERNEL
 #include <sys/cdefs.h>
-__KERNEL_RCSID(0, "$NetBSD: npf_tableset.c,v 1.23 2016/04/20 15:46:08 christos Exp $");
+__KERNEL_RCSID(0, "$NetBSD: npf_tableset.c,v 1.24 2016/12/09 02:40:38 christos Exp $");
 
 #include <sys/param.h>
 #include <sys/types.h>
@@ -57,6 +57,8 @@ __KERNEL_RCSID(0, "$NetBSD: npf_tableset.c,v 1.23 2016/04/20 15:46:08 christos E
 #include <sys/rwlock.h>
 #include <sys/systm.h>
 #include <sys/types.h>
+
+#include "lpm.h"
 #endif
 
 #include "npf_impl.h"
@@ -347,16 +349,14 @@ npf_table_create(const char *name, u_int tid, int type,
 	switch (type) {
 	case NPF_TABLE_TREE:
 		if ((t->t_lpm = lpm_create()) == NULL) {
-			kmem_free(t, sizeof(npf_table_t));
-			return NULL;
+			goto out;
 		}
 		LIST_INIT(&t->t_list);
 		break;
 	case NPF_TABLE_HASH:
 		t->t_hashl = hashinit(1024, HASH_LIST, true, &t->t_hashmask);
 		if (t->t_hashl == NULL) {
-			kmem_free(t, sizeof(npf_table_t));
-			return NULL;
+			goto out;
 		}
 		break;
 	case NPF_TABLE_CDB:
@@ -364,9 +364,8 @@ npf_table_create(const char *name, u_int tid, int type,
 		t->t_bsize = size;
 		t->t_cdb = cdbr_open_mem(blob, size, CDBR_DEFAULT, NULL, NULL);
 		if (t->t_cdb == NULL) {
-			kmem_free(t, sizeof(npf_table_t));
 			kfree(blob, M_TEMP);
-			return NULL;
+			goto out;
 		}
 		t->t_nitems = cdbr_entries(t->t_cdb);
 		break;
@@ -376,8 +375,10 @@ npf_table_create(const char *name, u_int tid, int type,
 	rw_init(&t->t_lock);
 	t->t_type = type;
 	t->t_id = tid;
-
 	return t;
+out:
+	kmem_free(t, sizeof(npf_table_t));
+	return NULL;
 }
 
 /*
@@ -701,7 +702,6 @@ table_cdb_list(npf_table_t *t, void *ubuf, size_t len)
 int
 npf_table_list(npf_table_t *t, void *ubuf, size_t len)
 {
-	size_t off = 0;
 	int error = 0;
 
 	rw_enter(&t->t_lock, RW_READER);

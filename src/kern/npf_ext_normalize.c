@@ -198,6 +198,7 @@ npf_ext_normalize_modcmd(modcmd_t cmd, void *arg)
 		.dtor		= npf_normalize_dtor,
 		.proc		= npf_normalize
 	};
+	npf_t *npf = npf_getkernctx();
 
 	switch (cmd) {
 	case MODULE_CMD_INIT:
@@ -206,12 +207,12 @@ npf_ext_normalize_modcmd(modcmd_t cmd, void *arg)
 		 * extension and its calls.
 		 */
 		npf_ext_normalize_id =
-		    npf_ext_register("normalize", &npf_normalize_ops);
+		    npf_ext_register(npf, "normalize", &npf_normalize_ops);
 		return npf_ext_normalize_id ? 0 : EEXIST;
 
 	case MODULE_CMD_FINI:
 		/* Unregister the normalisation rule procedure. */
-		return npf_ext_unregister(npf_ext_normalize_id);
+		return npf_ext_unregister(npf, npf_ext_normalize_id);
 
 	case MODULE_CMD_AUTOUNLOAD:
 		return npf_autounload_p() ? 0 : EBUSY;

@@ -35,7 +35,7 @@
 
 #ifdef _KERNEL
 #include <sys/cdefs.h>
-__KERNEL_RCSID(0, "$NetBSD: npf.c,v 1.31 2015/10/29 15:19:43 christos Exp $");
+__KERNEL_RCSID(0, "$NetBSD: npf.c,v 1.32 2016/12/10 05:41:10 christos Exp $");
 
 #ifdef _KERNEL_OPT
 #include "pf.h"
@@ -49,6 +49,7 @@ __KERNEL_RCSID(0, "$NetBSD: npf.c,v 1.31 2015/10/29 15:19:43 christos Exp $");
 
 #include <sys/conf.h>
 #include <sys/kauth.h>
+#include <sys/kmem.h>
 #include <sys/lwp.h>
 #include <sys/module.h>
 #include <sys/socketvar.h>
@@ -56,6 +57,7 @@ __KERNEL_RCSID(0, "$NetBSD: npf.c,v 1.31 2015/10/29 15:19:43 christos Exp $");
 #endif
 
 #include "npf_impl.h"
+#include "npfkern.h"
 
 #ifdef _KERNEL
 #ifndef _MODULE
@@ -103,10 +105,15 @@ const struct cdevsw npf_cdevsw = {
 static const char *	npf_ifop_getname(ifnet_t *);
 static ifnet_t *	npf_ifop_lookup(const char *);
 static void		npf_ifop_flush(void *);
-static const void *	npf_ifop_getmeta(ifnet_t *);
-static void *		npf_ifop_setmeta(ifp_t *, void *);
+static void *		npf_ifop_getmeta(const ifnet_t *);
+static void		npf_ifop_setmeta(ifnet_t *, void *);
 
 static const unsigned	nworkers = 1;
+
+static bool		pfil_registered = false;
+static pfil_head_t *	npf_ph_if = NULL;
+static pfil_head_t *	npf_ph_inet = NULL;
+static pfil_head_t *	npf_ph_inet6 = NULL;
 
 static const npf_ifops_t kern_ifops = {
 	.getname	= npf_ifop_getname,
@@ -219,6 +226,7 @@ npf_stats_export(npf_t *npf, void *data)
 static int
 npf_dev_ioctl(dev_t dev, u_long cmd, void *data, int flag, lwp_t *l)
 {
+	npf_t *npf = npf_getkernctx();
 	int error;
 
 	/* Available only for super-user. */
@@ -235,16 +243,19 @@ npf_dev_ioctl(dev_t dev, u_long cmd, void *data, int flag, lwp_t *l)
 		error = npfctl_rule(npf, cmd, data);
 		break;
 	case IOC_NPF_STATS:
-		error = npf_stats_export(npf_kernel_ctx, data);
+		error = npf_stats_export(npf, data);
 		break;
 	case IOC_NPF_SAVE:
-		error = npfctl_save(npf_kernel_ctx, cmd, data);
+		error = npfctl_save(npf, cmd, data);
 		break;
 	case IOC_NPF_SWITCH:
 		error = npfctl_switch(data);
 		break;
 	case IOC_NPF_LOAD:
-		error = npfctl_load(npf_kernel_ctx, cmd, data);
+		error = npfctl_load(npf, cmd, data);
+		break;
+	case IOC_NPF_CONN_LOOKUP:
+		error = npfctl_conn_lookup(npf, cmd, data);
 		break;
 	case IOC_NPF_VERSION:
 		*(int *)data = NPF_VERSION;
@@ -272,7 +283,8 @@ npf_dev_read(dev_t dev, struct uio *uio, int flag)
 bool
 npf_autounload_p(void)
 {
-	return !npf_pfil_registered_p() && npf_default_pass();
+	npf_t *npf = npf_getkernctx();
+	return !npf_pfil_registered_p() && npf_default_pass(npf);
 }
 
 /*
@@ -311,8 +323,138 @@ npf_ifop_getmeta(const ifnet_t *ifp)
 	return ifp->if_pf_kif;
 }
 
-static void *
-npf_ifop_setmeta(ifp_t *ifp, void *arg)
+static void
+npf_ifop_setmeta(ifnet_t *ifp, void *arg)
 {
 	ifp->if_pf_kif = arg;
 }
+
+#ifdef _KERNEL
+
+/*
+ * Wrapper of the main packet handler to pass the kernel NPF context.
+ */
+static int
+npfkern_packet_handler(void *arg, struct mbuf **mp, ifnet_t *ifp, int di)
+{
+	npf_t *npf = npf_getkernctx();
+	return npf_packet_handler(npf, mp, ifp, di);
+}
+
+/*
+ * npf_ifhook: hook handling interface changes.
+ */
+static int
+npf_ifhook(void *arg, struct mbuf **mp, ifnet_t *ifp, int di)
+{
+	npf_t *npf = npf_getkernctx();
+	u_long cmd = (u_long)mp;
+
+	if (di == PFIL_IFNET) {
+		switch (cmd) {
+		case PFIL_IFNET_ATTACH:
+			npf_ifmap_attach(npf, ifp);
+			break;
+		case PFIL_IFNET_DETACH:
+			npf_ifmap_detach(npf, ifp);
+			break;
+		}
+	}
+	return 0;
+}
+
+/*
+ * npf_pfil_register: register pfil(9) hooks.
+ */
+int
+npf_pfil_register(bool init)
+{
+	npf_t *npf = npf_getkernctx();
+	int error = 0;
+
+	mutex_enter(softnet_lock);
+	KERNEL_LOCK(1, NULL);
+
+	/* Init: interface re-config and attach/detach hook. */
+	if (!npf_ph_if) {
+		npf_ph_if = pfil_head_get(PFIL_TYPE_IFNET, 0);
+		if (!npf_ph_if) {
+			error = ENOENT;
+			goto out;
+		}
+		error = pfil_add_hook(npf_ifhook, NULL,
+		    PFIL_IFADDR | PFIL_IFNET, npf_ph_if);
+		KASSERT(error == 0);
+	}
+	if (init) {
+		goto out;
+	}
+
+	/* Check if pfil hooks are not already registered. */
+	if (pfil_registered) {
+		error = EEXIST;
+		goto out;
+	}
+
+	/* Capture points of the activity in the IP layer. */
+	npf_ph_inet = pfil_head_get(PFIL_TYPE_AF, (void *)AF_INET);
+	npf_ph_inet6 = pfil_head_get(PFIL_TYPE_AF, (void *)AF_INET6);
+	if (!npf_ph_inet && !npf_ph_inet6) {
+		error = ENOENT;
+		goto out;
+	}
+
+	/* Packet IN/OUT handlers for IP layer. */
+	if (npf_ph_inet) {
+		error = pfil_add_hook(npfkern_packet_handler, npf,
+		    PFIL_ALL, npf_ph_inet);
+		KASSERT(error == 0);
+	}
+	if (npf_ph_inet6) {
+		error = pfil_add_hook(npfkern_packet_handler, npf,
+		    PFIL_ALL, npf_ph_inet6);
+		KASSERT(error == 0);
+	}
+	pfil_registered = true;
+out:
+	KERNEL_UNLOCK_ONE(NULL);
+	mutex_exit(softnet_lock);
+
+	return error;
+}
+
+/*
+ * npf_pfil_unregister: unregister pfil(9) hooks.
+ */
+void
+npf_pfil_unregister(bool fini)
+{
+	npf_t *npf = npf_getkernctx();
+
+	mutex_enter(softnet_lock);
+	KERNEL_LOCK(1, NULL);
+
+	if (fini && npf_ph_if) {
+		(void)pfil_remove_hook(npf_ifhook, NULL,
+		    PFIL_IFADDR | PFIL_IFNET, npf_ph_if);
+	}
+	if (npf_ph_inet) {
+		(void)pfil_remove_hook(npfkern_packet_handler, npf,
+		    PFIL_ALL, npf_ph_inet);
+	}
+	if (npf_ph_inet6) {
+		(void)pfil_remove_hook(npfkern_packet_handler, npf,
+		    PFIL_ALL, npf_ph_inet6);
+	}
+	pfil_registered = false;
+
+	KERNEL_UNLOCK_ONE(NULL);
+	mutex_exit(softnet_lock);
+}
+
+bool
+npf_pfil_registered_p(void)
+{
+	return pfil_registered;
+}
+#endif

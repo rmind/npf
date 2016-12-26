@@ -37,8 +37,10 @@ __KERNEL_RCSID(0, "$NetBSD: npf_worker.c,v 1.1 2013/06/02 02:20:04 rmind Exp $")
 #include <sys/types.h>
 
 #include <sys/mutex.h>
+#include <sys/kmem.h>
 #include <sys/kernel.h>
 #include <sys/kthread.h>
+#include <sys/cprng.h>
 #endif
 
 #include "npf_impl.h"
@@ -167,8 +169,8 @@ npf_worker_unregister(npf_t *npf, npf_workfunc_t func)
 static void
 npf_worker(void *arg)
 {
-	unsigned i = (unsigned)(uintptr_t)arg;
-	npf_worker_t *wrk = &npf_workers[i];
+	unsigned worker_idx = (unsigned)(uintptr_t)arg;
+	npf_worker_t *wrk = &npf_workers[worker_idx];
 
 	KASSERT(wrk != NULL);
 	KASSERT(!wrk->worker_exit);

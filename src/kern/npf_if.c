@@ -138,8 +138,6 @@ out:
 void
 npf_ifmap_flush(npf_t *npf)
 {
-	ifnet_t *ifp;
-
 	KASSERT(npf_config_locked_p(npf));
 
 	for (u_int i = 0; i < npf->ifmap_cnt; i++) {
