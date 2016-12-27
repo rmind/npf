@@ -1,4 +1,4 @@
-/*	$NetBSD: npf_alg_icmp.c,v 1.23 2014/07/20 00:37:41 rmind Exp $	*/
+/*	$NetBSD: npf_alg_icmp.c,v 1.24 2016/12/26 23:05:06 christos Exp $	*/
 
 /*-
  * Copyright (c) 2010 The NetBSD Foundation, Inc.
@@ -35,7 +35,7 @@
 
 #ifdef _KERNEL
 #include <sys/cdefs.h>
-__KERNEL_RCSID(0, "$NetBSD: npf_alg_icmp.c,v 1.23 2014/07/20 00:37:41 rmind Exp $");
+__KERNEL_RCSID(0, "$NetBSD: npf_alg_icmp.c,v 1.24 2016/12/26 23:05:06 christos Exp $");
 
 #include <sys/param.h>
 #include <sys/module.h>
@@ -218,6 +218,7 @@ npfa_icmp_inspect(npf_cache_t *npc, npf_cache_t *enpc)
 	if (!nbuf_advance(nbuf, npc->npc_hlen, 0)) {
 		return false;
 	}
+	enpc->npc_ctx = npc->npc_ctx;
 	enpc->npc_nbuf = nbuf;
 	enpc->npc_info = 0;
 

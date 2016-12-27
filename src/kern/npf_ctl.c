@@ -1,4 +1,4 @@
-/*	$NetBSD: npf_ctl.c,v 1.44 2016/12/10 05:41:10 christos Exp $	*/
+/*	$NetBSD: npf_ctl.c,v 1.45 2016/12/26 23:05:06 christos Exp $	*/
 
 /*-
  * Copyright (c) 2009-2014 The NetBSD Foundation, Inc.
@@ -38,7 +38,7 @@
 
 #ifdef _KERNEL
 #include <sys/cdefs.h>
-__KERNEL_RCSID(0, "$NetBSD: npf_ctl.c,v 1.44 2016/12/10 05:41:10 christos Exp $");
+__KERNEL_RCSID(0, "$NetBSD: npf_ctl.c,v 1.45 2016/12/26 23:05:06 christos Exp $");
 
 #include <sys/param.h>
 #include <sys/conf.h>
@@ -125,7 +125,7 @@ npf_mk_tables(npf_tableset_t *tblset, prop_array_t tables,
 	while ((tbldict = prop_object_iterator_next(it)) != NULL) {
 		const char *name;
 		npf_table_t *t;
-		u_int tid;
+		uint64_t tid;
 		int type;
 
 		/* Table - dictionary. */
@@ -141,9 +141,9 @@ npf_mk_tables(npf_tableset_t *tblset, prop_array_t tables,
 			error = EINVAL;
 			break;
 		}
-		prop_dictionary_get_uint32(tbldict, "id", &tid);
+		prop_dictionary_get_uint64(tbldict, "id", &tid);
 		prop_dictionary_get_int32(tbldict, "type", &type);
-		error = npf_table_check(tblset, name, tid, type);
+		error = npf_table_check(tblset, name, (u_int)tid, type);
 		if (error) {
 			NPF_ERR_DEBUG(errdict);
 			break;
@@ -165,7 +165,7 @@ npf_mk_tables(npf_tableset_t *tblset, prop_array_t tables,
 		}
 
 		/* Create and insert the table. */
-		t = npf_table_create(name, tid, type, blob, size);
+		t = npf_table_create(name, (u_int)tid, type, blob, size);
 		if (t == NULL) {
 			NPF_ERR_DEBUG(errdict);
 			error = ENOMEM;
@@ -353,7 +353,7 @@ npf_mk_singlerule(npf_t *npf, prop_dictionary_t rldict, npf_rprocset_t *rpset,
 err:
 	npf_rule_free(rl);
 	prop_dictionary_get_int32(rldict, "prio", &p); /* XXX */
-	prop_dictionary_set_int32(errdict, "id", p);
+	prop_dictionary_set_int64(errdict, "id", p);
 	return error;
 }
 

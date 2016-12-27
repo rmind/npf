@@ -14,8 +14,8 @@
 #include "npf_impl.h"
 #include "npf_test.h"
 
-#if defined(_NPF_STANDALONE)
 
+#if defined(_NPF_STANDALONE)
 struct mbuf *
 npfkern_m_get(int flags, int space)
 {
@@ -30,6 +30,13 @@ npfkern_m_get(int flags, int space)
 	}
 	return m;
 }
+#else
+struct mbuf *
+npfkern_m_get(int flags, int space)
+{
+	return m_get(flags, space);
+}
+#endif
 
 static void *
 npfkern_m_getdata(const struct mbuf *m)
@@ -65,6 +72,7 @@ npfkern_m_length(const struct mbuf *m)
 void
 npfkern_m_freem(struct mbuf *m)
 {
+#ifdef _NPF_STANDALONE
 	struct mbuf *n;
 
 	do {
@@ -73,6 +81,9 @@ npfkern_m_freem(struct mbuf *m)
 		free(m);
 		m = n;
 	} while (m);
+#else
+	m_freem(m);
+#endif
 }
 
 static bool
@@ -96,7 +107,6 @@ npfkern_m_ensure_contig(struct mbuf **m0, size_t len)
 	return true;
 }
 
-#endif
 
 struct mbuf *
 mbuf_getwithdata(const void *data, size_t len)

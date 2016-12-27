@@ -1,4 +1,4 @@
-/*	$NetBSD: npf_bpf_comp.c,v 1.8 2015/06/08 01:00:43 rmind Exp $	*/
+/*	$NetBSD: npf_bpf_comp.c,v 1.9 2016/12/26 23:05:05 christos Exp $	*/
 
 /*-
  * Copyright (c) 2010-2014 The NetBSD Foundation, Inc.
@@ -34,7 +34,7 @@
  */
 
 #include <sys/cdefs.h>
-__RCSID("$NetBSD: npf_bpf_comp.c,v 1.8 2015/06/08 01:00:43 rmind Exp $");
+__RCSID("$NetBSD: npf_bpf_comp.c,v 1.9 2016/12/26 23:05:05 christos Exp $");
 
 #include <stdlib.h>
 #include <stdbool.h>

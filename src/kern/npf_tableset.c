@@ -1,4 +1,4 @@
-/*	$NetBSD: npf_tableset.c,v 1.24 2016/12/09 02:40:38 christos Exp $	*/
+/*	$NetBSD: npf_tableset.c,v 1.25 2016/12/26 23:05:06 christos Exp $	*/
 
 /*-
  * Copyright (c) 2009-2016 The NetBSD Foundation, Inc.
@@ -42,7 +42,7 @@
 
 #ifdef _KERNEL
 #include <sys/cdefs.h>
-__KERNEL_RCSID(0, "$NetBSD: npf_tableset.c,v 1.24 2016/12/09 02:40:38 christos Exp $");
+__KERNEL_RCSID(0, "$NetBSD: npf_tableset.c,v 1.25 2016/12/26 23:05:06 christos Exp $");
 
 #include <sys/param.h>
 #include <sys/types.h>

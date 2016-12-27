@@ -1,4 +1,4 @@
-/*	$NetBSD: npf_sendpkt.c,v 1.15 2014/07/20 00:37:41 rmind Exp $	*/
+/*	$NetBSD: npf_sendpkt.c,v 1.16 2016/12/26 23:05:06 christos Exp $	*/
 
 /*-
  * Copyright (c) 2010-2011 The NetBSD Foundation, Inc.
@@ -35,7 +35,7 @@
 
 #ifdef _KERNEL
 #include <sys/cdefs.h>
-__KERNEL_RCSID(0, "$NetBSD: npf_sendpkt.c,v 1.15 2014/07/20 00:37:41 rmind Exp $");
+__KERNEL_RCSID(0, "$NetBSD: npf_sendpkt.c,v 1.16 2016/12/26 23:05:06 christos Exp $");
 
 #include <sys/param.h>
 #include <sys/types.h>

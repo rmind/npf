@@ -1,4 +1,4 @@
-/*	$NetBSD: npf.c,v 1.39 2016/12/10 21:04:12 christos Exp $	*/
+/*	$NetBSD: npf.c,v 1.40 2016/12/26 23:05:05 christos Exp $	*/
 
 /*-
  * Copyright (c) 2010-2015 The NetBSD Foundation, Inc.
@@ -30,7 +30,7 @@
  */
 
 #include <sys/cdefs.h>
-__KERNEL_RCSID(0, "$NetBSD: npf.c,v 1.39 2016/12/10 21:04:12 christos Exp $");
+__KERNEL_RCSID(0, "$NetBSD: npf.c,v 1.40 2016/12/26 23:05:05 christos Exp $");
 
 #include <sys/types.h>
 #include <netinet/in_systm.h>
@@ -169,7 +169,6 @@ _npf_build_config(nl_config_t *ncf)
 {
 	prop_dictionary_t npf_dict;
 	prop_array_t rlset;
-	int error = 0;
 
 	npf_dict = prop_dictionary_create();
 	if (npf_dict == NULL) {
@@ -223,7 +222,7 @@ npf_config_submit(nl_config_t *ncf, int fd, npf_error_t *errinfo)
 	if (error) {
 		memset(errinfo, 0, sizeof(*errinfo));
 
-		prop_dictionary_get_int32(ncf->ncf_err, "id",
+		prop_dictionary_get_int64(ncf->ncf_err, "id",
 		    &errinfo->id);
 		prop_dictionary_get_cstring(ncf->ncf_err,
 		    "source-file", &errinfo->source_file);
@@ -300,7 +299,7 @@ npf_config_export(nl_config_t *ncf, size_t *length)
 }
 
 nl_config_t *
-npf_config_import(const void *blob, size_t len)
+npf_config_import(const void *blob, size_t len __unused)
 {
 	prop_dictionary_t npf_dict;
 	nl_config_t *ncf;
@@ -314,7 +313,6 @@ npf_config_import(const void *blob, size_t len)
 		prop_object_release(npf_dict);
 		return NULL;
 	}
-	(void)len;
 	return ncf;
 }
 
@@ -352,8 +350,6 @@ npf_config_loaded_p(nl_config_t *ncf)
 void *
 npf_config_build(nl_config_t *ncf)
 {
-	prop_dictionary_t npf_dict = ncf->ncf_dict;
-
 	if (!ncf->ncf_dict && !(ncf->ncf_dict = _npf_build_config(ncf))) {
 		errno = ENOMEM;
 		return NULL;
@@ -809,7 +805,7 @@ npf_rule_getid(nl_rule_t *rl)
 	uint64_t id = 0;
 
 	(void)prop_dictionary_get_uint64(rldict, "id", &id);
-	return id;
+	return (unsigned)id;
 }
 
 const void *
@@ -1096,7 +1092,7 @@ npf_table_create(const char *name, u_int id, int type)
 		return NULL;
 	}
 	prop_dictionary_set_cstring(tldict, "name", name);
-	prop_dictionary_set_uint32(tldict, "id", id);
+	prop_dictionary_set_uint64(tldict, "id", (uint64_t)id);
 	prop_dictionary_set_int32(tldict, "type", type);
 
 	tblents = prop_array_create();
@@ -1207,10 +1203,10 @@ unsigned
 npf_table_getid(nl_table_t *tl)
 {
 	prop_dictionary_t tldict = tl->ntl_dict;
-	unsigned id = (unsigned)-1;
+	uint64_t id = (uint64_t)-1;
 
-	prop_dictionary_get_uint32(tldict, "id", &id);
-	return id;
+	prop_dictionary_get_uint64(tldict, "id", &id);
+	return (unsigned)id;
 }
 
 const char *

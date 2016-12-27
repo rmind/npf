@@ -1,4 +1,4 @@
-/*	$NetBSD: npf_ext_rndblock.c,v 1.5 2014/07/20 00:37:41 rmind Exp $	*/
+/*	$NetBSD: npf_ext_rndblock.c,v 1.6 2016/12/26 23:05:06 christos Exp $	*/
 
 /*-
  * Copyright (c) 2012 The NetBSD Foundation, Inc.
@@ -33,7 +33,7 @@
 
 #ifdef _KERNEL
 #include <sys/cdefs.h>
-__KERNEL_RCSID(0, "$NetBSD: npf_ext_rndblock.c,v 1.5 2014/07/20 00:37:41 rmind Exp $");
+__KERNEL_RCSID(0, "$NetBSD: npf_ext_rndblock.c,v 1.6 2016/12/26 23:05:06 christos Exp $");
 
 #include <sys/types.h>
 #include <sys/cprng.h>

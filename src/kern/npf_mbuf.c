@@ -1,4 +1,4 @@
-/*	$NetBSD: npf_mbuf.c,v 1.17 2016/12/08 23:07:11 rmind Exp $	*/
+/*	$NetBSD: npf_mbuf.c,v 1.18 2016/12/26 23:05:06 christos Exp $	*/
 
 /*-
  * Copyright (c) 2009-2012 The NetBSD Foundation, Inc.
@@ -38,7 +38,7 @@
 
 #ifdef _KERNEL
 #include <sys/cdefs.h>
-__KERNEL_RCSID(0, "$NetBSD: npf_mbuf.c,v 1.17 2016/12/08 23:07:11 rmind Exp $");
+__KERNEL_RCSID(0, "$NetBSD: npf_mbuf.c,v 1.18 2016/12/26 23:05:06 christos Exp $");
 
 #include <sys/param.h>
 #include <sys/mbuf.h>

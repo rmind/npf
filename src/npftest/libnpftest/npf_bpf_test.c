@@ -1,4 +1,4 @@
-/*	$NetBSD: npf_bpf_test.c,v 1.7 2014/07/20 00:37:41 rmind Exp $	*/
+/*	$NetBSD: npf_bpf_test.c,v 1.8 2016/12/26 23:05:05 christos Exp $	*/
 
 /*-
  * Copyright (c) 2013 The NetBSD Foundation, Inc.

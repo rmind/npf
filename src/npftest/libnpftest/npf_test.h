@@ -64,16 +64,10 @@ struct mbuf {
 	char		m_data0[MLEN];
 };
 
-const npf_mbufops_t	npftest_mbufops;
-
 #define	MT_FREE			0
 #define	M_UNWRITABLE(m, l)	false
 #define	M_NOWAIT		0x00001
 #define M_PKTHDR		0x00002
-
-struct mbuf *	npfkern_m_get(int, int);
-size_t		npfkern_m_length(const struct mbuf *);
-void		npfkern_m_freem(struct mbuf *);
 
 #define	m_get(x, y)		npfkern_m_get(0, MLEN)
 #define	m_gethdr(x, y)		npfkern_m_get(M_PKTHDR, MLEN)
@@ -82,6 +76,12 @@ void		npfkern_m_freem(struct mbuf *);
 #define	mtod(m, t)		((t)((m)->m_data))
 
 #endif
+
+const npf_mbufops_t	npftest_mbufops;
+
+struct mbuf *	npfkern_m_get(int, int);
+size_t		npfkern_m_length(const struct mbuf *);
+void		npfkern_m_freem(struct mbuf *);
 
 void		npf_test_init(int (*)(int, const char *, void *),
 		    const char *(*)(int, const void *, char *, socklen_t),

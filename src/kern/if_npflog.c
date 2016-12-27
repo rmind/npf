@@ -1,4 +1,4 @@
-/*	$NetBSD: if_npflog.c,v 1.3 2013/03/13 13:15:47 christos Exp $	*/
+/*	$NetBSD: if_npflog.c,v 1.4 2016/12/26 23:05:06 christos Exp $	*/
 
 /*-
  * Copyright (c) 2010-2012 The NetBSD Foundation, Inc.
@@ -35,7 +35,7 @@
 
 #ifdef _KERNEL
 #include <sys/cdefs.h>
-__KERNEL_RCSID(0, "$NetBSD: if_npflog.c,v 1.3 2013/03/13 13:15:47 christos Exp $");
+__KERNEL_RCSID(0, "$NetBSD: if_npflog.c,v 1.4 2016/12/26 23:05:06 christos Exp $");
 
 #include <sys/types.h>
 #include <sys/module.h>

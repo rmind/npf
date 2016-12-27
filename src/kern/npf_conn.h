@@ -1,4 +1,4 @@
-/*	$NetBSD: npf_conn.h,v 1.10 2016/12/10 19:05:45 christos Exp $	*/
+/*	$NetBSD: npf_conn.h,v 1.11 2016/12/26 23:05:06 christos Exp $	*/
 
 /*-
  * Copyright (c) 2009-2014 The NetBSD Foundation, Inc.

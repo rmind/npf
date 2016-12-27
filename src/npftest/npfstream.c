@@ -1,4 +1,4 @@
-/*	$NetBSD: npfstream.c,v 1.6 2013/11/08 00:38:26 rmind Exp $	*/
+/*	$NetBSD: npfstream.c,v 1.7 2016/12/26 23:05:05 christos Exp $	*/
 
 /*
  * NPF stream processor.

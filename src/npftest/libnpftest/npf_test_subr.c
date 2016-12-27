@@ -1,4 +1,4 @@
-/*	$NetBSD: npf_test_subr.c,v 1.11 2014/08/10 16:44:37 tls Exp $	*/
+/*	$NetBSD: npf_test_subr.c,v 1.12 2016/12/26 23:05:05 christos Exp $	*/
 
 /*
  * NPF initialisation and handler routines.
@@ -27,13 +27,20 @@ static const char *	(*_ntop_func)(int, const void *, char *, socklen_t);
 
 static void		npf_state_sample(npf_state_t *, bool);
 
+#ifndef __NetBSD__
+/*
+ * Standalone NPF: we define the same struct ifnet members
+ * to reduce the npf_ifops_t implementation differences.
+ */
 struct ifnet {
-	char		name[32];
-	void *		arg;
-	struct ifnet *	next;
+	char		if_xname[32];
+	void *		if_softc;
+	TAILQ_ENTRY(ifnet) if_list;
 };
+#endif
 
-static struct ifnet *	npftest_ifnet_list = NULL;
+static TAILQ_HEAD(, ifnet) npftest_ifnet_list =
+    TAILQ_HEAD_INITIALIZER(npftest_ifnet_list);
 
 static const char *	npftest_ifop_getname(ifnet_t *);
 static void		npftest_ifop_flush(void *);
@@ -85,16 +92,15 @@ ifnet_t *
 npf_test_addif(const char *ifname, bool reg, bool verbose)
 {
 	npf_t *npf = npf_getkernctx();
-	ifnet_t *ifp = calloc(1, sizeof(struct ifnet));
+	ifnet_t *ifp = kmem_zalloc(sizeof(*ifp), KM_SLEEP);
 
 	/*
 	 * This is a "fake" interface with explicitly set index.
 	 * Note: test modules may not setup pfil(9) hooks and if_attach()
 	 * may not trigger npf_ifmap_attach(), so we call it manually.
 	 */
-	strlcpy(ifp->name, ifname, sizeof(ifp->name));
-	ifp->next = npftest_ifnet_list;
-	npftest_ifnet_list = ifp;
+	strlcpy(ifp->if_xname, ifname, sizeof(ifp->if_xname));
+	TAILQ_INSERT_TAIL(&npftest_ifnet_list, ifp, if_list);
 
 	npf_ifmap_attach(npf, ifp);
 	if (reg) {
@@ -110,43 +116,40 @@ npf_test_addif(const char *ifname, bool reg, bool verbose)
 static const char *
 npftest_ifop_getname(ifnet_t *ifp)
 {
-	return ifp->name;
+	return ifp->if_xname;
 }
 
 ifnet_t *
 npf_test_getif(const char *ifname)
 {
-	ifnet_t *ifp = npftest_ifnet_list;
+	ifnet_t *ifp;
 
-	while (ifp) {
-		if (!strcmp(ifp->name, ifname))
-			break;
-		ifp = ifp->next;
+	TAILQ_FOREACH(ifp, &npftest_ifnet_list, if_list) {
+		if (!strcmp(ifp->if_xname, ifname))
+			return ifp;
 	}
-	return ifp;
+	return NULL;
 }
 
 static void
 npftest_ifop_flush(void *arg)
 {
-	ifnet_t *ifp = npftest_ifnet_list;
+	ifnet_t *ifp;
 
-	while (ifp) {
-		ifp->arg = arg;
-		ifp = ifp->next;
-	}
+	TAILQ_FOREACH(ifp, &npftest_ifnet_list, if_list)
+		ifp->if_softc = arg;
 }
 
 static void *
 npftest_ifop_getmeta(const ifnet_t *ifp)
 {
-	return ifp->arg;
+	return ifp->if_softc;
 }
 
 static void
 npftest_ifop_setmeta(ifnet_t *ifp, void *arg)
 {
-	ifp->arg = arg;
+	ifp->if_softc = arg;
 }
 
 /*

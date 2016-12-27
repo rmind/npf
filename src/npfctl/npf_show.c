@@ -1,4 +1,4 @@
-/*	$NetBSD: npf_show.c,v 1.19 2015/06/03 23:36:05 rmind Exp $	*/
+/*	$NetBSD: npf_show.c,v 1.20 2016/12/26 23:05:05 christos Exp $	*/
 
 /*-
  * Copyright (c) 2013 The NetBSD Foundation, Inc.
@@ -36,7 +36,7 @@
  */
 
 #include <sys/cdefs.h>
-__RCSID("$NetBSD: npf_show.c,v 1.19 2015/06/03 23:36:05 rmind Exp $");
+__RCSID("$NetBSD: npf_show.c,v 1.20 2016/12/26 23:05:05 christos Exp $");
 
 #include <sys/socket.h>
 #define	__FAVOR_BSD

@@ -1,4 +1,4 @@
-/*	$NetBSD: npfctl.c,v 1.46 2015/01/04 20:02:15 christos Exp $	*/
+/*	$NetBSD: npfctl.c,v 1.49 2016/12/27 13:43:38 christos Exp $	*/
 
 /*-
  * Copyright (c) 2009-2014 The NetBSD Foundation, Inc.
@@ -30,14 +30,18 @@
  */
 
 #include <sys/cdefs.h>
-__RCSID("$NetBSD: npfctl.c,v 1.46 2015/01/04 20:02:15 christos Exp $");
+__RCSID("$NetBSD: npfctl.c,v 1.49 2016/12/27 13:43:38 christos Exp $");
 
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/mman.h>
 #ifdef __NetBSD__
+#include <sha1.h>
 #include <sys/ioctl.h>
 #include <sys/module.h>
+#define SHA_DIGEST_LENGTH SHA1_DIGEST_LENGTH
+#else
+#include <openssl/sha.h>
 #endif
 
 #include <stdio.h>
@@ -49,7 +53,6 @@ __RCSID("$NetBSD: npfctl.c,v 1.46 2015/01/04 20:02:15 christos Exp $");
 #include <errno.h>
 
 #include <arpa/inet.h>
-#include <openssl/sha.h>
 
 #include "npfctl.h"
 
@@ -386,6 +389,19 @@ npfctl_parse_rule(int argc, char **argv)
 	}
 	return rl;
 }
+
+#ifdef __NetBSD__
+static unsigned char *
+SHA1(const unsigned char *d, size_t l, unsigned char *md)
+{
+	SHA1_CTX c;
+
+	SHA1Init(&c);
+	SHA1Update(&c, d, l);
+	SHA1Final(md, &c);
+	return md;
+}
+#endif
 
 static void
 npfctl_generate_key(nl_rule_t *rl, void *key)

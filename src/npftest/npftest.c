@@ -1,4 +1,4 @@
-/*	$NetBSD: npftest.c,v 1.19 2016/01/25 12:24:41 pooka Exp $	*/
+/*	$NetBSD: npftest.c,v 1.20 2016/12/26 23:05:05 christos Exp $	*/
 
 /*
  * NPF testing framework.
@@ -348,8 +348,8 @@ main(int argc, char **argv)
 		}
 	}
 
+	rumpns_npf_test_fini();
 	npf_kern_fini();
-	npf_test_fini();
 
 	if (testname && !tname_matched)
 		errx(EXIT_FAILURE, "test \"%s\" unknown", testname);

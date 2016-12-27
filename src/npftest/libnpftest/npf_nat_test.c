@@ -1,4 +1,4 @@
-/*	$NetBSD: npf_nat_test.c,v 1.9 2014/07/20 00:37:41 rmind Exp $	*/
+/*	$NetBSD: npf_nat_test.c,v 1.10 2016/12/26 23:05:05 christos Exp $	*/
 
 /*
  * NPF NAT test.

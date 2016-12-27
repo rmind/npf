@@ -1,4 +1,4 @@
-/*	$NetBSD: npf.c,v 1.31 2015/10/29 15:19:43 christos Exp $	*/
+/*	$NetBSD: npf_os.c,v 1.2 2016/12/26 23:59:47 rmind Exp $	*/
 
 /*-
  * Copyright (c) 2009-2016 The NetBSD Foundation, Inc.
@@ -35,7 +35,7 @@
 
 #ifdef _KERNEL
 #include <sys/cdefs.h>
-__KERNEL_RCSID(0, "$NetBSD: npf.c,v 1.32 2016/12/10 05:41:10 christos Exp $");
+__KERNEL_RCSID(0, "$NetBSD: npf_os.c,v 1.2 2016/12/26 23:59:47 rmind Exp $");
 
 #ifdef _KERNEL_OPT
 #include "pf.h"
@@ -124,6 +124,21 @@ static const npf_ifops_t kern_ifops = {
 };
 
 static int
+npf_fini(void)
+{
+	npf_t *npf = npf_getkernctx();
+
+	/* At first, detach device and remove pfil hooks. */
+#ifdef _MODULE
+	devsw_detach(NULL, &npf_cdevsw);
+#endif
+	npf_pfil_unregister(true);
+	npf_destroy(npf);
+	npf_sysfini();
+	return 0;
+}
+
+static int
 npf_init(void)
 {
 	npf_t *npf;
@@ -147,21 +162,6 @@ npf_init(void)
 	}
 #endif
 	return error;
-}
-
-static int
-npf_fini(void)
-{
-	npf_t *npf = npf_getkernctx();
-
-	/* At first, detach device and remove pfil hooks. */
-#ifdef _MODULE
-	devsw_detach(NULL, &npf_cdevsw);
-#endif
-	npf_pfil_unregister(true);
-	npf_destroy(npf);
-	npf_sysfini();
-	return 0;
 }
 
 /*
@@ -344,23 +344,20 @@ npfkern_packet_handler(void *arg, struct mbuf **mp, ifnet_t *ifp, int di)
 /*
  * npf_ifhook: hook handling interface changes.
  */
-static int
-npf_ifhook(void *arg, struct mbuf **mp, ifnet_t *ifp, int di)
+static void
+npf_ifhook(void *arg, unsigned long cmd, void *arg2)
 {
 	npf_t *npf = npf_getkernctx();
-	u_long cmd = (u_long)mp;
+	ifnet_t *ifp = arg2;
 
-	if (di == PFIL_IFNET) {
-		switch (cmd) {
-		case PFIL_IFNET_ATTACH:
-			npf_ifmap_attach(npf, ifp);
-			break;
-		case PFIL_IFNET_DETACH:
-			npf_ifmap_detach(npf, ifp);
-			break;
-		}
+	switch (cmd) {
+	case PFIL_IFNET_ATTACH:
+		npf_ifmap_attach(npf, ifp);
+		break;
+	case PFIL_IFNET_DETACH:
+		npf_ifmap_detach(npf, ifp);
+		break;
 	}
-	return 0;
 }
 
 /*
@@ -382,8 +379,7 @@ npf_pfil_register(bool init)
 			error = ENOENT;
 			goto out;
 		}
-		error = pfil_add_hook(npf_ifhook, NULL,
-		    PFIL_IFADDR | PFIL_IFNET, npf_ph_if);
+		error = pfil_add_ihook(npf_ifhook, NULL, PFIL_IFNET, npf_ph_if);
 		KASSERT(error == 0);
 	}
 	if (init) {
@@ -435,8 +431,7 @@ npf_pfil_unregister(bool fini)
 	KERNEL_LOCK(1, NULL);
 
 	if (fini && npf_ph_if) {
-		(void)pfil_remove_hook(npf_ifhook, NULL,
-		    PFIL_IFADDR | PFIL_IFNET, npf_ph_if);
+		(void)pfil_remove_ihook(npf_ifhook, NULL, PFIL_IFNET, npf_ph_if);
 	}
 	if (npf_ph_inet) {
 		(void)pfil_remove_hook(npfkern_packet_handler, npf,
