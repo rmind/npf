@@ -493,7 +493,7 @@ npf_conn_inspect(npf_cache_t *npc, const int di, int *error)
 	 * If this is multi-end state, then specially tag the packet
 	 * so it will be just passed-through on other interfaces.
 	 */
-	if (con->c_ifid == 0 && nbuf_add_tag(nbuf, NPF_NTAG_PASS) != 0) {
+	if (con->c_ifid == 0 && nbuf_add_tag(nbuf, NPF_NTAG_PASS) == ENOMEM) {
 		npf_conn_release(con);
 		*error = ENOMEM;
 		return NULL;
