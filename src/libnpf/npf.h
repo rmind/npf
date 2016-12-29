@@ -1,4 +1,4 @@
-/*	$NetBSD: npf.h,v 1.31 2016/12/26 23:05:05 christos Exp $	*/
+/*	$NetBSD: npf.h,v 1.33 2016/12/27 20:32:58 rmind Exp $	*/
 
 /*-
  * Copyright (c) 2011-2014 The NetBSD Foundation, Inc.
@@ -149,6 +149,10 @@ void		_npf_debug_addif(nl_config_t *, const char *);
 /* The ALG interface is experimental */
 int 		_npf_alg_load(nl_config_t *, const char *);
 int		_npf_alg_unload(nl_config_t *, const char *);
+
+typedef int (*npf_conn_func_t)(unsigned, const npf_addr_t *,
+    const in_port_t *, const char *, void *);
+int		npf_conn_list(int, npf_conn_func_t, void *);
 
 #endif
 

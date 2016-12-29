@@ -1,4 +1,4 @@
-/*	$NetBSD: npf_parse.y,v 1.38 2015/03/24 20:24:17 christos Exp$	*/
+/*	$NetBSD: npf_parse.y,v 1.39 2016/12/27 22:35:33 rmind Exp $	*/
 
 /*-
  * Copyright (c) 2011-2014 The NetBSD Foundation, Inc.
@@ -67,12 +67,12 @@ yyerror(const char *fmt, ...)
 	fprintf(stderr, "%s:%d:%d: %s", yyfilename,
 	    yylineno - (int)eol, yycolumn, msg);
 	if (!eol) {
-#if __NetBSD__
+#ifdef __NetBSD__
 		size_t len = strlen(context);
 		char *dst = ecalloc(1, len * 4 + 1);
 
 		strvisx(dst, context, len, VIS_WHITE|VIS_CSTYLE);
-		context = dst;
+		context = dst
 #endif
 		fprintf(stderr, " near '%s'", context);
 	}
@@ -110,6 +110,7 @@ yyerror(const char *fmt, ...)
 %token			TDYNAMIC
 %token			TSTATIC
 %token			EQ
+%token			EXCL_MARK
 %token			TFILE
 %token			FLAGS
 %token			FROM
@@ -169,7 +170,7 @@ yyerror(const char *fmt, ...)
 %type	<str>		proc_param_val, opt_apply, ifname, on_ifname, ifref
 %type	<num>		port, opt_final, number, afamily, opt_family
 %type	<num>		block_or_pass, rule_dir, group_dir, block_opts
-%type	<num>		opt_stateful, icmp_type, table_type
+%type	<num>		maybe_not, opt_stateful, icmp_type, table_type
 %type	<num>		map_sd, map_algo, map_type
 %type	<var>		ifaddrs, addr_or_ifaddr, port_range, icmp_type_and_code
 %type	<var>		filt_addr, addr_and_mask, tcp_flags, tcp_flags_and_mask
@@ -531,6 +532,11 @@ afamily
 	| INET6			{ $$ = AF_INET6; }
 	;
 
+maybe_not
+	: EXCL_MARK		{ $$ = true; }
+	|			{ $$ = false; }
+	;
+
 opt_family
 	: FAMILY afamily	{ $$ = $2; }
 	|			{ $$ = AF_UNSPEC; }
@@ -572,8 +578,10 @@ opt_proto
 all_or_filt_opts
 	: ALL
 	{
+		$$.fo_finvert = false;
 		$$.fo_from.ap_netaddr = NULL;
 		$$.fo_from.ap_portrange = NULL;
+		$$.fo_tinvert = false;
 		$$.fo_to.ap_netaddr = NULL;
 		$$.fo_to.ap_portrange = NULL;
 	}
@@ -599,26 +607,32 @@ block_opts
 	;
 
 filt_opts
-	: FROM filt_addr port_range TO filt_addr port_range
+	: FROM maybe_not filt_addr port_range TO maybe_not filt_addr port_range
 	{
-		$$.fo_from.ap_netaddr = $2;
-		$$.fo_from.ap_portrange = $3;
-		$$.fo_to.ap_netaddr = $5;
-		$$.fo_to.ap_portrange = $6;
+		$$.fo_finvert = $2;
+		$$.fo_from.ap_netaddr = $3;
+		$$.fo_from.ap_portrange = $4;
+		$$.fo_tinvert = $6;
+		$$.fo_to.ap_netaddr = $7;
+		$$.fo_to.ap_portrange = $8;
 	}
-	| FROM filt_addr port_range
+	| FROM maybe_not filt_addr port_range
 	{
-		$$.fo_from.ap_netaddr = $2;
-		$$.fo_from.ap_portrange = $3;
+		$$.fo_finvert = $2;
+		$$.fo_from.ap_netaddr = $3;
+		$$.fo_from.ap_portrange = $4;
+		$$.fo_tinvert = false;
 		$$.fo_to.ap_netaddr = NULL;
 		$$.fo_to.ap_portrange = NULL;
 	}
-	| TO filt_addr port_range
+	| TO maybe_not filt_addr port_range
 	{
+		$$.fo_finvert = false;
 		$$.fo_from.ap_netaddr = NULL;
 		$$.fo_from.ap_portrange = NULL;
-		$$.fo_to.ap_netaddr = $2;
-		$$.fo_to.ap_portrange = $3;
+		$$.fo_tinvert = $2;
+		$$.fo_to.ap_netaddr = $3;
+		$$.fo_to.ap_portrange = $4;
 	}
 	;
 
