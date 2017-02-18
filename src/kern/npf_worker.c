@@ -148,9 +148,12 @@ void
 npf_worker_unregister(npf_t *npf, npf_workfunc_t func)
 {
 	const unsigned idx = npf->worker_id;
-	npf_worker_t *wrk = &npf_workers[idx];
+	npf_worker_t *wrk;
 	npf_t *instance;
 
+	if (!npf_worker_count)
+		return;
+	wrk = &npf_workers[idx];
 	mutex_enter(&wrk->worker_lock);
 	npf_worker_testset(wrk, func, NULL);
 	if ((instance = wrk->instances) == npf) {
