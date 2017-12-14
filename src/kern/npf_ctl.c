@@ -631,9 +631,9 @@ fail:
 #if !defined(_NPF_TESTING) && !defined(_NPF_STANDALONE)
 	prop_dictionary_set_int32(errdict, "errno", error);
 	prop_dictionary_copyout_ioctl(pref, cmd, errdict);
-	prop_object_release(errdict);
 	error = 0;
 #endif
+	prop_object_release(errdict);
 	return error;
 }
 

@@ -360,13 +360,11 @@ npf_config_build(nl_config_t *ncf)
 void
 npf_config_destroy(nl_config_t *ncf)
 {
-	if (!ncf->ncf_dict) {
-		prop_object_release(ncf->ncf_alg_list);
-		prop_object_release(ncf->ncf_rules_list);
-		prop_object_release(ncf->ncf_rproc_list);
-		prop_object_release(ncf->ncf_table_list);
-		prop_object_release(ncf->ncf_nat_list);
-	}
+	prop_object_release(ncf->ncf_alg_list);
+	prop_object_release(ncf->ncf_rules_list);
+	prop_object_release(ncf->ncf_rproc_list);
+	prop_object_release(ncf->ncf_table_list);
+	prop_object_release(ncf->ncf_nat_list);
 	if (ncf->ncf_err) {
 		prop_object_release(ncf->ncf_err);
 	}
@@ -704,7 +702,6 @@ npf_rule_insert(nl_config_t *ncf, nl_rule_t *parent, nl_rule_t *rl)
 		rlset = ncf->ncf_rules_list;
 	}
 	prop_array_add(rlset, rldict);
-	prop_object_release(rldict);
 	return 0;
 }
 
