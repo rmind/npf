@@ -118,7 +118,7 @@ create_npf_config(void)
 	 * packets where either source or destination is 10.1.1.1 .
 	 */
 	rl = npf_rule_create(NULL, NPF_RULE_PASS | NPF_RULE_STATEFUL |
-	    NPF_RULE_IN | NPF_RULE_OUT, NULL);
+	    NPF_RULE_IN | NPF_RULE_OUT, "dpdk0");
 	assert(rl != NULL);
 	build_pcap_filter(rl, "host 10.1.1.1 and dst port 53");
 
