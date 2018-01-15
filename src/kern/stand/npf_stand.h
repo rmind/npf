@@ -136,6 +136,7 @@ npfkern_qsbr_wait(qsbr_t *qsbr)
 #define	pserialize_create()	qsbr_create()
 #define	pserialize_destroy(p)	qsbr_destroy(p)
 #define	pserialize_register(p)	qsbr_register(p)
+#define	pserialize_unregister(p) qsbr_unregister(p)
 #define	pserialize_checkpoint(p) qsbr_checkpoint(p)
 #define	pserialize_perform(p)	npfkern_qsbr_wait(p)
 #define	pserialize_read_enter()	NPF_DIAG_MAGIC_VAL
