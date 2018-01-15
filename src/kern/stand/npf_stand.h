@@ -66,9 +66,14 @@
 
 #include "cext.h"
 
-#include "mempool.h"
 #include "rbtree.h"
 #include "bpf.h"
+
+/*
+ * Magic values for diagnostic assertions.
+ */
+
+#define	NPF_DIAG_MAGIC_VAL	(0x5a5a5a5a)
 
 /*
  * Synchronisation primitives (mutex, condvar, etc).
@@ -133,26 +138,24 @@ npfkern_qsbr_wait(qsbr_t *qsbr)
 #define	pserialize_register(p)	qsbr_register(p)
 #define	pserialize_checkpoint(p) qsbr_checkpoint(p)
 #define	pserialize_perform(p)	npfkern_qsbr_wait(p)
-#define	pserialize_read_enter()	0x50505050
-#define	pserialize_read_exit(s)	assert((s) == 0x50505050)
+#define	pserialize_read_enter()	NPF_DIAG_MAGIC_VAL
+#define	pserialize_read_exit(s)	assert((s) == NPF_DIAG_MAGIC_VAL)
 
 /*
  * Atomic operations and memory barriers.
  */
 
 static inline void *
-npfkern_atomic_swap_ptr(volatile void *ptr, void *nval)
+npfkern_atomic_swap_ptr(volatile void *ptr, void *newval)
 {
 	/* Solaris/NetBSD API uses *ptr, but it represents **ptr. */
 	void * volatile *ptrp = (void * volatile *)ptr;
-	volatile void *ptrval;
 	void *oldval;
-
-	do {
-		ptrval = *ptrp;
-		oldval = __sync_val_compare_and_swap(ptrp, ptrval, nval);
-	} while (oldval != ptrval);
-
+again:
+	oldval = *ptrp;
+	if (!__sync_bool_compare_and_swap(ptrp, oldval, newval)) {
+		goto again;
+	}
 	return oldval;
 }
 
@@ -198,15 +201,14 @@ npfkern_pthread_create(lwp_t **lret, void (*func)(void *), void *arg)
 #define PR_NOWAIT	KM_NOSLEEP
 
 #ifndef pool_cache_t
-typedef mempool_t *	pool_cache_t;
+typedef void *		pool_cache_t;
 #endif
 
-#define	pool_cache_init(size, align, a, b, c, d, p, e, f, g) \
-    mempool_create(NULL, size, 64);
-#define	pool_cache_destroy(p)		mempool_destroy(p)
-#define	pool_cache_get(p, flags)	mempool_alloc((p), MEMP_WAITOK)
-#define	pool_cache_put(p, obj)		mempool_free((p), (obj))
-#define	pool_cache_invalidate(p)	mempool_cancel((p))
+#define	pool_cache_init(size, align, a, b, c, d, p, e, f, g) (void *)(size)
+#define	pool_cache_destroy(p)		assert((size_t)(uintptr_t)(p) > 0)
+#define	pool_cache_get(p, flags)	malloc((size_t)(uintptr_t)(p))
+#define	pool_cache_put(p, obj)		free(obj)
+#define	pool_cache_invalidate(p)	(void)(p)
 
 #define	kmem_zalloc(len, flags)		calloc(1, len)
 #define	kmem_alloc(len, flags)		malloc(len)

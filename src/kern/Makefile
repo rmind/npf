@@ -50,9 +50,7 @@ OBJS=		$(shell grep ^file files.npf | cut -f2 | \
 		    grep -v if_npflog)
 
 OBJS+=		stand/bpf_filter.o
-
 OBJS+=		stand/rb.o stand/murmurhash.o stand/subr_hash.o
-OBJS+=		stand/mempool.o stand/tls_pth.o
 
 #
 # Flags for the library target
