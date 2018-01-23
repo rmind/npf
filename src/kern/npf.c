@@ -130,6 +130,13 @@ npf_thread_register(npf_t *npf)
 	pserialize_register(npf->qsbr);
 }
 
+__dso_public void
+npf_thread_unregister(npf_t *npf)
+{
+	pserialize_perform(npf->qsbr);
+	pserialize_unregister(npf->qsbr);
+}
+
 void
 npf_setkernctx(npf_t *npf)
 {
