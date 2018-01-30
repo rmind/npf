@@ -159,7 +159,7 @@ typedef struct {
 	uint8_t			npc_alen;
 
 	/* IP header length and L4 protocol. */
-	uint8_t			npc_hlen;
+	uint32_t		npc_hlen;
 	uint16_t		npc_proto;
 
 	/* IPv4, IPv6. */
