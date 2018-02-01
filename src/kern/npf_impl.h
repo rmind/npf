@@ -1,4 +1,4 @@
-/*	$NetBSD: npf_impl.h,v 1.65 2016/12/28 21:55:04 christos Exp $	*/
+/*	$NetBSD: npf_impl.h,v 1.70 2017/12/10 01:18:21 rmind Exp $	*/
 
 /*-
  * Copyright (c) 2009-2014 The NetBSD Foundation, Inc.
@@ -246,6 +246,11 @@ u_int		npf_ifmap_register(npf_t *, const char *);
 void		npf_ifmap_flush(npf_t *);
 u_int		npf_ifmap_getid(npf_t *, const ifnet_t *);
 const char *	npf_ifmap_getname(npf_t *, const u_int);
+void		npf_ifmap_copyname(npf_t *, u_int, char *, size_t);
+
+void		npf_ifaddr_sync(npf_t *, ifnet_t *);
+void		npf_ifaddr_flush(npf_t *, ifnet_t *);
+void		npf_ifaddr_syncall(npf_t *);
 
 /* Packet filter hooks. */
 int		npf_pfil_register(bool);
@@ -297,12 +302,14 @@ void		npf_tableset_destroy(npf_tableset_t *);
 int		npf_tableset_insert(npf_tableset_t *, npf_table_t *);
 npf_table_t *	npf_tableset_getbyname(npf_tableset_t *, const char *);
 npf_table_t *	npf_tableset_getbyid(npf_tableset_t *, u_int);
+npf_table_t *	npf_tableset_swap(npf_tableset_t *, npf_table_t *);
 void		npf_tableset_reload(npf_t *, npf_tableset_t *, npf_tableset_t *);
 int		npf_tableset_export(npf_t *, const npf_tableset_t *, prop_array_t);
 
 npf_table_t *	npf_table_create(const char *, u_int, int, void *, size_t);
 void		npf_table_destroy(npf_table_t *);
 
+u_int		npf_table_getid(npf_table_t *);
 int		npf_table_check(npf_tableset_t *, const char *, u_int, int);
 int		npf_table_insert(npf_table_t *, const int,
 		    const npf_addr_t *, const npf_netmask_t);
@@ -323,6 +330,7 @@ npf_natpolicy_t *npf_ruleset_findnat(npf_ruleset_t *, uint64_t);
 void		npf_ruleset_freealg(npf_ruleset_t *, npf_alg_t *);
 int		npf_ruleset_export(npf_t *, const npf_ruleset_t *, prop_array_t);
 
+npf_rule_t *	npf_ruleset_lookup(npf_ruleset_t *, const char *);
 int		npf_ruleset_add(npf_ruleset_t *, const char *, npf_rule_t *);
 int		npf_ruleset_remove(npf_ruleset_t *, const char *, uint64_t);
 int		npf_ruleset_remkey(npf_ruleset_t *, const char *,
@@ -333,7 +341,7 @@ void		npf_ruleset_gc(npf_ruleset_t *);
 
 npf_rule_t *	npf_ruleset_inspect(npf_cache_t *, const npf_ruleset_t *,
 		    const int, const int);
-int		npf_rule_conclude(const npf_rule_t *, int *);
+int		npf_rule_conclude(const npf_rule_t *, npf_match_info_t *);
 
 /* Rule interface. */
 npf_rule_t *	npf_rule_alloc(npf_t *, prop_dictionary_t);
@@ -360,7 +368,8 @@ npf_rproc_t *	npf_rproc_create(prop_dictionary_t);
 void		npf_rproc_acquire(npf_rproc_t *);
 void		npf_rproc_release(npf_rproc_t *);
 const char *	npf_rproc_getname(const npf_rproc_t *);
-bool		npf_rproc_run(npf_cache_t *, npf_rproc_t *, int *);
+bool		npf_rproc_run(npf_cache_t *, npf_rproc_t *,
+		    const npf_match_info_t *, int *);
 
 /* State handling. */
 bool		npf_state_init(npf_cache_t *, npf_state_t *);

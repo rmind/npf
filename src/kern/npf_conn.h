@@ -1,4 +1,4 @@
-/*	$NetBSD: npf_conn.h,v 1.11 2016/12/26 23:05:06 christos Exp $	*/
+/*	$NetBSD: npf_conn.h,v 1.13 2017/12/10 00:07:36 rmind Exp $	*/
 
 /*-
  * Copyright (c) 2009-2014 The NetBSD Foundation, Inc.
@@ -88,6 +88,12 @@ struct npf_conn {
 	npf_state_t		c_state;
 	u_int			c_refcnt;
 	uint64_t		c_atime;
+
+	/*
+	 * Save the matching rule ID and flags.
+	 */
+	uint64_t		c_rid;
+	u_int			c_retfl;
 };
 
 #endif
@@ -106,8 +112,10 @@ npf_conn_t *	npf_conn_inspect(npf_cache_t *, const int, int *);
 npf_conn_t *	npf_conn_establish(npf_cache_t *, int, bool);
 void		npf_conn_release(npf_conn_t *);
 void		npf_conn_expire(npf_conn_t *);
-bool		npf_conn_pass(const npf_conn_t *, npf_rproc_t **);
-void		npf_conn_setpass(npf_conn_t *, npf_rproc_t *);
+bool		npf_conn_pass(const npf_conn_t *, npf_match_info_t *,
+		    npf_rproc_t **);
+void		npf_conn_setpass(npf_conn_t *, const npf_match_info_t *,
+		    npf_rproc_t *);
 int		npf_conn_setnat(const npf_cache_t *, npf_conn_t *,
 		    npf_nat_t *, u_int);
 npf_nat_t *	npf_conn_getnat(npf_conn_t *, const int, bool *);

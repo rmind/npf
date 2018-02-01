@@ -1,4 +1,4 @@
-/*	$NetBSD: npf_os.c,v 1.2 2016/12/26 23:59:47 rmind Exp $	*/
+/*	$NetBSD: npf_os.c,v 1.9 2017/12/11 03:25:46 ozaki-r Exp $	*/
 
 /*-
  * Copyright (c) 2009-2016 The NetBSD Foundation, Inc.
@@ -35,7 +35,7 @@
 
 #ifdef _KERNEL
 #include <sys/cdefs.h>
-__KERNEL_RCSID(0, "$NetBSD: npf_os.c,v 1.2 2016/12/26 23:59:47 rmind Exp $");
+__KERNEL_RCSID(0, "$NetBSD: npf_os.c,v 1.9 2017/12/11 03:25:46 ozaki-r Exp $");
 
 #ifdef _KERNEL_OPT
 #include "pf.h"
@@ -54,6 +54,9 @@ __KERNEL_RCSID(0, "$NetBSD: npf_os.c,v 1.2 2016/12/26 23:59:47 rmind Exp $");
 #include <sys/module.h>
 #include <sys/socketvar.h>
 #include <sys/uio.h>
+
+#include <netinet/in.h>
+#include <netinet6/in6_var.h>
 #endif
 
 #include "npf_impl.h"
@@ -62,6 +65,7 @@ __KERNEL_RCSID(0, "$NetBSD: npf_os.c,v 1.2 2016/12/26 23:59:47 rmind Exp $");
 #ifdef _KERNEL
 #ifndef _MODULE
 #include "opt_modular.h"
+#include "opt_net_mpsafe.h"
 #endif
 #include "ioconf.h"
 #endif
@@ -75,10 +79,10 @@ __KERNEL_RCSID(0, "$NetBSD: npf_os.c,v 1.2 2016/12/26 23:59:47 rmind Exp $");
  * So we make this misc; a better way would be to have early boot and late
  * boot drivers.
  */
-MODULE(MODULE_CLASS_MISC, npf, NULL);
+MODULE(MODULE_CLASS_MISC, npf, "bpf");
 #else
 /* This module autoloads via /dev/npf so it needs to be a driver */
-MODULE(MODULE_CLASS_DRIVER, npf, NULL);
+MODULE(MODULE_CLASS_DRIVER, npf, "bpf");
 #endif
 
 static int	npf_dev_open(dev_t, int, int, lwp_t *);
@@ -164,6 +168,7 @@ npf_init(void)
 	return error;
 }
 
+
 /*
  * Module interface.
  */
@@ -195,7 +200,6 @@ npfattach(int nunits)
 static int
 npf_dev_open(dev_t dev, int flag, int mode, lwp_t *l)
 {
-
 	/* Available only for super-user. */
 	if (kauth_authorize_network(l->l_cred, KAUTH_NETWORK_FIREWALL,
 	    KAUTH_REQ_NETWORK_FIREWALL_FW, NULL, NULL, NULL)) {
@@ -309,11 +313,11 @@ npf_ifop_flush(void *arg)
 	ifnet_t *ifp;
 
 	KERNEL_LOCK(1, NULL);
-	IFNET_LOCK();
+	IFNET_GLOBAL_LOCK();
 	IFNET_WRITER_FOREACH(ifp) {
 		ifp->if_pf_kif = arg;
 	}
-	IFNET_UNLOCK();
+	IFNET_GLOBAL_UNLOCK();
 	KERNEL_UNLOCK_ONE(NULL);
 }
 
@@ -353,11 +357,35 @@ npf_ifhook(void *arg, unsigned long cmd, void *arg2)
 	switch (cmd) {
 	case PFIL_IFNET_ATTACH:
 		npf_ifmap_attach(npf, ifp);
+		npf_ifaddr_sync(npf, ifp);
 		break;
 	case PFIL_IFNET_DETACH:
 		npf_ifmap_detach(npf, ifp);
+		npf_ifaddr_flush(npf, ifp);
 		break;
 	}
+}
+
+static void
+npf_ifaddrhook(void *arg, u_long cmd, void *arg2)
+{
+	npf_t *npf = npf_getkernctx();
+	struct ifaddr *ifa = arg2;
+
+	switch (cmd) {
+	case SIOCSIFADDR:
+	case SIOCAIFADDR:
+	case SIOCDIFADDR:
+#ifdef INET6
+	case SIOCSIFADDR_IN6:
+	case SIOCAIFADDR_IN6:
+	case SIOCDIFADDR_IN6:
+#endif
+		break;
+	default:
+		return;
+	}
+	npf_ifaddr_sync(npf, ifa->ifa_ifp);
 }
 
 /*
@@ -369,8 +397,7 @@ npf_pfil_register(bool init)
 	npf_t *npf = npf_getkernctx();
 	int error = 0;
 
-	mutex_enter(softnet_lock);
-	KERNEL_LOCK(1, NULL);
+	SOFTNET_KERNEL_LOCK_UNLESS_NET_MPSAFE();
 
 	/* Init: interface re-config and attach/detach hook. */
 	if (!npf_ph_if) {
@@ -379,7 +406,13 @@ npf_pfil_register(bool init)
 			error = ENOENT;
 			goto out;
 		}
-		error = pfil_add_ihook(npf_ifhook, NULL, PFIL_IFNET, npf_ph_if);
+
+		error = pfil_add_ihook(npf_ifhook, NULL,
+		    PFIL_IFNET, npf_ph_if);
+		KASSERT(error == 0);
+
+		error = pfil_add_ihook(npf_ifaddrhook, NULL,
+		    PFIL_IFADDR, npf_ph_if);
 		KASSERT(error == 0);
 	}
 	if (init) {
@@ -411,10 +444,15 @@ npf_pfil_register(bool init)
 		    PFIL_ALL, npf_ph_inet6);
 		KASSERT(error == 0);
 	}
+
+	/*
+	 * It is necessary to re-sync all/any interface address tables,
+	 * since we did not listen for any changes.
+	 */
+	npf_ifaddr_syncall(npf);
 	pfil_registered = true;
 out:
-	KERNEL_UNLOCK_ONE(NULL);
-	mutex_exit(softnet_lock);
+	SOFTNET_KERNEL_UNLOCK_UNLESS_NET_MPSAFE();
 
 	return error;
 }
@@ -427,11 +465,13 @@ npf_pfil_unregister(bool fini)
 {
 	npf_t *npf = npf_getkernctx();
 
-	mutex_enter(softnet_lock);
-	KERNEL_LOCK(1, NULL);
+	SOFTNET_KERNEL_LOCK_UNLESS_NET_MPSAFE();
 
 	if (fini && npf_ph_if) {
-		(void)pfil_remove_ihook(npf_ifhook, NULL, PFIL_IFNET, npf_ph_if);
+		(void)pfil_remove_ihook(npf_ifhook, NULL,
+		    PFIL_IFNET, npf_ph_if);
+		(void)pfil_remove_ihook(npf_ifaddrhook, NULL,
+		    PFIL_IFADDR, npf_ph_if);
 	}
 	if (npf_ph_inet) {
 		(void)pfil_remove_hook(npfkern_packet_handler, npf,
@@ -443,8 +483,7 @@ npf_pfil_unregister(bool fini)
 	}
 	pfil_registered = false;
 
-	KERNEL_UNLOCK_ONE(NULL);
-	mutex_exit(softnet_lock);
+	SOFTNET_KERNEL_UNLOCK_UNLESS_NET_MPSAFE();
 }
 
 bool

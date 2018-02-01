@@ -1,4 +1,4 @@
-/*	$NetBSD: npf_show.c,v 1.22 2016/12/29 20:48:50 rmind Exp $	*/
+/*	$NetBSD: npf_show.c,v 1.25 2017/12/10 22:04:41 rmind Exp $	*/
 
 /*-
  * Copyright (c) 2013 The NetBSD Foundation, Inc.
@@ -36,7 +36,7 @@
  */
 
 #include <sys/cdefs.h>
-__RCSID("$NetBSD: npf_show.c,v 1.22 2016/12/29 20:48:50 rmind Exp $");
+__RCSID("$NetBSD: npf_show.c,v 1.25 2017/12/10 22:04:41 rmind Exp $");
 
 #include <sys/socket.h>
 #define	__FAVOR_BSD
@@ -338,6 +338,13 @@ scan_marks(npf_conf_info_t *ctx, const struct mark_keyword_mapent *mk,
 }
 
 static void
+npfctl_print_id(npf_conf_info_t *ctx, nl_rule_t *rl)
+{
+	uint64_t id = id = npf_rule_getid(rl);
+	fprintf(ctx->fp, "# id=\"%" PRIx64 "\" ", id);
+}
+
+static void
 npfctl_print_filter(npf_conf_info_t *ctx, nl_rule_t *rl)
 {
 	const void *marks;
@@ -399,8 +406,7 @@ npfctl_print_rule(npf_conf_info_t *ctx, nl_rule_t *rl)
 
 	if ((attr & NPF_DYNAMIC_GROUP) == NPF_RULE_GROUP) {
 		/* Group; done. */
-		fputs("\n", ctx->fp);
-		return;
+		goto out;
 	}
 
 	/* Print filter criteria. */
@@ -411,12 +417,8 @@ npfctl_print_rule(npf_conf_info_t *ctx, nl_rule_t *rl)
 		fprintf(ctx->fp, "apply \"%s\" ", rproc);
 	}
 
-	/* If dynamic rule - print its ID. */
-	if ((attr & NPF_DYNAMIC_GROUP) == NPF_RULE_DYNAMIC) {
-		uint64_t id = npf_rule_getid(rl);
-		fprintf(ctx->fp, "# id = \"%" PRIx64 "\" ", id);
-	}
-
+out:
+	npfctl_print_id(ctx, rl);
 	fputs("\n", ctx->fp);
 }
 
@@ -461,10 +463,13 @@ npfctl_print_nat(npf_conf_info_t *ctx, nl_nat_t *nt)
 	flags = npf_nat_getflags(nt);
 
 	/* Print out the NAT policy with the filter criteria. */
-	fprintf(ctx->fp, "map %s %s %s %s %s pass ",
+	fprintf(ctx->fp, "map %s %s %s%s%s %s %s pass ",
 	    ifname, (flags & NPF_NAT_STATIC) ? "static" : "dynamic",
+	    "" /* XXX algo, */,
+	    (flags & NPF_NAT_PORTS) ? "" : "no-ports ",
 	    seg1, arrow, seg2);
 	npfctl_print_filter(ctx, rl);
+	npfctl_print_id(ctx, rl);
 	fputs("\n", ctx->fp);
 	free(seg);
 }

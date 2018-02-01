@@ -1,4 +1,4 @@
-/*	$NetBSD: npf_worker.c,v 1.2 2016/12/26 23:05:06 christos Exp $	*/
+/*	$NetBSD: npf_worker.c,v 1.4 2017/12/10 01:18:21 rmind Exp $	*/
 
 /*-
  * Copyright (c) 2010-2015 The NetBSD Foundation, Inc.
@@ -31,7 +31,7 @@
 
 #ifdef _KERNEL
 #include <sys/cdefs.h>
-__KERNEL_RCSID(0, "$NetBSD: npf_worker.c,v 1.2 2016/12/26 23:05:06 christos Exp $");
+__KERNEL_RCSID(0, "$NetBSD: npf_worker.c,v 1.4 2017/12/10 01:18:21 rmind Exp $");
 
 #include <sys/param.h>
 #include <sys/types.h>

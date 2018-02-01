@@ -293,11 +293,25 @@ npfkern_kpause(const char *wmesg, bool intr, int timo, kmutex_t *mtx)
 
 #define	MAX_TCPOPTLEN	40
 
+#ifndef satosin
+#define	satosin(sa)	((struct sockaddr_in *)(sa))
+#endif
+
+#ifndef satosin6
+#define	satosin6(sa)	((struct sockaddr_in6 *)(sa))
+#endif
+
 /*
  * FIXME/TODO: To be implemented ..
  */
 struct ifnet;
 typedef struct ifnet ifnet_t;
+
+#define	IFNET_GLOBAL_LOCK()
+#define	IFNET_GLOBAL_UNLOCK()
+#define	IFNET_WRITER_FOREACH(ifp) for ((ifp) = NULL; (ifp);)
+#define	IFADDR_FOREACH(ifa, ifp) \
+    for ((ifa) = NULL, (ifp) = NULL; (ifa) || (ifp);)
 
 #ifndef	IFNAMSIZ
 #define	IFNAMSIZ	16

@@ -1,4 +1,4 @@
-# $NetBSD: files.npf,v 1.17 2014/07/19 18:24:16 rmind Exp $
+# $NetBSD: files.npf,v 1.20 2017/01/02 21:49:51 rmind Exp $
 #
 # Public Domain.
 #
@@ -11,7 +11,6 @@ defpseudo	npf:	ifnet
 
 # Core
 file	net/npf/npf.c				npf
-file	net/npf/npf_os.c			npf
 file	net/npf/npf_conf.c			npf
 file	net/npf/npf_ctl.c			npf
 file	net/npf/npf_handler.c			npf
@@ -30,6 +29,12 @@ file	net/npf/npf_nat.c			npf
 file	net/npf/npf_alg.c			npf
 file	net/npf/npf_sendpkt.c			npf
 file	net/npf/npf_worker.c			npf
+
+file	net/npf/npf_os.c			npf
+file	net/npf/npf_ifaddr.c			npf
+
+# LPM
+file	net/npf/lpm.c				npf
 
 # Built-in extensions.
 file	net/npf/npf_ext_log.c			npf
