@@ -60,10 +60,6 @@
 #include <lpm.h>
 #include <cdbr.h>
 
-#ifdef USE_JUDY
-#include <Judy.h>
-#endif
-
 #include "cext.h"
 
 #include "rbtree.h"

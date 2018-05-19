@@ -1,4 +1,4 @@
-/*	$NetBSD: npf_nat.c,v 1.41 2016/12/26 23:05:06 christos Exp $	*/
+/*	$NetBSD: npf_nat.c,v 1.43 2018/05/11 13:52:48 maxv Exp $	*/
 
 /*-
  * Copyright (c) 2014 Mindaugas Rasiukevicius <rmind at netbsd org>
@@ -72,7 +72,7 @@
 
 #ifdef _KERNEL
 #include <sys/cdefs.h>
-__KERNEL_RCSID(0, "$NetBSD: npf_nat.c,v 1.41 2016/12/26 23:05:06 christos Exp $");
+__KERNEL_RCSID(0, "$NetBSD: npf_nat.c,v 1.43 2018/05/11 13:52:48 maxv Exp $");
 
 #include <sys/param.h>
 #include <sys/types.h>
@@ -692,7 +692,7 @@ npf_do_nat(npf_cache_t *npc, npf_conn_t *con, const int di)
 	int error;
 	bool forw;
 
-	/* All relevant IPv4 data should be already cached. */
+	/* All relevant data should be already cached. */
 	if (!npf_iscached(npc, NPC_IP46) || !npf_iscached(npc, NPC_LAYER4)) {
 		return 0;
 	}
@@ -890,7 +890,7 @@ npf_nat_import(npf_t *npf, prop_dictionary_t natdict,
 	prop_dictionary_get_uint16(natdict, "tport", &nt->nt_tport);
 
 	/* Take a specific port from port-map. */
-	if ((np->n_flags & NPF_NAT_PORTMAP) != 0 && nt->nt_tport &
+	if ((np->n_flags & NPF_NAT_PORTMAP) != 0 && nt->nt_tport &&
 	    !npf_nat_takeport(np, nt->nt_tport)) {
 		pool_cache_put(nat_cache, nt);
 		return NULL;
