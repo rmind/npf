@@ -1,5 +1,3 @@
-/*	$NetBSD: npf_inet.c,v 1.50 2018/04/08 05:51:45 maxv Exp $	*/
-
 /*-
  * Copyright (c) 2009-2014 The NetBSD Foundation, Inc.
  * All rights reserved.

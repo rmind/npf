@@ -1,5 +1,3 @@
-/*	$NetBSD: npf_tableset.c,v 1.27 2017/03/10 02:21:37 christos Exp $	*/
-
 /*-
  * Copyright (c) 2009-2016 The NetBSD Foundation, Inc.
  * All rights reserved.
@@ -275,23 +273,25 @@ npf_tableset_reload(npf_t *npf, npf_tableset_t *nts, npf_tableset_t *ots)
 }
 
 int
-npf_tableset_export(npf_t *npf, const npf_tableset_t *ts, prop_array_t tables)
+npf_tableset_export(npf_t *npf, const npf_tableset_t *ts, nvlist_t *npf_dict)
 {
 	const npf_table_t *t;
 
 	KASSERT(npf_config_locked_p(npf));
 
 	for (u_int tid = 0; tid < ts->ts_nitems; tid++) {
+		nvlist_t *table;
+
 		if ((t = ts->ts_map[tid]) == NULL) {
 			continue;
 		}
-		prop_dictionary_t tdict = prop_dictionary_create();
-		prop_dictionary_set_cstring(tdict, "name", t->t_name);
-		prop_dictionary_set_uint32(tdict, "type", t->t_type);
-		prop_dictionary_set_uint32(tdict, "id", tid);
+		table = nvlist_create(0);
+		nvlist_add_string(table, "name", t->t_name);
+		nvlist_add_number(table, "type", t->t_type);
+		nvlist_add_number(table, "id", tid);
 
-		prop_array_add(tables, tdict);
-		prop_object_release(tdict);
+		nvlist_append_nvlist_array(npf_dict, "tables", table);
+		nvlist_destroy(table);
 	}
 	return 0;
 }
@@ -354,7 +354,7 @@ table_tree_flush(npf_table_t *t)
  */
 npf_table_t *
 npf_table_create(const char *name, u_int tid, int type,
-    void *blob, size_t size)
+    const void *blob, size_t size)
 {
 	npf_table_t *t;
 
@@ -369,18 +369,24 @@ npf_table_create(const char *name, u_int tid, int type,
 		LIST_INIT(&t->t_list);
 		break;
 	case NPF_TABLE_HASH:
-		size = MAX(size, 128);
+		size = MIN(MAX(size, 1024 * 1024), 8); // XXX
 		t->t_hashl = hashinit(size, HASH_LIST, true, &t->t_hashmask);
 		if (t->t_hashl == NULL) {
 			goto out;
 		}
 		break;
 	case NPF_TABLE_CDB:
-		t->t_blob = blob;
+		t->t_blob = kmem_alloc(size, KM_SLEEP);
+		if (t->t_blob == NULL) {
+			goto out;
+		}
+		memcpy(t->t_blob, blob, size);
 		t->t_bsize = size;
-		t->t_cdb = cdbr_open_mem(blob, size, CDBR_DEFAULT, NULL, NULL);
+
+		t->t_cdb = cdbr_open_mem(t->t_blob, size,
+		    CDBR_DEFAULT, NULL, NULL);
 		if (t->t_cdb == NULL) {
-			kfree(blob, M_TEMP);
+			kmem_free(t->t_blob, t->t_bsize);
 			goto out;
 		}
 		t->t_nitems = cdbr_entries(t->t_cdb);
@@ -416,7 +422,7 @@ npf_table_destroy(npf_table_t *t)
 		break;
 	case NPF_TABLE_CDB:
 		cdbr_close(t->t_cdb);
-		kfree(t->t_blob, M_TEMP);
+		kmem_free(t->t_blob, t->t_bsize);
 		break;
 	default:
 		KASSERT(false);
@@ -435,9 +441,9 @@ npf_table_getid(npf_table_t *t)
  * npf_table_check: validate the name, ID and type.
  */
 int
-npf_table_check(npf_tableset_t *ts, const char *name, u_int tid, int type)
+npf_table_check(npf_tableset_t *ts, const char *name, uint64_t tid, uint64_t type)
 {
-	if ((u_int)tid >= ts->ts_nitems) {
+	if (tid >= ts->ts_nitems) {
 		return EINVAL;
 	}
 	if (ts->ts_map[tid] != NULL) {

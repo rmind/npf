@@ -89,7 +89,7 @@ estrndup(const char *s, size_t len)
 }
 #endif
 
-#ifdef __linux__ // XXX glibc
+#if defined(__linux__) && !defined(_GNU_SOURCE) // XXX glibc
 int asprintf(char **strp, const char *fmt, ...);
 int vasprintf(char **strp, const char *fmt, va_list ap);
 #endif

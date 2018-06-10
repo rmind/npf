@@ -1,5 +1,3 @@
-/*	$NetBSD$	*/
-
 /*-
  * Copyright (c) 2013 The NetBSD Foundation, Inc.
  * All rights reserved.
@@ -82,6 +80,7 @@ npfctl_rule(int fd, int argc, char **argv)
 		{ "add",	NPF_CMD_RULE_ADD,	true	},
 		{ "rem",	NPF_CMD_RULE_REMKEY,	true	},
 		{ "del",	NPF_CMD_RULE_REMKEY,	true	},
+		{ "del-id",	NPF_CMD_RULE_REMOVE,	true	},
 		{ "rem-id",	NPF_CMD_RULE_REMOVE,	true	},
 		{ "list",	NPF_CMD_RULE_LIST,	false	},
 		{ "flush",	NPF_CMD_RULE_FLUSH,	false	},

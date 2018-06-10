@@ -22,7 +22,8 @@
 #include <net/if.h>
 #include <arpa/inet.h>
 
-#include <prop/proplib.h>
+#include <dnv.h>
+#include <nv.h>
 
 #include <rump/rump.h>
 #include <rump/rump_syscalls.h>
@@ -81,51 +82,76 @@ result(const char *testcase, bool ok)
 }
 
 static void
-load_npf_config_ifs(prop_dictionary_t dbg_dict)
+load_npf_config_ifs(const nvlist_t *dbg_dict)
 {
-	prop_array_t iflist = prop_dictionary_get(dbg_dict, "interfaces");
-	prop_object_iterator_t it = prop_array_iterator(iflist);
-	prop_dictionary_t ifdict;
+	const nvlist_t * const *iflist;
+	size_t nitems;
 
-	while ((ifdict = prop_object_iterator_next(it)) != NULL) {
-		const char *ifname = NULL;
-
-		prop_dictionary_get_cstring_nocopy(ifdict, "name", &ifname);
-		(void)rumpns_npf_test_addif(ifname, true, verbose);
+	if (!nvlist_exists_nvlist_array(dbg_dict, "interfaces")) {
+		return;
 	}
-	prop_object_iterator_release(it);
+	iflist = nvlist_get_nvlist_array(dbg_dict, "interfaces", &nitems);
+	for (unsigned i = 0; i < nitems; i++) {
+		const nvlist_t *ifdict = iflist[i];
+		const char *ifname;
+
+		if ((ifname = nvlist_get_string(ifdict, "name")) != NULL) {
+			(void)rumpns_npf_test_addif(ifname, true, verbose);
+		}
+	}
 }
 
 static void
-load_npf_config(const char *config)
+load_npf_config(const char *fpath)
 {
-	prop_dictionary_t npf_dict, dbg_dict;
-	void *xml;
-	int error;
+	nvlist_t *npf_dict;
+	const nvlist_t *dbg_dict;
+	struct stat sb;
+	int error, fd;
+	size_t len;
+	void *buf;
 
-	/* Read the configuration from the specified file. */
-	npf_dict = prop_dictionary_internalize_from_file(config);
-	if (!npf_dict) {
-		err(EXIT_FAILURE, "prop_dictionary_internalize_from_file");
+	/*
+	 * Read the configuration from the specified file.
+	 */
+	if ((fd = open(fpath, O_RDONLY)) == -1) {
+		err(EXIT_FAILURE, "open");
 	}
-	xml = prop_dictionary_externalize(npf_dict);
+	if (fstat(fd, &sb) == -1) {
+		err(EXIT_FAILURE, "fstat");
+	}
+	len = sb.st_size;
+	buf = mmap(NULL, len, PROT_READ, MAP_FILE | MAP_PRIVATE, fd, 0);
+	if (buf == MAP_FAILED) {
+		err(EXIT_FAILURE, "mmap");
+	}
+	close(fd);
+
+	/*
+	 * Unpack the binary to nvlist.
+	 */
+	npf_dict = nvlist_unpack(buf, len, 0);
+	munmap(buf, len);
+	if (!npf_dict) {
+		errx(EXIT_FAILURE, "nvlist_unpack");
+	}
 
 	/* Inspect the debug data.  Create the interfaces, if any. */
-	dbg_dict = prop_dictionary_get(npf_dict, "debug");
-	if (dbg_dict) {
+	if ((dbg_dict = dnvlist_get_nvlist(npf_dict, "debug", NULL)) != NULL) {
 		load_npf_config_ifs(dbg_dict);
 	}
-	prop_object_release(npf_dict);
 
-	/* Pass the XML configuration for NPF kernel component to load. */
-	error = rumpns_npf_test_load(xml);
+	/*
+	 * Load the NPF configuration.  Note: it will consume the nvpair.
+	 */
+	error = rumpns_npf_test_load(npf_dict);
 	if (error) {
 		errx(EXIT_FAILURE, "npf_test_load: %s\n", strerror(error));
 	}
-	free(xml);
+	npf_dict = NULL; // destroyed for us
 
 	if (verbose) {
-		printf("Loaded NPF config at '%s'\n", config);
+		printf("Loaded NPF config at '%s'\n", fpath);
 	}
 }
 

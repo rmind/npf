@@ -1,5 +1,3 @@
-/*	$NetBSD: npf.h,v 1.57 2018/04/19 21:50:09 christos Exp $	*/
-
 /*-
  * Copyright (c) 2009-2014 The NetBSD Foundation, Inc.
  * All rights reserved.
@@ -39,15 +37,16 @@
 #include <sys/param.h>
 #include <sys/types.h>
 
-#define	NPF_VERSION		19
+#define	NPF_VERSION		20
 
 #if defined(_NPF_STANDALONE)
 #include "npf_stand.h"
 #else
 #include <sys/ioctl.h>
-#include <prop/proplib.h>
 #include <netinet/in_systm.h>
 #include <netinet/in.h>
+#include <dnv.h>
+#include <nv.h>
 #endif
 
 struct npf;
@@ -199,17 +198,16 @@ typedef struct npf_rproc	npf_rproc_t;
 
 typedef struct {
 	uint64_t	mi_rid;
-	u_int		mi_retfl;
-	u_int		mi_di;
+	unsigned	mi_retfl;
+	unsigned	mi_di;
 } npf_match_info_t;
 
 typedef struct {
-	unsigned int	version;
-	void *		ctx;
-	int		(*ctor)(npf_rproc_t *, prop_dictionary_t);
-	void		(*dtor)(npf_rproc_t *, void *);
-	bool		(*proc)(npf_cache_t *, void *, const npf_match_info_t *,
-				int *);
+	u_int	version;
+	void *	ctx;
+	int	(*ctor)(npf_rproc_t *, const nvlist_t *);
+	void	(*dtor)(npf_rproc_t *, void *);
+	bool	(*proc)(npf_cache_t *, void *, const npf_match_info_t *, int *);
 } npf_ext_ops_t;
 
 void *		npf_ext_register(npf_t *, const char *, const npf_ext_ops_t *);

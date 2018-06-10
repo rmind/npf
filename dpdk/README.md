@@ -5,9 +5,15 @@ describe how to build and run a quick NPF + DPDK demo.
 
 ## Install dependencies
 
-- Install proplib RPM package.
+- Install libnv RPM package.
 
-	TBD
+	git clone https://github.com/rmind/nvlist
+	cd nvlist/pkg && make rpm && rpm -ihv RPMS/x86_64/liblpm-*
+
+- Install libqsbr RPM package:
+
+	git clone https://github.com/rmind/libqsbr
+	cd libqsbr/pkg && make rpm && rpm -ihv RPMS/x86_64/liblpm-*
 
 - Install liblpm RPM package:
 

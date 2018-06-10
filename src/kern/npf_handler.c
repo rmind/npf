@@ -1,5 +1,3 @@
-/*	$NetBSD: npf_handler.c,v 1.39 2018/03/13 09:04:02 maxv Exp $	*/
-
 /*-
  * Copyright (c) 2009-2013 The NetBSD Foundation, Inc.
  * All rights reserved.

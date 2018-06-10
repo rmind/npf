@@ -1,29 +1,27 @@
 Name:		npfctl
-Version:	0.1
+Version:	1.0
 Release:	1%{?dist}
 Summary:	Standalone NPF package: npfctl utility
 License:	BSD
-URL:		http://www.netbsd.org/~rmind/npf/
+URL:		https://github.com/rmind/npf
 Source0:	npf.tar.gz
 
 BuildRequires:	make
 BuildRequires:	libtool
 BuildRequires:	openssl-devel
-#BuildRequires:	libcdb-devel
-#BuildRequires:	libprop-devel
+#BuildRequires:	libnv-devel
 BuildRequires:	flex
 BuildRequires:	byacc
 
-Requires:	libcdb
-Requires:	libprop
+Requires:	libnv
 Requires:	npf
 
 %description
-
 NPF is a layer 3 packet filter, supporting IPv4 and IPv6 as well as layer
 4 protocols such as TCP, UDP, and ICMP.  It was designed with a focus on
-high performance, scalability, and modularity.  NPF was written from scratch
-in 2009 and is distributed under the 2-clause BSD license.
+high performance, scalability and modularity.  NPF was written from
+scratch in 2009.  It is written in C99 and distributed under the 2-clause
+BSD license.
 
 This RPM package contains npfctl(8) utility.
 

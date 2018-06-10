@@ -1,5 +1,3 @@
-/*	$NetBSD: npf_extmod.c,v 1.4 2013/03/10 23:57:07 christos Exp $	*/
-
 /*-
  * Copyright (c) 2012 The NetBSD Foundation, Inc.
  * All rights reserved.

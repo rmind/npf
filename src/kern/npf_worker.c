@@ -1,5 +1,3 @@
-/*	$NetBSD: npf_worker.c,v 1.4 2017/12/10 01:18:21 rmind Exp $	*/
-
 /*-
  * Copyright (c) 2010-2015 The NetBSD Foundation, Inc.
  * All rights reserved.

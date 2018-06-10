@@ -1,5 +1,3 @@
-/*	$NetBSD: npf_bpf_comp.c,v 1.10 2016/12/27 22:35:33 rmind Exp $	*/
-
 /*-
  * Copyright (c) 2010-2014 The NetBSD Foundation, Inc.
  * All rights reserved.

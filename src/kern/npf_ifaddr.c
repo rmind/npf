@@ -1,5 +1,3 @@
-/*	$NetBSD: npf_ifaddr.c,v 1.3 2017/12/11 03:25:46 ozaki-r Exp $	*/
-
 /*-
  * Copyright (c) 2014 The NetBSD Foundation, Inc.
  * All rights reserved.

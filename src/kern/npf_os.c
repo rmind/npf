@@ -1,5 +1,3 @@
-/*	$NetBSD: npf_os.c,v 1.9 2017/12/11 03:25:46 ozaki-r Exp $	*/
-
 /*-
  * Copyright (c) 2009-2016 The NetBSD Foundation, Inc.
  * All rights reserved.

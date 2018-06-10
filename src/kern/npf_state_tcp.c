@@ -1,5 +1,3 @@
-/*	$NetBSD: npf_state_tcp.c,v 1.18 2016/12/26 23:10:46 rmind Exp $	*/
-
 /*-
  * Copyright (c) 2010-2012 The NetBSD Foundation, Inc.
  * All rights reserved.

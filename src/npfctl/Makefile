@@ -5,21 +5,34 @@
 
 BIN=		npfctl
 
-CFLAGS=		-std=gnu99 -O2 -flto -g -Wall -Wextra -Werror
-CFLAGS+=	-Wstrict-prototypes -Wmissing-prototypes -Wpointer-arith
+CFLAGS+=	-std=gnu99 -O2 -g -Wall -Wextra -Werror
+CFLAGS+=	-D_POSIX_C_SOURCE=200809L
+CFLAGS+=	-D_GNU_SOURCE -D_DEFAULT_SOURCE
 CFLAGS+=	-I. -D__RCSID\(x\)= -D__dead= -D__printflike\(x,y\)=
+CFLAGS+=	-Wno-unused-local-typedefs
 
-CFLAGS+=	-Wno-unused-parameter -Wno-unused-variable -Wno-unused-function
-CFLAGS+=	-Wno-unused
+#
+# Extended warning flags.
+#
+CFLAGS+=	-Wno-unknown-warning-option # gcc vs clang
+
+CFLAGS+=	-Wstrict-prototypes -Wmissing-prototypes -Wpointer-arith
+CFLAGS+=	-Wmissing-declarations #-Wredundant-decls -Wnested-externs
+CFLAGS+=	-Wshadow -Wcast-qual -Wcast-align -Wwrite-strings
+CFLAGS+=	-Wold-style-definition
+#CFLAGS+=	-Wsuggest-attribute=noreturn -Wjump-misses-init
+
+# New GCC 6/7 flags:
+#CFLAGS+=	-Wduplicated-cond -Wmisleading-indentation -Wnull-dereference
+#CFLAGS+=	-Wduplicated-branches -Wrestrict
 
 ifeq ($(DEBUG),1)
-CFLAGS+=	-O1 -DDEBUG -fno-omit-frame-pointer
+CFLAGS+=	-Og -DDEBUG -fno-omit-frame-pointer
 else
 CFLAGS+=	-DNDEBUG
-LDFLAGS=	-flto
 endif
 
-LDFLAGS=	-lnpf -lcdb -lprop -lcrypto -lpcap
+LDFLAGS=	-lnpf -lnv -lcrypto -lpcap
 
 #
 # System specific flags
@@ -29,9 +42,6 @@ SYSNAME:=	$(shell uname -s)
 
 ifeq ($(SYSNAME),Linux)
 CFLAGS+=	-Dgetprogname\(\)=\"$(BIN)\"
-CFLAGS+=	-D_POSIX_C_SOURCE=200809L
-CFLAGS+=	-D_BSD_SOURCE -D__FAVOR_BSD=1
-
 LDFLAGS+=	-ldl
 endif
 

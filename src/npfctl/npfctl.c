@@ -1,5 +1,3 @@
-/*	$NetBSD: npfctl.c,v 1.54 2017/10/30 04:53:43 ozaki-r Exp $	*/
-
 /*-
  * Copyright (c) 2009-2014 The NetBSD Foundation, Inc.
  * All rights reserved.
@@ -732,7 +730,7 @@ npfctl(int action, int argc, char **argv)
 		npfctl_config_init(false);
 		npfctl_parse_file(argc < 3 ? NPF_CONF_PATH : argv[2]);
 		npfctl_preload_bpfjit();
-		errno = ret = npfctl_config_send(fd, NULL);
+		errno = ret = npfctl_config_send(fd);
 		fun = "npfctl_config_send";
 		break;
 	case NPFCTL_SHOWCONF:
@@ -789,7 +787,7 @@ npfctl(int action, int argc, char **argv)
 	case NPFCTL_DEBUG:
 		npfctl_config_init(true);
 		npfctl_parse_file(argc > 2 ? argv[2] : NPF_CONF_PATH);
-		npfctl_config_send(0, argc > 3 ? argv[3] : "/tmp/npf.plist");
+		npfctl_config_debug(argc > 3 ? argv[3] : "/tmp/npf.nvlist");
 		break;
 	}
 	if (ret) {

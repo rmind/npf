@@ -5,24 +5,35 @@
 
 BIN=		npftest
 
-CFLAGS=		-std=gnu99 -Wall -Wextra -Werror -g
-CFLAGS+=	-Wstrict-prototypes -Wmissing-prototypes -Wpointer-arith
-CFLAGS+=	-I ../kern -I ../kern/stand -D_NPF_STANDALONE
-CFLAGS+=	-D__RCSID\(x\)=
-
-CFLAGS+=	-O0 -fomit-frame-pointer -g
-
-CFLAGS+=	-Wno-unused-parameter -Wno-unused-variable -Wno-unused-function
-CFLAGS+=	-Wno-unused
-
-LDFLAGS=	-lpthread -lpcap -lcdb -lprop -lnpfkern-dbg
-
-SYSNAME:=	$(shell uname -s)
-
-ifeq ($(SYSNAME),Linux)
+CFLAGS+=	-std=c99 -O2 -g -Wall -Wextra -Werror
 CFLAGS+=	-D_POSIX_C_SOURCE=200809L
-CFLAGS+=	-D_BSD_SOURCE -D__FAVOR_BSD=1
+CFLAGS+=	-D_GNU_SOURCE -D_DEFAULT_SOURCE
+
+CFLAGS+=	-I ../kern -I ../kern/stand -D__RCSID\(x\)=
+CFLAGS+=	-D_NPF_STANDALONE
+
+#
+# Extended warning flags.
+#
+CFLAGS+=	-Wno-unknown-warning-option # gcc vs clang
+
+CFLAGS+=	-Wstrict-prototypes -Wmissing-prototypes -Wpointer-arith
+CFLAGS+=	-Wmissing-declarations -Wredundant-decls -Wnested-externs
+CFLAGS+=	-Wshadow -Wcast-qual -Wcast-align -Wwrite-strings
+CFLAGS+=	-Wold-style-definition
+CFLAGS+=	-Wsuggest-attribute=noreturn #-Wjump-misses-init
+
+# New GCC 6/7 flags:
+#CFLAGS+=	-Wduplicated-cond -Wmisleading-indentation -Wnull-dereference
+#CFLAGS+=	-Wduplicated-branches -Wrestrict
+
+ifeq ($(DEBUG),1)
+CFLAGS+=	-Og -DDEBUG -fno-omit-frame-pointer
+else
+CFLAGS+=	-DNDEBUG
 endif
+
+LDFLAGS=	-lpthread -lnv -lpcap -lcdb -lnpfkern-dbg
 
 OBJS=		npftest.o npfstream.o
 

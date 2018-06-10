@@ -1,5 +1,3 @@
-/*	$NetBSD: npf_ext_log.c,v 1.13 2017/02/18 23:27:32 christos Exp $	*/
-
 /*-
  * Copyright (c) 2010-2012 The NetBSD Foundation, Inc.
  * All rights reserved.
@@ -65,12 +63,12 @@ typedef struct {
 } npf_ext_log_t;
 
 static int
-npf_log_ctor(npf_rproc_t *rp, prop_dictionary_t params)
+npf_log_ctor(npf_rproc_t *rp, const nvlist_t *params)
 {
 	npf_ext_log_t *meta;
 
 	meta = kmem_zalloc(sizeof(npf_ext_log_t), KM_SLEEP);
-	prop_dictionary_get_uint32(params, "log-interface", &meta->if_idx);
+	meta->if_idx = dnvlist_get_number(params, "log-interface", 0);
 	npf_rproc_assign(rp, meta);
 	return 0;
 }

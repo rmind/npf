@@ -1,5 +1,3 @@
-/*	$NetBSD: npf_state.c,v 1.18 2016/12/26 23:05:06 christos Exp $	*/
-
 /*-
  * Copyright (c) 2010-2012 The NetBSD Foundation, Inc.
  * All rights reserved.

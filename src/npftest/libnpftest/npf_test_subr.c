@@ -82,10 +82,10 @@ npf_test_fini(void)
 }
 
 int
-npf_test_load(const void *xml)
+npf_test_load(nvlist_t *npf_dict)
 {
-	prop_dictionary_t npf_dict = prop_dictionary_internalize(xml);
-	return npfctl_load(npf_getkernctx(), 0, npf_dict);
+	npf_error_t error;
+	return npf_load(npf_getkernctx(), npf_dict, &error);
 }
 
 ifnet_t *

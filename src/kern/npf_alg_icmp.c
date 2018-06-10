@@ -1,5 +1,3 @@
-/*	$NetBSD: npf_alg_icmp.c,v 1.30 2018/03/23 08:34:57 maxv Exp $	*/
-
 /*-
  * Copyright (c) 2010 The NetBSD Foundation, Inc.
  * All rights reserved.

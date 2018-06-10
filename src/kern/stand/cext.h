@@ -73,7 +73,7 @@
 #endif
 
 #ifndef __UNCONST
-#define	__UNCONST(a)		((void*)(const void*)a)
+#define	__UNCONST(a)		((void*)(uintptr_t)(const void*)a)
 #endif
 
 #ifndef __noinline

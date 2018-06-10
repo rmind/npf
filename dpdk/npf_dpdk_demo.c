@@ -133,15 +133,15 @@ static void
 load_npf_config(npf_t *npf, nl_config_t *ncf)
 {
 	npf_error_t errinfo;
-	void *ref;
+	void *config_ref;
 
 	/*
 	 * - Build the config: we get a reference for loading.
 	 * - Load the config to the NPF instance.
 	 * - Destroy the config (reference becomes invalid).
 	 */
-	ref = npf_config_build(ncf);
-	if (npf_load(npf, ref, &errinfo) != 0) {
+	config_ref = npf_config_build(ncf);
+	if (npf_load(npf, config_ref, &errinfo) != 0) {
 		errx(EXIT_FAILURE, "npf_load() failed");
 	}
 	npf_config_destroy(ncf);

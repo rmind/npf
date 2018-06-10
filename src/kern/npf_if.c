@@ -1,5 +1,3 @@
-/*	$NetBSD: npf_if.c,v 1.8 2017/02/18 23:27:32 christos Exp $	*/
-
 /*-
  * Copyright (c) 2013 The NetBSD Foundation, Inc.
  * All rights reserved.

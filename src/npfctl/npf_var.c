@@ -1,5 +1,3 @@
-/*	$NetBSD: npf_var.c,v 1.10 2017/01/11 02:11:21 christos Exp $	*/
-
 /*-
  * Copyright (c) 2011-2012 The NetBSD Foundation, Inc.
  * All rights reserved.

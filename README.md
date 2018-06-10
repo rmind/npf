@@ -2,10 +2,9 @@
 
 NPF is a layer 3 packet filter, supporting IPv4 and IPv6 as well as layer
 4 protocols such as TCP, UDP, and ICMP.  It was designed with a focus on
-high performance, scalability, and modularity.
-
-NPF was started from scratch in 2009.  It is written in C99 and is
-distributed under the 2-clause BSD license.
+high performance, scalability and modularity.  NPF was written from
+scratch in 2009.  It is written in C99 and distributed under the 2-clause
+BSD license.
 
 This repository contains a **standalone** version of NPF.
 
@@ -36,17 +35,8 @@ http://www.netbsd.org/~rmind/npf/
 ## Source code structure
 
     src/                - root directory of the standalone NPF
-
-        kern/           - the kernel component
-                          http://nxr.netbsd.org/xref/src/sys/net/npf/
-
+        kern/           - the kernel component (as a library)
         libnpf/         - library to manage the kernel component
-                          http://nxr.netbsd.org/xref/src/lib/libnpf/
-
         npfctl/         - command line user interface to control NPF
-                          http://nxr.netbsd.org/xref/src/usr.sbin/npf/npfctl/
-
         npftest/        - unit tests and utility to debug NPF
-                          http://nxr.netbsd.org/xref/src/usr.sbin/npf/npftest/
-
     pkg/                - packaging files (e.g. RPM specs)

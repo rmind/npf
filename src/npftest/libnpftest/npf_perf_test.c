@@ -60,7 +60,7 @@ worker(void *arg)
 		int error;
 
 		error = npf_packet_handler(npf, &m, ifp, PFIL_OUT);
-		KASSERT(error == 0);
+		KASSERT(error == 0); (void)error;
 		n++;
 	}
 	npackets[i] = n;
@@ -86,7 +86,7 @@ npf_test_conc(bool st, unsigned nthreads)
 		error = kthread_create(PRI_NONE, KTHREAD_MUSTJOIN |
 		    KTHREAD_MPSAFE, NULL, worker, (void *)(uintptr_t)i,
 		    &l[i], "npfperf");
-		KASSERT(error == 0);
+		KASSERT(error == 0); (void)error;
 	}
 
 	/* Let them spin! */

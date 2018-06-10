@@ -55,7 +55,9 @@
 #include <net/ethernet.h>
 #endif
 
-#include <prop/proplib.h>
+#include <dnv.h>
+#include <nv.h>
+
 #include <qsbr/qsbr.h>
 #include <lpm.h>
 #include <cdbr.h>
@@ -136,7 +138,11 @@ npfkern_qsbr_wait(qsbr_t *qsbr)
 #define	pserialize_checkpoint(p) qsbr_checkpoint(p)
 #define	pserialize_perform(p)	npfkern_qsbr_wait(p)
 #define	pserialize_read_enter()	NPF_DIAG_MAGIC_VAL
+#ifdef NDEBUG
+#define	pserialize_read_exit(s)	(void)(s);
+#else
 #define	pserialize_read_exit(s)	assert((s) == NPF_DIAG_MAGIC_VAL)
+#endif
 
 /*
  * Atomic operations and memory barriers.
@@ -207,9 +213,16 @@ typedef void *		pool_cache_t;
 #define	pool_cache_put(p, obj)		free(obj)
 #define	pool_cache_invalidate(p)	(void)(p)
 
+static inline void
+npfkern_kmem_free(void *ptr, size_t len)
+{
+	(void)len;
+	free(ptr);
+}
+
 #define	kmem_zalloc(len, flags)		calloc(1, len)
 #define	kmem_alloc(len, flags)		malloc(len)
-#define	kmem_free(ptr, len)		free(ptr)
+#define	kmem_free(ptr, len)		npfkern_kmem_free(ptr, len)
 #define	kmem_intr_zalloc(len, flags)	kmem_zalloc(len, flags)
 #define	kmem_intr_free(ptr, len)	kmem_free(ptr, len)
 
@@ -313,7 +326,14 @@ typedef struct ifnet ifnet_t;
 #define	IFNAMSIZ	16
 #endif
 
-#define	ip_reass_packet(p, h)		ENOTSUP
+static inline int
+npfkern_ip_reass_packet(void *x, void *y)
+{
+	(void)x; (void)y;
+	return ENOTSUP;
+}
+
+#define	ip_reass_packet(p, h)		npfkern_ip_reass_packet(p, h)
 #define	ip_output(m, a, b, c, d, e)	ENOTSUP
 #define	icmp_error(m, t, c, a, b)
 #define	in_cksum(m, len)	0
@@ -334,9 +354,14 @@ typedef struct ifnet ifnet_t;
 
 #define	__read_mostly
 #define	__cacheline_aligned
-#define	__diagused
 #ifndef	__dead
 #define	__dead
+#endif
+
+#ifdef DEBUG
+#define	__diagused
+#else
+#define	__diagused		__unused
 #endif
 
 #define	KASSERT			assert
@@ -370,11 +395,15 @@ typedef int modcmd_t;
 
 struct cpu_info { unsigned id; };
 
+#define	_IOR(g,n,t)		0
+#define	_IOW(g,n,t)		0
+#define	_IOWR(g,n,t)		0
+
 #ifdef __linux__
 static inline size_t
 strlcpy(char *dst, const char *src, size_t len)
 {
-	char *p = stpncpy(dst, src, len);
+	(void)stpncpy(dst, src, len);
 	dst[len - 1] = '\0';
 	return strlen(src);
 }
