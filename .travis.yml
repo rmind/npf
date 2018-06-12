@@ -7,25 +7,25 @@ compiler:
   - gcc
   - clang
 
-before_install:
+install:
   # build essentials
   - sudo apt-get install -y build-essential fakeroot debhelper
   - sudo apt-get install -y make libtool libjemalloc1 libpcap-dev
   # libnv
   - git clone https://github.com/rmind/nvlist
-  - cd nvlist/pkg && make deb && sudo dpkg -i ../libnv*.deb
+  - (cd nvlist/pkg && make deb && sudo dpkg -i ../libnv*.deb)
   # libqsbr
   - git clone https://github.com/rmind/libqsbr
-  - cd libqsbr/pkg && make deb && sudo dpkg -i ../libqsbr*.deb
+  - (cd libqsbr/pkg && make deb && sudo dpkg -i ../libqsbr*.deb)
   # liblpm
   - git clone https://github.com/rmind/liblpm
-  - cd liblpm/pkg && make deb && sudo dpkg -i ../liblpm*.deb
+  - (cd liblpm/pkg && make deb && sudo dpkg -i ../liblpm*.deb)
   # bpfjit
   - git clone https://github.com/rmind/bpfjit
-  - cd bpfjit && make deb && sudo dpkg -i ../libbpfjit*.deb
+  - (cd bpfjit && make deb && sudo dpkg -i ../libbpfjit*.deb)
   # libcdb
   - git clone https://github.com/rmind/libcdb
-  - cd libcdb && make deb && sudo dpkg -i ../libcdb*.deb
+  - (cd libcdb && make deb && sudo dpkg -i ../libcdb*.deb)
 
 script:
   - cd src && make clean && LIBDIR=/usr/lib make all
