@@ -29,6 +29,8 @@ before_install:
 
 install:
   # install all dependencies
+  - ls -la
+  - ls -la *
   - dpkg -i nvlist/*.deb
   - dpkg -i libqsbr/*.deb
   - dpkg -i liblpm/*.deb
