@@ -1,0 +1,38 @@
+sudo: required
+dist: trusty
+
+language: c
+
+compiler:
+  - gcc
+  - clang
+
+before_install:
+  # build essentials
+  - sudo apt-get install -y build-essential make libtool jemalloc
+  # libnv
+  - git clone https://github.com/rmind/nvlist
+  - cd nvlist/pkg && make deb
+  # libqsbr
+  - git clone https://github.com/rmind/libqsbr
+  - cd libqsbr/pkg && make deb
+  # liblpm
+  - git clone https://github.com/rmind/liblpm
+  - cd liblpm/pkg && make deb
+  # bpfjit
+  - git clone https://github.com/rmind/bpfjit
+  - cd bpfjit && make deb
+  # libcdb
+  - git clone https://github.com/rmind/libcdb
+  - cd libcdb && make deb
+
+install:
+  # install all dependencies
+  - dpkg -i nvlist/*.deb
+  - dpkg -i libqsbr/*.deb
+  - dpkg -i liblpm/*.deb
+  - dpkg -i bpfjit*.deb
+  - dpkg -i libcdb*.deb
+
+script:
+ - cd src && make clean && LIBDIR=/usr/lib make all

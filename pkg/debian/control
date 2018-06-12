@@ -1,0 +1,36 @@
+Source: npf
+Priority: extra
+Maintainer: https://github.com/rmind
+Build-Depends:
+ debhelper (>= 9),
+ make,
+ libtool,
+ libnv1
+Standards-Version: 3.9.1
+Homepage: https://github.com/rmind/npf
+License: BSD-2-clause
+
+Package: libnpf1
+Section: lib
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: Standalone NPF package
+ NPF is a layer 3 packet filter, supporting IPv4 and IPv6 as well as layer
+ 4 protocols such as TCP, UDP, and ICMP.  It was designed with a focus on
+ high performance, scalability and modularity.  NPF was written from
+ scratch in 2009.  It is written in C99 and distributed under the 2-clause
+ BSD license.
+
+Package: libnpf1-dbg
+Section: debug
+Architecture: any
+Depends: ${misc:Depends}, npf (= ${binary:Version})
+Description: Debug symbols for libnpf1
+ Debug symbols for libnpf1.
+
+Package: libnpf-dev
+Section: libdevel
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, npf (= ${binary:Version})
+Description: Development files for libnpf1
+ Development files for libnpf1.

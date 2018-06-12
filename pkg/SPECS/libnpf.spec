@@ -1,18 +1,20 @@
-Name:		npf
-Version:	1.0.0
+%define version	%(cat %{_topdir}/version.txt)
+
+Name:		libnpf
+Version:	%{version}
 Release:	1%{?dist}
 Summary:	Standalone NPF package
 License:	BSD
 URL:		https://github.com/rmind/npf
-Source0:	npf.tar.gz
+Source0:	libnpf.tar.gz
 
 BuildRequires:	make
 BuildRequires:	libtool
-#BuildRequires:	libnv-devel
-Requires:	libbpfjit
+BuildRequires:	libnv
+BuildRequires:	libbpfjit
 BuildRequires:	libqsbr
 BuildRequires:	liblpm >= 0.2.0
-#BuildRequires:	libcdb-devel
+BuildRequires:	libcdb
 
 Requires:	libnv
 Requires:	libbpfjit
@@ -28,8 +30,8 @@ high performance, scalability and modularity.  NPF was written from
 scratch in 2009.  It is written in C99 and distributed under the 2-clause
 BSD license.
 
-This RPM package is a standalone version of NPF.  It contains the
-libnpfkern and libnpf libraries.
+This RPM package is a standalone version of NPF.  It contains the libnpf
+and libnpfkern libraries.
 
 
 %prep
