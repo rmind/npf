@@ -9,7 +9,7 @@ compiler:
 
 before_install:
   # build essentials
-  - sudo apt-get install -y build-essential make libtool jemalloc
+  - sudo apt-get install -y build-essential make libtool libjemalloc1
   # libnv
   - git clone https://github.com/rmind/nvlist
   - cd nvlist/pkg && make deb
