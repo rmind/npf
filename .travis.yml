@@ -28,4 +28,5 @@ install:
   - (cd libcdb && make deb && sudo dpkg -i ../libcdb*.deb)
 
 script:
-  - cd src && make clean && LIBDIR=/usr/lib make all
+  - (cd src && make clean && LIBDIR=/usr/lib make all)
+  - (cd src/pkg && make deb)
