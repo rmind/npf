@@ -99,6 +99,7 @@ yyerror(const char *fmt, ...)
 %token			BLOCK
 %token			BPFJIT
 %token			CDB
+%token			CONST
 %token			CURLY_CLOSE
 %token			CURLY_OPEN
 %token			CODE
@@ -116,11 +117,14 @@ yyerror(const char *fmt, ...)
 %token			HASH
 %token			ICMPTYPE
 %token			ID
+%token			IFADDRS
 %token			IN
 %token			INET4
 %token			INET6
-%token			IFADDRS
 %token			INTERFACE
+%token			IPHASH
+%token			IPSET
+%token			LPM
 %token			MAP
 %token			NO_PORTS
 %token			MINUS
@@ -142,6 +146,7 @@ yyerror(const char *fmt, ...)
 %token			RETURN
 %token			RETURNICMP
 %token			RETURNRST
+%token			ROUNDROBIN
 %token			RULESET
 %token			SEPLINE
 %token			SET
@@ -311,14 +316,40 @@ table
 	;
 
 table_type
-	: HASH		{ $$ = NPF_TABLE_HASH; }
-	| TREE		{ $$ = NPF_TABLE_TREE; }
-	| CDB		{ $$ = NPF_TABLE_CDB; }
+	: IPSET		{ $$ = NPF_TABLE_IPSET; }
+	| HASH
+	{
+		warnx("warning - table type \"hash\" is deprecated and may be "
+		    "deleted in\nthe future; please use the \"ipset\" type "
+		    "instead.");
+		$$ = NPF_TABLE_IPSET;
+	}
+	| LPM		{ $$ = NPF_TABLE_LPM; }
+	| TREE
+	{
+		warnx("warning - table type \"tree\" is deprecated and may be "
+		    "deleted in\nthe future; please use the \"lpm\" type "
+		    "instead.");
+		$$ = NPF_TABLE_LPM;
+	}
+	| CONST		{ $$ = NPF_TABLE_CONST; }
+	| CDB
+	{
+		warnx("warning -- table type \"cdb\" is deprecated and may be "
+		    "deleted in\nthe future; please use the \"const\" type "
+		    "instead.");
+		$$ = NPF_TABLE_CONST;
+	}
 	;
 
 table_store
-	: TDYNAMIC	{ $$ = NULL; }
-	| TFILE STRING	{ $$ = $2; }
+	: TFILE STRING	{ $$ = $2; }
+	| TDYNAMIC
+	{
+		warnx("warning - the \"dynamic\" keyword for tables is obsolete");
+		$$ = NULL;
+	}
+	|		{ $$ = NULL; }
 	;
 
 /*
@@ -332,8 +363,10 @@ map_sd
 	;
 
 map_algo
-	: ALGO NPT66	{ $$ = NPF_ALGO_NPT66; }
-	|		{ $$ = 0; }
+	: ALGO IPHASH		{ $$ = NPF_ALGO_IPHASH; }
+	| ALGO ROUNDROBIN	{ $$ = NPF_ALGO_RR; }
+	| ALGO NPT66		{ $$ = NPF_ALGO_NPT66; }
+	|			{ $$ = 0; }
 	;
 
 map_flags
@@ -655,7 +688,6 @@ filt_opts
 filt_addr
 	: list			{ $$ = $1; }
 	| addr_or_ifaddr	{ $$ = $1; }
-	| dynamic_ifaddrs	{ $$ = npfctl_ifnet_table($1); }
 	| TABLE_ID		{ $$ = npfctl_parse_table_id($1); }
 	| ANY			{ $$ = NULL; }
 	;
@@ -688,12 +720,15 @@ addr_or_ifaddr
 		ifnet_addr_t *ifna = npfvar_get_data($1, NPFVAR_INTERFACE, 0);
 		$$ = ifna->ifna_addrs;
 	}
+	| dynamic_ifaddrs
+	{
+		$$ = npfctl_ifnet_table($1);
+	}
 	| VAR_ID
 	{
 		npfvar_t *vp = npfvar_lookup($1);
 		int type = npfvar_get_type(vp, 0);
 		ifnet_addr_t *ifna;
-
 again:
 		switch (type) {
 		case NPFVAR_IDENTIFIER:

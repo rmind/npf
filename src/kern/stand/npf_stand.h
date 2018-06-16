@@ -193,6 +193,7 @@ again:
 #define	membar_sync()		__sync_synchronize()
 #define	membar_producer()	__sync_synchronize()
 #define	atomic_inc_uint(x)	__sync_fetch_and_add(x, 1)
+#define	atomic_inv_uint_nv(x)	__sync_add_and_fetch(x, 1)
 #define	atomic_dec_uint(x)	__sync_sub_and_fetch(x, 1)
 #define	atomic_dec_uint_nv(x)	__sync_sub_and_fetch(x, 1)
 #define	atomic_or_uint(x, v)	__sync_fetch_and_or(x, v)

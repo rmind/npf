@@ -478,9 +478,9 @@ npfctl_print_table(npf_conf_info_t *ctx, nl_table_t *tl)
 	const char *name = npf_table_getname(tl);
 	const unsigned type = npf_table_gettype(tl);
 	const char *table_types[] = {
-		[NPF_TABLE_HASH] = "hash",
-		[NPF_TABLE_TREE] = "tree",
-		[NPF_TABLE_CDB]  = "cdb",
+		[NPF_TABLE_IPSET]	= "ipset",
+		[NPF_TABLE_LPM]		= "lpm",
+		[NPF_TABLE_CONST]	= "const",
 	};
 
 	if (name[0] == '.') {

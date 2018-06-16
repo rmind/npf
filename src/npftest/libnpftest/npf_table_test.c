@@ -111,7 +111,7 @@ npf_table_test(bool verbose, void *blob, size_t size)
 	fail |= !check_ok(tblset != NULL);
 
 	/* Table ID 1, using hash table with 256 lists. */
-	t1 = npf_table_create(HASH_TID, 0, NPF_TABLE_HASH, NULL, 256);
+	t1 = npf_table_create(HASH_TID, 0, NPF_TABLE_IPSET, NULL, 256);
 	fail |= !check_ok(t1 != NULL);
 	error = npf_tableset_insert(tblset, t1);
 	fail |= !check_ok(error == 0);
@@ -121,13 +121,13 @@ npf_table_test(bool verbose, void *blob, size_t size)
 	fail |= !check_ok(error != 0);
 
 	/* Table ID 2, using a prefix tree. */
-	t2 = npf_table_create(TREE_TID, 1, NPF_TABLE_TREE, NULL, 0);
+	t2 = npf_table_create(TREE_TID, 1, NPF_TABLE_LPM, NULL, 0);
 	fail |= !(t2 != NULL);
 	error = npf_tableset_insert(tblset, t2);
 	fail |= !check_ok(error == 0);
 
 	/* Table ID 3, using a CDB. */
-	t3 = npf_table_create(CDB_TID, 2, NPF_TABLE_CDB, blob, size);
+	t3 = npf_table_create(CDB_TID, 2, NPF_TABLE_CONST, blob, size);
 	fail |= !(t3 != NULL);
 	error = npf_tableset_insert(tblset, t3);
 	fail |= !check_ok(error == 0);

@@ -613,8 +613,9 @@ npfctl_build_nat(int type, const char *ifname, const addr_port_t *ap,
 		op = &def_op;
 	}
 
-	nat = npf_nat_create(type, flags, ifname, am->fam_family,
-	    &am->fam_addr, am->fam_mask, port);
+	nat = npf_nat_create(type, flags, ifname);
+	npf_nat_setaddr(nat, am->fam_family, &am->fam_addr, am->fam_mask);
+	npf_nat_setport(nat, port);
 	npfctl_build_code(nat, am->fam_family, op, fopts);
 	return nat;
 }
@@ -625,7 +626,7 @@ npfctl_build_nat(int type, const char *ifname, const addr_port_t *ap,
 void
 npfctl_build_natseg(int sd, int type, unsigned mflags, const char *ifname,
     const addr_port_t *ap1, const addr_port_t *ap2, const opt_proto_t *op,
-    const filt_opts_t *fopts, u_int algo)
+    const filt_opts_t *fopts, unsigned algo)
 {
 	fam_addr_mask_t *am1 = NULL, *am2 = NULL;
 	nl_nat_t *nt1 = NULL, *nt2 = NULL;
@@ -682,18 +683,35 @@ npfctl_build_natseg(int sd, int type, unsigned mflags, const char *ifname,
 
 	switch (algo) {
 	case NPF_ALGO_NPT66:
-		if (am1 == NULL || am2 == NULL)
+		if (am1 == NULL || am2 == NULL) {
 			yyerror("1:1 mapping of two segments must be "
 			    "used for NPTv6");
-		if (am1->fam_mask != am2->fam_mask)
-			yyerror("asymmetric translation is not supported");
+		}
+		if (am1->fam_mask != am2->fam_mask) {
+			yyerror("asymmetric NPTv6 is not supported");
+		}
 		adj = npfctl_npt66_calcadj(am1->fam_mask,
 		    &am1->fam_addr, &am2->fam_addr);
 		break;
+	case NPF_ALGO_IPHASH:
+	case NPF_ALGO_RR:
+		if (sd != NPFCTL_NAT_DYNAMIC) {
+			yyerror("specified algorithm is applicable for "
+			    "dynamic NAT only");
+		}
+		break;
+	case NPF_ALGO_NETMAP:
+		if (sd != NPFCTL_NAT_STATIC) {
+			yyerror("specified algorithm is applicable for "
+			    "static NAT only");
+		}
+		break;
 	default:
 		if ((am1 && am1->fam_mask != NPF_NO_NETMASK) ||
-		    (am2 && am2->fam_mask != NPF_NO_NETMASK))
-			yyerror("net-to-net translation is not supported");
+		    (am2 && am2->fam_mask != NPF_NO_NETMASK)) {
+			yyerror("net-to-net translation must have an "
+			    "algorithm specified");
+		}
 		break;
 	}
 
@@ -719,8 +737,23 @@ npfctl_build_natseg(int sd, int type, unsigned mflags, const char *ifname,
 	}
 
 	if (algo == NPF_ALGO_NPT66) {
+		/*
+		 * NPTv6 is a special case using special an adjustment value.
+		 * It is always bidirectional NAT.
+		 */
+		assert(nt1 && nt2);
 		npf_nat_setnpt66(nt1, ~adj);
 		npf_nat_setnpt66(nt2, adj);
+	} else if (algo) {
+		/*
+		 * Set the algorithm.
+		 */
+		if (nt1) {
+			npf_nat_setalgo(nt1, algo);
+		}
+		if (nt2) {
+			npf_nat_setalgo(nt2, algo);
+		}
 	}
 
 	if (nt1) {
@@ -758,9 +791,9 @@ npfctl_fill_table(nl_table_t *tl, u_int type, const char *fname)
 			errx(EXIT_FAILURE,
 			    "%s:%d: invalid table entry", fname, l);
 		}
-		if (type != NPF_TABLE_TREE && fam.fam_mask != NPF_NO_NETMASK) {
+		if (type != NPF_TABLE_LPM && fam.fam_mask != NPF_NO_NETMASK) {
 			errx(EXIT_FAILURE, "%s:%d: mask used with the "
-			    "non-tree table", fname, l);
+			    "table type other than \"lpm\"", fname, l);
 		}
 
 		npf_table_add_entry(tl, fam.fam_family,
@@ -783,8 +816,8 @@ npfctl_build_table(const char *tname, u_int type, const char *fname)
 
 	if (fname) {
 		npfctl_fill_table(tl, type, fname);
-	} else if (type == NPF_TABLE_CDB) {
-		errx(EXIT_FAILURE, "tables of cdb type must be static");
+	} else if (type == NPF_TABLE_CONST) {
+		yyerror("table type 'const' must be loaded from a file");
 	}
 
 	if (npf_table_insert(npf_conf, tl)) {
@@ -804,7 +837,7 @@ npfctl_ifnet_table(const char *ifname)
 	tid = npfctl_table_getid(tname);
 	if (tid == (unsigned)-1) {
 		tid = npfctl_tid_counter++;
-		tl = npf_table_create(tname, tid, NPF_TABLE_TREE);
+		tl = npf_table_create(tname, tid, NPF_TABLE_IFADDR);
 		(void)npf_table_insert(npf_conf, tl);
 	}
 	return npfvar_create_element(NPFVAR_TABLE, &tid, sizeof(u_int));

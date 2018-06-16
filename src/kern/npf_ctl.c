@@ -178,7 +178,7 @@ npf_mk_tables(npf_t *npf, nvlist_t *npf_dict, nvlist_t *errdict,
 
 		/* Get the entries or binary data. */
 		blob = dnvlist_get_binary(table, "data", &size, NULL, 0);
-		if (type == NPF_TABLE_CDB && (blob == NULL || size == 0)) {
+		if (type == NPF_TABLE_CONST && (blob == NULL || size == 0)) {
 			NPF_ERR_DEBUG(errdict);
 			error = EINVAL;
 			break;

@@ -305,6 +305,8 @@ int		npf_addr_cmp(const npf_addr_t *, const npf_netmask_t,
 		    const npf_addr_t *, const npf_netmask_t, const int);
 void		npf_addr_mask(const npf_addr_t *, const npf_netmask_t,
 		    const int, npf_addr_t *);
+void		npf_addr_bitor(const npf_addr_t *, const npf_netmask_t,
+		    const int, npf_addr_t *);
 
 int		npf_tcpsaw(const npf_cache_t *, tcp_seq *, tcp_seq *,
 		    uint32_t *);
@@ -344,6 +346,7 @@ int		npf_table_insert(npf_table_t *, const int,
 int		npf_table_remove(npf_table_t *, const int,
 		    const npf_addr_t *, const npf_netmask_t);
 int		npf_table_lookup(npf_table_t *, const int, const npf_addr_t *);
+npf_addr_t *	npf_table_getsome(npf_table_t *, const int, unsigned);
 int		npf_table_list(npf_table_t *, void *, size_t);
 int		npf_table_flush(npf_table_t *);
 

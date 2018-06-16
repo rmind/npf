@@ -74,7 +74,7 @@ lookup_ifnet_table(npf_t *npf, ifnet_t *ifp)
 	tid = npf_table_getid(t);
 
 	/* Create a new NPF table for the interface. */
-	t = npf_table_create(tname, tid, NPF_TABLE_HASH, NULL, 16);
+	t = npf_table_create(tname, tid, NPF_TABLE_IFADDR, NULL, 0);
 	if (!t) {
 		goto out;
 	}

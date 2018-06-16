@@ -86,31 +86,34 @@ and
 .Sq Li > .
 The following is an example of table definition:
 .Pp
-.Dl table <black> type hash dynamic
+.Dl table <blacklist> type ipset
 .Pp
 Currently, tables support three data storage types:
-.Cm hash,
-.Cm tree ,
+.Cm ipset ,
+.Cm lpm ,
 or
-.Cm cdb .
-Tables can also be set as containing
-.Cm dynamic
-data or static
-.Cm file Ar filename
-data loaded from a specified file.
-Tables of type
-.Dq hash
-and
-.Dq cdb
-can only contain IP addresses.
-Only static data can be used with a storage type of
-.Dq cdb .
+.Cm const .
+The contents of the table may be pre-loaded from the specified file.
+The
+.Cm const
+tables are immutable (no insertions or deletions after loading) and
+therefore must always be loaded from a file.
 .Pp
-The specified file should contain a list of IP addresses and/or networks in the
-form of
+The specified file should contain a list of IP addresses and/or networks
+in the form of
 .Li 10.1.1.1
 or
-.Li 10.0.0.0/24
+.Li 10.0.0.0/24 .
+.Pp
+Tables of type
+.Cm ipset
+and
+.Cm const
+can only contain IP addresses.
+The
+.Cm lpm
+tables can contain networks and they will perform the longest
+prefix match on lookup.
 .Ss Interfaces
 In NPF, an interface can be referenced directly by using its name, or can be
 passed to an extraction function which will return a list of IP addresses
@@ -474,8 +477,8 @@ alg-name	= "icmp"
 # double quotes.
 
 table-id	= <table-name>
-table-def	= "table" table-id "type" ( "hash" | "tree" | "cdb" )
-		  ( "dynamic" | "file" path )
+table-def	= "table" table-id "type" ( "ipset" | "lpm" | "const" )
+		  [ "file" path ]
 
 # Mapping for address translation.
 
@@ -547,8 +550,8 @@ directory containing further examples
 $ext_if = { inet4(wm0) }
 $int_if = { inet4(wm1) }
 
-table <blacklist> type hash file "/etc/npf_blacklist"
-table <limited> type tree dynamic
+table <blacklist> type ipset file "/etc/npf_blacklist"
+table <limited> type lpm
 
 $services_tcp = { http, https, smtp, domain, 6000, 9022 }
 $services_udp = { domain, ntp, 6000 }

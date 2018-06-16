@@ -33,11 +33,15 @@
  *
  * Overview
  *
+ *	Packets can be incoming or outgoing with respect to an interface.
  *	Connection direction is identified by the direction of its first
- *	packet.  Packets can be incoming or outgoing with respect to an
- *	interface.  To describe the packet in the context of connection
- *	direction we will use the terms "forwards stream" and "backwards
- *	stream".  All connections have two keys and thus two entries:
+ *	packet.  The meaning of incoming/outgoing packet in the context of
+ *	connection direction can be confusing.  Therefore, we will use the
+ *	terms "forwards stream" and "backwards stream", where packets in
+ *	the forwards stream mean the packets travelling in the direction
+ *	as the connection direction.
+ *
+ *	All connections have two keys and thus two entries:
  *
  *		npf_conn_t::c_forw_entry for the forwards stream and
  *		npf_conn_t::c_back_entry for the backwards stream.
