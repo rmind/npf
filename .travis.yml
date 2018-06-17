@@ -34,5 +34,5 @@ script:
   - (cd pkg && make deb)
   # Build npftest and run the tests.
   - (cd src/npftest && DEBUG=1 make && \
-     npfctl debug npftest.conf /tmp/npf.nvlist \
+     npfctl debug npftest.conf /tmp/npf.nvlist && \
      npftest -c /tmp/npf.nvlist -t)
