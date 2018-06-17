@@ -832,7 +832,7 @@ npfctl_ifnet_table(const char *ifname)
 	nl_table_t *tl;
 	u_int tid;
 
-	snprintf(tname, sizeof(tname), ".ifnet-%s", ifname);
+	snprintf(tname, sizeof(tname), NPF_IFNET_TABLE_PREF "%s", ifname);
 
 	tid = npfctl_table_getid(tname);
 	if (tid == (unsigned)-1) {

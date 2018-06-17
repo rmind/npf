@@ -708,11 +708,7 @@ addr_and_mask
 	;
 
 addr_or_ifaddr
-	: addr_and_mask
-	{
-		assert($1 != NULL);
-		$$ = $1;
-	}
+	: addr_and_mask		{ assert($1 != NULL); $$ = $1; }
 	| static_ifaddrs
 	{
 		if (npfvar_get_count($1) != 1)
@@ -720,10 +716,8 @@ addr_or_ifaddr
 		ifnet_addr_t *ifna = npfvar_get_data($1, NPFVAR_INTERFACE, 0);
 		$$ = ifna->ifna_addrs;
 	}
-	| dynamic_ifaddrs
-	{
-		$$ = npfctl_ifnet_table($1);
-	}
+	| dynamic_ifaddrs	{ $$ = npfctl_ifnet_table($1); }
+	| TABLE_ID		{ $$ = npfctl_parse_table_id($1); }
 	| VAR_ID
 	{
 		npfvar_t *vp = npfvar_lookup($1);
