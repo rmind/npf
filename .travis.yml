@@ -10,7 +10,7 @@ compiler:
 install:
   # build essentials
   - sudo apt-get install -y build-essential fakeroot debhelper
-  - sudo apt-get install -y make libtool libjemalloc1 libpcap-dev
+  - sudo apt-get install -y make libtool libjemalloc-dev libpcap-dev
   # libnv
   - git clone https://github.com/rmind/nvlist
   - (cd nvlist/pkg && make deb && sudo dpkg -i ../libnv*.deb)
