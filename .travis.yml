@@ -28,5 +28,11 @@ install:
   - (cd libcdb && make deb && sudo dpkg -i ../libcdb*.deb)
 
 script:
+  # Build-test npfkern, libnpf and npfctl.
   - (cd src && make clean && LIBDIR=/usr/lib make all)
+  # Test the DEB package building.
   - (cd pkg && make deb)
+  # Build npftest and run the tests.
+  - (cd src/npftest && DEBUG=1 make && \
+     npfctl debug npftest.conf /tmp/npf.nvlist \
+     npftest -c /tmp/npf.nvlist -t)
