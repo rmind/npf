@@ -1,0 +1,30 @@
+#!/usr/bin/make -f
+
+#export DH_VERBOSE = 1
+
+PKGVERSION:=$(shell cat version.txt)
+DEB_HOST_MULTIARCH?=$(shell dpkg-architecture -qDEB_HOST_MULTIARCH)
+
+LIBDIR:=/usr/lib/$(DEB_HOST_MULTIARCH)
+INCDIR:=/usr/include
+MANDIR:=/usr/share/man
+
+%:
+	dh $@ --sourcedirectory=SOURCES --parallel
+
+override_dh_auto_build:
+	dh_auto_build -- LIBDIR=$(LIBDIR)
+
+override_dh_auto_test:
+	dh_auto_test tests
+
+override_dh_auto_install:
+	dh_auto_install -- \
+	    LIBDIR=$(LIBDIR) INCDIR=$(INCDIR) MANDIR=$(MANDIR)
+
+override_dh_strip:
+	dh_strip -p libnpf1 --dbg-package=libnpf1-dbg
+	dh_strip -a --remaining-packages
+
+override_dh_gencontrol:
+	dh_gencontrol -- -v$(PKGVERSION)

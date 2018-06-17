@@ -1,15 +1,17 @@
+%define version	%(cat %{_topdir}/version.txt)
+
 Name:		npfctl
-Version:	1.0
+Version:	%{version}
 Release:	1%{?dist}
 Summary:	Standalone NPF package: npfctl utility
 License:	BSD
 URL:		https://github.com/rmind/npf
-Source0:	npf.tar.gz
+Source0:	npfctl.tar.gz
 
 BuildRequires:	make
 BuildRequires:	libtool
 BuildRequires:	openssl-devel
-#BuildRequires:	libnv-devel
+BuildRequires:	libnv
 BuildRequires:	flex
 BuildRequires:	byacc
 

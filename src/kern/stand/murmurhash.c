@@ -36,7 +36,7 @@ murmurhash2(const void *key, size_t len, uint32_t seed)
 
 	if (__predict_true(ALIGNED_POINTER(key, uint32_t))) {
 		while (len >= sizeof(uint32_t)) {
-			uint32_t k = *(const uint32_t *)data;
+			uint32_t k = *(const uint32_t *)(const void *)data;
 
 			k *= m;
 			k ^= k >> r;
