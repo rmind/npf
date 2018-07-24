@@ -327,13 +327,13 @@ typedef struct ifnet ifnet_t;
 #endif
 
 static inline int
-npfkern_ip_reass_packet(void *x, void *y)
+npfkern_ip_reass_packet(void *x)
 {
-	(void)x; (void)y;
+	(void)x;
 	return ENOTSUP;
 }
 
-#define	ip_reass_packet(p, h)		npfkern_ip_reass_packet(p, h)
+#define	ip_reass_packet(p)		npfkern_ip_reass_packet(p)
 #define	ip_output(m, a, b, c, d, e)	ENOTSUP
 #define	icmp_error(m, t, c, a, b)
 #define	in_cksum(m, len)	0
