@@ -281,6 +281,8 @@ void		npf_addr_mask(const npf_addr_t *, const npf_netmask_t,
 int		npf_tcpsaw(const npf_cache_t *, tcp_seq *, tcp_seq *,
 		    uint32_t *);
 bool		npf_fetch_tcpopts(npf_cache_t *, uint16_t *, int *);
+bool		npf_set_mss(npf_cache_t *, uint16_t, uint16_t *, uint16_t *,
+		    bool *);
 bool		npf_return_block(npf_cache_t *, const int);
 
 /* BPF interface. */
