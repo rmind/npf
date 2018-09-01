@@ -40,9 +40,17 @@ __KERNEL_RCSID(0, "$NetBSD: npf_mbuf.c,v 1.18 2016/12/26 23:05:06 christos Exp $
 
 #include <sys/param.h>
 #include <sys/mbuf.h>
+#include <netinet/in_offload.h>
 #endif
 
 #include "npf_impl.h"
+
+#ifdef _KERNEL
+#ifdef INET6
+#include <netinet6/in6.h>
+#include <netinet6/in6_offload.h>
+#endif
+#endif
 
 #if defined(_NPF_STANDALONE)
 #define	m_length(m)		(nbuf)->nb_mops->getchainlen(m)
@@ -270,13 +278,13 @@ nbuf_cksum_barrier(nbuf_t *nbuf, int di)
 	KASSERT(m_flags_p(m, M_PKTHDR));
 
 	if (m->m_pkthdr.csum_flags & (M_CSUM_TCPv4 | M_CSUM_UDPv4)) {
-		in_delayed_cksum(m);
+		in_undefer_cksum_tcpudp(m);
 		m->m_pkthdr.csum_flags &= ~(M_CSUM_TCPv4 | M_CSUM_UDPv4);
 		return true;
 	}
 #ifdef INET6
 	if (m->m_pkthdr.csum_flags & (M_CSUM_TCPv6 | M_CSUM_UDPv6)) {
-		in6_delayed_cksum(m);
+		in6_undefer_cksum_tcpudp(m);
 		m->m_pkthdr.csum_flags &= ~(M_CSUM_TCPv6 | M_CSUM_UDPv6);
 		return true;
 	}
