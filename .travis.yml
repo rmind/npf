@@ -18,6 +18,9 @@ install:
   # libqsbr
   - git clone https://github.com/rmind/libqsbr
   - (cd libqsbr/pkg && make deb && sudo dpkg -i ../libqsbr*.deb)
+  # libthmap
+  - git clone https://github.com/rmind/thmap
+  - (cd libqsbr/pkg && make deb && sudo dpkg -i ../libthmap*.deb)
   # liblpm
   - git clone https://github.com/rmind/liblpm
   - (cd liblpm/pkg && make deb && sudo dpkg -i ../liblpm*.deb)
