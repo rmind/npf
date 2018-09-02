@@ -571,11 +571,11 @@ npf_conn_establish(npf_cache_t *npc, int di, bool per_if)
 	 * the connection later.
 	 */
 	mutex_enter(&con->c_lock);
-	if (!npf_conndb_insert(npf->conn_db, fw, con)) {
+	if (!npf_conndb_insert(npf->conn_db, fw)) {
 		error = EISCONN;
 		goto err;
 	}
-	if (!npf_conndb_insert(npf->conn_db, bk, con)) {
+	if (!npf_conndb_insert(npf->conn_db, bk)) {
 		npf_conn_t *ret __diagused;
 		ret = npf_conndb_remove(npf->conn_db, fw);
 		KASSERT(ret == con);
@@ -687,7 +687,7 @@ npf_conn_setnat(const npf_cache_t *npc, npf_conn_t *con,
 	}
 
 	/* Finally, re-insert the "backwards" entry. */
-	if (!npf_conndb_insert(npf->conn_db, bk, con)) {
+	if (!npf_conndb_insert(npf->conn_db, bk)) {
 		/*
 		 * Race: we have hit the duplicate, remove the "forwards"
 		 * entry and expire our connection; it is no longer valid.
@@ -1069,10 +1069,10 @@ npf_conn_import(npf_t *npf, npf_conndb_t *cd, const nvlist_t *cdict,
 	fw->ck_backptr = bk->ck_backptr = con;
 
 	/* Insert the entries and the connection itself. */
-	if (!npf_conndb_insert(cd, fw, con)) {
+	if (!npf_conndb_insert(cd, fw)) {
 		goto err;
 	}
-	if (!npf_conndb_insert(cd, bk, con)) {
+	if (!npf_conndb_insert(cd, bk)) {
 		npf_conndb_remove(cd, fw);
 		goto err;
 	}

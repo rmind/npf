@@ -33,6 +33,9 @@
  * using the standard C99 or POSIX interfaces.
  */
 
+#include <sys/cdefs.h>
+#include <sys/queue.h>
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <stddef.h>
@@ -59,12 +62,11 @@
 #include <nv.h>
 
 #include <qsbr/qsbr.h>
+#include <thmap.h>
 #include <lpm.h>
 #include <cdbr.h>
 
 #include "cext.h"
-
-#include "rbtree.h"
 #include "bpf.h"
 
 /*

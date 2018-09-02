@@ -48,7 +48,6 @@
 #ifdef _KERNEL
 #include <sys/types.h>
 #include <sys/queue.h>
-#include <sys/rbtree.h>
 
 #include <net/bpf.h>
 #include <net/bpfjit.h>

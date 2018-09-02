@@ -39,107 +39,41 @@ __KERNEL_RCSID(0, "$NetBSD: npf_conndb.c,v 1.4 2018/09/29 14:41:36 rmind Exp $")
 #include <sys/types.h>
 
 #include <sys/atomic.h>
-#include <sys/cprng.h>
-#include <sys/hash.h>
 #include <sys/kmem.h>
+#include <thmap.h>
 #endif
 
 #define __NPF_CONN_PRIVATE
 #include "npf_conn.h"
 #include "npf_impl.h"
 
-#define	CONNDB_HASH_BUCKETS	1024	/* XXX tune + make tunable */
-#define	CONNDB_HASH_MASK	(CONNDB_HASH_BUCKETS - 1)
-
-typedef struct {
-	rb_tree_t		hb_tree;
-	krwlock_t		hb_lock;
-	u_int			hb_count;
-} npf_hashbucket_t;
-
 struct npf_conndb {
+	thmap_t *		cd_map;
 	npf_conn_t *		cd_recent;
 	npf_conn_t *		cd_list;
 	npf_conn_t *		cd_tail;
-	uint32_t		cd_seed;
-	void *			cd_tree;
-	npf_hashbucket_t	cd_hashtbl[];
 };
-
-/*
- * Connection hash table and RB-tree helper routines.
- * Note: (node1 < node2) shall return negative.
- */
-
-static signed int
-conndb_rbtree_cmp_nodes(void *ctx, const void *n1, const void *n2)
-{
-	const npf_connkey_t * const ck1 = n1;
-	const npf_connkey_t * const ck2 = n2;
-	const u_int keylen = MIN(NPF_CONN_KEYLEN(ck1), NPF_CONN_KEYLEN(ck2));
-
-	KASSERT((keylen >> 2) <= NPF_CONN_NKEYWORDS);
-	return memcmp(ck1->ck_key, ck2->ck_key, keylen);
-}
-
-static signed int
-conndb_rbtree_cmp_key(void *ctx, const void *n1, const void *key)
-{
-	const npf_connkey_t * const ck1 = n1;
-	const npf_connkey_t * const ck2 = key;
-	return conndb_rbtree_cmp_nodes(ctx, ck1, ck2);
-}
-
-static const rb_tree_ops_t conndb_rbtree_ops = {
-	.rbto_compare_nodes	= conndb_rbtree_cmp_nodes,
-	.rbto_compare_key	= conndb_rbtree_cmp_key,
-	.rbto_node_offset	= offsetof(npf_connkey_t, ck_rbnode),
-	.rbto_context		= NULL
-};
-
-static npf_hashbucket_t *
-conndb_hash_bucket(npf_conndb_t *cd, const npf_connkey_t *key)
-{
-	const u_int keylen = NPF_CONN_KEYLEN(key);
-	uint32_t hash = murmurhash2(key->ck_key, keylen, cd->cd_seed);
-	return &cd->cd_hashtbl[hash & CONNDB_HASH_MASK];
-}
 
 npf_conndb_t *
 npf_conndb_create(void)
 {
-	size_t len = offsetof(npf_conndb_t, cd_hashtbl[CONNDB_HASH_BUCKETS]);
 	npf_conndb_t *cd;
 
-	cd = kmem_zalloc(len, KM_SLEEP);
-	for (u_int i = 0; i < CONNDB_HASH_BUCKETS; i++) {
-		npf_hashbucket_t *hb = &cd->cd_hashtbl[i];
-
-		rb_tree_init(&hb->hb_tree, &conndb_rbtree_ops);
-		rw_init(&hb->hb_lock);
-		hb->hb_count = 0;
-	}
-	cd->cd_seed = cprng_fast32();
+	cd = kmem_zalloc(sizeof(npf_conndb_t), KM_SLEEP);
+	cd->cd_map = thmap_create(0, NULL, THMAP_NOCOPY);
+	KASSERT(cd->cd_map != NULL);
 	return cd;
 }
 
 void
 npf_conndb_destroy(npf_conndb_t *cd)
 {
-	size_t len = offsetof(npf_conndb_t, cd_hashtbl[CONNDB_HASH_BUCKETS]);
-
 	KASSERT(cd->cd_recent == NULL);
 	KASSERT(cd->cd_list == NULL);
 	KASSERT(cd->cd_tail == NULL);
 
-	for (u_int i = 0; i < CONNDB_HASH_BUCKETS; i++) {
-		npf_hashbucket_t *hb = &cd->cd_hashtbl[i];
-
-		KASSERT(hb->hb_count == 0);
-		KASSERT(!rb_tree_iterate(&hb->hb_tree, NULL, RB_DIR_LEFT));
-		rw_destroy(&hb->hb_lock);
-	}
-	kmem_free(cd, len);
+	thmap_destroy(cd->cd_map);
+	kmem_free(cd, sizeof(npf_conndb_t));
 }
 
 /*
@@ -148,68 +82,57 @@ npf_conndb_destroy(npf_conndb_t *cd)
 npf_conn_t *
 npf_conndb_lookup(npf_conndb_t *cd, const npf_connkey_t *key, bool *forw)
 {
+	const unsigned keylen = NPF_CONN_KEYLEN(key);
 	npf_connkey_t *foundkey;
-	npf_hashbucket_t *hb;
 	npf_conn_t *con;
 
-	/* Get a hash bucket from the cached key data. */
-	hb = conndb_hash_bucket(cd, key);
-	if (hb->hb_count == 0) {
-		return NULL;
-	}
-
-	/* Lookup the tree given the key and get the actual connection. */
-	rw_enter(&hb->hb_lock, RW_READER);
-	foundkey = rb_tree_find_node(&hb->hb_tree, key);
-	if (foundkey == NULL) {
-		rw_exit(&hb->hb_lock);
+	/*
+	 * Lookup the connection key in the key-value map.
+	 */
+	foundkey = thmap_get(cd->cd_map, key, keylen);
+	if (!foundkey) {
 		return NULL;
 	}
 	con = foundkey->ck_backptr;
-	*forw = (foundkey == &con->c_forw_entry);
+	KASSERT(con != NULL);
 
-	/* Acquire the reference and return the connection. */
+	/*
+	 * Acquire the reference and return the connection.
+	 */
 	atomic_inc_uint(&con->c_refcnt);
-	rw_exit(&hb->hb_lock);
+	*forw = (foundkey == &con->c_forw_entry);
 	return con;
 }
 
 /*
  * npf_conndb_insert: insert the key representing the connection.
+ *
+ * => Returns true on success and false on failure.
  */
 bool
-npf_conndb_insert(npf_conndb_t *cd, npf_connkey_t *key, npf_conn_t *con)
+npf_conndb_insert(npf_conndb_t *cd, npf_connkey_t *key)
 {
-	npf_hashbucket_t *hb = conndb_hash_bucket(cd, key);
-	bool ok;
-
-	rw_enter(&hb->hb_lock, RW_WRITER);
-	ok = rb_tree_insert_node(&hb->hb_tree, key) == key;
-	hb->hb_count += (u_int)ok;
-	rw_exit(&hb->hb_lock);
-	return ok;
+	const unsigned keylen = NPF_CONN_KEYLEN(key);
+	return thmap_put(cd->cd_map, key, keylen, key) == key;
 }
 
 /*
- * npf_conndb_remove: find and delete the key and return the connection
- * it represents.
+ * npf_conndb_remove: find and delete connection key, returning the
+ * connection it represents.
  */
 npf_conn_t *
 npf_conndb_remove(npf_conndb_t *cd, npf_connkey_t *key)
 {
-	npf_hashbucket_t *hb = conndb_hash_bucket(cd, key);
+	const unsigned keylen = NPF_CONN_KEYLEN(key);
 	npf_connkey_t *foundkey;
 	npf_conn_t *con;
 
-	rw_enter(&hb->hb_lock, RW_WRITER);
-	if ((foundkey = rb_tree_find_node(&hb->hb_tree, key)) != NULL) {
-		rb_tree_remove_node(&hb->hb_tree, foundkey);
-		con = foundkey->ck_backptr;
-		hb->hb_count--;
-	} else {
-		con = NULL;
+	foundkey = thmap_del(cd->cd_map, key, keylen);
+	if (!foundkey) {
+		return NULL;
 	}
-	rw_exit(&hb->hb_lock);
+	con = foundkey->ck_backptr;
+	KASSERT(con != NULL);
 	return con;
 }
 

@@ -50,10 +50,11 @@ typedef struct npf_connkey npf_connkey_t;
 #define	NPF_CONN_KEYLEN(key)	(8 + (2 * NPF_CONN_GETALEN(key)))
 
 struct npf_connkey {
-	/* Entry node and back-pointer to the actual connection. */
-	rb_node_t		ck_rbnode;
-	uint32_t		ck_key[NPF_CONN_NKEYWORDS];
-	npf_conn_t *		ck_backptr;
+	/*
+	 * Back-pointer to the actual connection and the compacted key.
+	 */
+	npf_conn_t *	ck_backptr;
+	uint32_t	ck_key[NPF_CONN_NKEYWORDS];
 };
 
 /*
@@ -130,10 +131,8 @@ void		npf_conn_print(const npf_conn_t *);
 npf_conndb_t *	npf_conndb_create(void);
 void		npf_conndb_destroy(npf_conndb_t *);
 
-npf_conn_t *	npf_conndb_lookup(npf_conndb_t *, const npf_connkey_t *,
-		    bool *);
-bool		npf_conndb_insert(npf_conndb_t *, npf_connkey_t *,
-		    npf_conn_t *);
+npf_conn_t *	npf_conndb_lookup(npf_conndb_t *, const npf_connkey_t *, bool *);
+bool		npf_conndb_insert(npf_conndb_t *, npf_connkey_t *);
 npf_conn_t *	npf_conndb_remove(npf_conndb_t *, npf_connkey_t *);
 
 void		npf_conndb_enqueue(npf_conndb_t *, npf_conn_t *);
