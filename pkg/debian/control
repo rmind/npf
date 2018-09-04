@@ -18,7 +18,7 @@ Package: libnpf1
 Section: lib
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}
-Description: Standalone NPF package
+Description: Standalone NPF package (libraries)
  NPF is a layer 3 packet filter, supporting IPv4 and IPv6 as well as layer
  4 protocols such as TCP, UDP, and ICMP.  It was designed with a focus on
  high performance, scalability and modularity.  NPF was written from
