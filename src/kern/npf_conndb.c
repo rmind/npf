@@ -47,11 +47,21 @@ __KERNEL_RCSID(0, "$NetBSD: npf_conndb.c,v 1.4 2018/09/29 14:41:36 rmind Exp $")
 #include "npf_conn.h"
 #include "npf_impl.h"
 
+#define	NPF_GC_STEP		512
+
 struct npf_conndb {
 	thmap_t *		cd_map;
-	npf_conn_t *		cd_recent;
+	npf_conn_t *		cd_new;
+
+	/*
+	 * The head and tail of the connection list.  The list is
+	 * protected by the conn_lock, but the "new" connections are
+	 * transferred to it atomically.
+	 */
 	npf_conn_t *		cd_list;
 	npf_conn_t *		cd_tail;
+	npf_conn_t *		cd_prev;
+	npf_conn_t *		cd_gclist;
 };
 
 npf_conndb_t *
@@ -68,7 +78,7 @@ npf_conndb_create(void)
 void
 npf_conndb_destroy(npf_conndb_t *cd)
 {
-	KASSERT(cd->cd_recent == NULL);
+	KASSERT(cd->cd_new == NULL);
 	KASSERT(cd->cd_list == NULL);
 	KASSERT(cd->cd_tail == NULL);
 
@@ -138,7 +148,7 @@ npf_conndb_remove(npf_conndb_t *cd, npf_connkey_t *key)
 
 /*
  * npf_conndb_enqueue: atomically insert the connection into the
- * singly-linked list of "recent" connections.
+ * singly-linked list of the "new" connections.
  */
 void
 npf_conndb_enqueue(npf_conndb_t *cd, npf_conn_t *con)
@@ -146,34 +156,33 @@ npf_conndb_enqueue(npf_conndb_t *cd, npf_conn_t *con)
 	npf_conn_t *head;
 
 	do {
-		head = cd->cd_recent;
+		head = cd->cd_new;
 		con->c_next = head;
-	} while (atomic_cas_ptr(&cd->cd_recent, head, con) != head);
+	} while (atomic_cas_ptr(&cd->cd_new, head, con) != head);
 }
 
 /*
- * npf_conndb_dequeue: remove the connection from a singly-linked list
- * given the previous element; no concurrent writers are allowed here.
- */
-void
-npf_conndb_dequeue(npf_conndb_t *cd, npf_conn_t *con, npf_conn_t *prev)
-{
-	if (prev == NULL) {
-		KASSERT(cd->cd_list == con);
-		cd->cd_list = con->c_next;
-	} else {
-		prev->c_next = con->c_next;
-	}
-}
-
-/*
- * npf_conndb_getlist: atomically take the "recent" connections and add
- * them to the singly-linked list of the connections.
+ * npf_conndb_getlist: return the list of all connections.
  */
 npf_conn_t *
 npf_conndb_getlist(npf_conndb_t *cd)
 {
+	return cd->cd_list;
+}
+
+/*
+ * npf_conndb_getall: return the list of all connections, but before that,
+ * atomically take the "new" connections and add them to the singly-linked
+ * list of the all connections.
+ */
+static void
+npf_conndb_update(npf_conndb_t *cd)
+{
 	npf_conn_t *con, *prev;
+
+	/*
+	 * FIXME: Unable to maintain the tail pointer without the settail..
+	 */
 
 	con = atomic_swap_ptr(&cd->cd_recent, NULL);
 	if ((prev = cd->cd_tail) == NULL) {
@@ -183,16 +192,108 @@ npf_conndb_getlist(npf_conndb_t *cd)
 		KASSERT(prev->c_next == NULL);
 		prev->c_next = con;
 	}
-	return cd->cd_list;
 }
 
 /*
- * npf_conndb_settail: assign a new tail of the singly-linked list.
+ * npf_conndb_getnext: return the next connection since the last call.
+ * If called for the first, returns the first connection in the list.
+ * Once the last connection is reached, it starts from the beginning.
+ */
+static inline npf_conn_t *
+npf_conndb_getnext(npf_conndb_t *cd)
+{
+	npf_conn_t *itercon = cd->cd_iter;
+	cd->cd_iter = itercon->cd_next;
+	return cd->cd_iter;
+
+	if (!con->c_next) {
+		cd->cd_tail = con;
+	}
+	if (cd->cd_next;cd->cd_iter;
+}
+
+void
+npf_conndb_togc(npf_conndb_t *cd, npf_conn_t *con)
+{
+	/* FIXME: Dequeue from the current list. */
+
+	/* Insert into the G/C list. */
+	con->c_next = cd->cd_gclist;
+	cd->cd_gclist = con;
+}
+
+/*
+ * npf_conndb_gc: garbage collect the expired connections.
+ *
+ * => Must run in a single-threaded manner.
+ * => If 'flush' is true, then destroy all connections.
+ * => If 'sync' is true, then perform passive serialisation.
  */
 void
-npf_conndb_settail(npf_conndb_t *cd, npf_conn_t *con)
+npf_conndb_gc(npf_t *npf, npf_conndb_t *cd, bool flush, bool sync)
 {
-	KASSERT(con || cd->cd_list == NULL);
-	KASSERT(!con || con->c_next == NULL);
-	cd->cd_tail = con;
+	unsigned target = NPF_GC_STEP;
+	struct timespec tsnow;
+	void *gcref;
+
+	getnanouptime(&tsnow);
+
+	/*
+	 * Scan the connections:
+	 * - Limit the scan to the G/C step size.
+	 * - Stop if we scanned all of them.
+	 */
+	mutex_exit(&npf->conn_lock);
+	npf_conndb_update(cd);
+	while (target--) {
+		npf_conn_t *con = npf_conndb_getnext(cd);
+
+		/* Can we G/C this connection? */
+		if (flush || npf_conn_gc(con, tsnow.tv_sec)) {
+			/* Yes: move to the G/C list. */
+			npf_conndb_togc(cd, con);
+		}
+	}
+	mutex_exit(&npf->conn_lock);
+
+	/*
+	 * Ensure it is safe to destroy the connections.
+	 * Note: drop the conn_lock (see the lock order).
+	 */
+	gcref = thmap_stage_gc(cd->cd_map);
+	if (sync) {
+		npf_config_enter(npf);
+		npf_config_sync(npf);
+		npf_config_exit(npf);
+	}
+	thmap_gc(cd->cd_map, gcref);
+
+	/*
+	 * If there is nothing to G/C, then reduce the worker interval.
+	 * We do not go below the lower watermark.
+	 */
+	if (!cd->cd_gclist) {
+		// TODO: npf->next_gc = MAX(npf->next_gc >> 1, NPF_MIN_GC_TIME);
+		return;
+	}
+
+	/*
+	 * Garbage collect all expired connections.
+	 * May need to wait for the references to drain.
+	 */
+	while ((con = cd->cd_gclist) != NULL) {
+		/*
+		 * Destroy only if removed and no references.  Otherwise,
+		 * just do it next time, unless we are destroying all.
+		 */
+		if (__predict_false(con->c_refcnt)) {
+			if (!flush) {
+				break;
+			}
+			kpause("npfcongc", false, 1, NULL);
+			continue;
+		}
+		cd->cd_gclist = con->c_next;
+		npf_conn_destroy(npf, con);
+	}
 }

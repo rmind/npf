@@ -811,89 +811,32 @@ npf_conn_expired(const npf_conn_t *con, uint64_t tsnow)
  * npf_conn_gc: garbage collect the expired connections.
  *
  * => Must run in a single-threaded manner.
- * => If it is a flush request, then destroy all connections.
+ * => If 'flush' is true, then destroy all connections.
  * => If 'sync' is true, then perform passive serialisation.
  */
-void
-npf_conn_gc(npf_t *npf, npf_conndb_t *cd, bool flush, bool sync)
+bool
+npf_conn_gc(npf_conn_t *con, uint64_t tsnow)
 {
-	npf_conn_t *con, *prev, *gclist = NULL;
-	struct timespec tsnow;
-
-	getnanouptime(&tsnow);
-
-	/*
-	 * Scan all connections and check them for expiration.
-	 */
-	prev = NULL;
-	con = npf_conndb_getlist(cd);
-	while (con) {
-		npf_conn_t *next = con->c_next;
-
-		/* Expired?  Flushing all? */
-		if (!npf_conn_expired(con, tsnow.tv_sec) && !flush) {
-			prev = con;
-			con = next;
-			continue;
-		}
-
-		/* Remove both entries of the connection. */
-		mutex_enter(&con->c_lock);
-		if ((con->c_flags & CONN_REMOVED) == 0) {
-			npf_conn_t *ret __diagused;
-
-			ret = npf_conndb_remove(cd, &con->c_forw_entry);
-			KASSERT(ret == con);
-			ret = npf_conndb_remove(cd, &con->c_back_entry);
-			KASSERT(ret == con);
-		}
-
-		/* Flag the removal and expiration. */
-		atomic_or_uint(&con->c_flags, CONN_REMOVED | CONN_EXPIRE);
-		mutex_exit(&con->c_lock);
-
-		/* Move to the G/C list. */
-		npf_conndb_dequeue(cd, con, prev);
-		con->c_next = gclist;
-		gclist = con;
-
-		/* Next.. */
-		con = next;
-	}
-	npf_conndb_settail(cd, prev);
-
-	/*
-	 * Ensure it is safe to destroy the connections.
-	 * Note: drop the conn_lock (see the lock order).
-	 */
-	if (sync) {
-		mutex_exit(&npf->conn_lock);
-		if (gclist) {
-			npf_config_enter(npf);
-			npf_config_sync(npf);
-			npf_config_exit(npf);
-		}
+	/* Check whether the connection has expired. */
+	if (!npf_conn_expired(con, tsnow)) {
+		return false;
 	}
 
-	/*
-	 * Garbage collect all expired connections.
-	 * May need to wait for the references to drain.
-	 */
-	con = gclist;
-	while (con) {
-		npf_conn_t *next = con->c_next;
+	/* Remove both entries of the connection. */
+	mutex_enter(&con->c_lock);
+	if ((con->c_flags & CONN_REMOVED) == 0) {
+		npf_conn_t *ret __diagused;
 
-		/*
-		 * Destroy only if removed and no references.
-		 * Otherwise, wait for a tiny moment.
-		 */
-		if (__predict_false(con->c_refcnt)) {
-			kpause("npfcongc", false, 1, NULL);
-			continue;
-		}
-		npf_conn_destroy(npf, con);
-		con = next;
+		ret = npf_conndb_remove(cd, &con->c_forw_entry);
+		KASSERT(ret == con);
+		ret = npf_conndb_remove(cd, &con->c_back_entry);
+		KASSERT(ret == con);
 	}
+
+	/* Flag the removal and expiration. */
+	atomic_or_uint(&con->c_flags, CONN_REMOVED | CONN_EXPIRE);
+	mutex_exit(&con->c_lock);
+	return true;
 }
 
 /*
@@ -902,8 +845,6 @@ npf_conn_gc(npf_t *npf, npf_conndb_t *cd, bool flush, bool sync)
 void
 npf_conn_worker(npf_t *npf)
 {
-	mutex_enter(&npf->conn_lock);
-	/* Note: the conn_lock will be released (sync == true). */
 	npf_conn_gc(npf, npf->conn_db, false, true);
 }
 
@@ -914,7 +855,7 @@ npf_conn_worker(npf_t *npf)
 int
 npf_conndb_export(npf_t *npf, nvlist_t *npf_dict)
 {
-	npf_conn_t *con, *prev;
+	npf_conn_t *con;
 
 	/*
 	 * Note: acquire conn_lock to prevent from the database
@@ -925,20 +866,16 @@ npf_conndb_export(npf_t *npf, nvlist_t *npf_dict)
 		mutex_exit(&npf->conn_lock);
 		return 0;
 	}
-	prev = NULL;
 	con = npf_conndb_getlist(npf->conn_db);
 	while (con) {
-		npf_conn_t *next = con->c_next;
 		nvlist_t *cdict;
 
 		if ((cdict = npf_conn_export(npf, con)) != NULL) {
 			nvlist_append_nvlist_array(npf_dict, "conn-list", cdict);
 			nvlist_destroy(cdict);
 		}
-		prev = con;
-		con = next;
+		con = con->c_next;
 	}
-	npf_conndb_settail(npf->conn_db, prev);
 	mutex_exit(&npf->conn_lock);
 	return 0;
 }
