@@ -54,6 +54,8 @@
 #include <net/bpfjit.h>
 #include <net/if.h>
 #endif
+#include <dnv.h>
+#include <nv.h>
 
 #include "npf.h"
 #include "npfkern.h"
@@ -100,6 +102,12 @@ typedef struct npf_algset	npf_algset_t;
  */
 
 typedef void (*npf_workfunc_t)(npf_t *);
+
+typedef struct {
+	uint64_t	mi_rid;
+	unsigned	mi_retfl;
+	unsigned	mi_di;
+} npf_match_info_t;
 
 /*
  * Some artificial limits.
@@ -197,6 +205,26 @@ struct npf {
 	/* Statistics. */
 	percpu_t *		stats_percpu;
 };
+
+
+/*
+ * NPF extensions and rule procedure interface.
+ */
+
+struct npf_rproc;
+typedef struct npf_rproc npf_rproc_t;
+
+typedef struct {
+	u_int	version;
+	void *	ctx;
+	int	(*ctor)(npf_rproc_t *, const nvlist_t *);
+	void	(*dtor)(npf_rproc_t *, void *);
+	bool	(*proc)(npf_cache_t *, void *, const npf_match_info_t *, int *);
+} npf_ext_ops_t;
+
+void *		npf_ext_register(npf_t *, const char *, const npf_ext_ops_t *);
+int		npf_ext_unregister(npf_t *, void *);
+void		npf_rproc_assign(npf_rproc_t *, void *);
 
 /*
  * INTERFACES.
@@ -404,6 +432,8 @@ npf_nat_t *	npf_nat_import(npf_t *, const nvlist_t *, npf_ruleset_t *,
 		    npf_conn_t *);
 
 /* ALG interface. */
+void		npf_alg_sysinit(void);
+void		npf_alg_sysfini(void);
 void		npf_alg_init(npf_t *);
 void		npf_alg_fini(npf_t *);
 npf_alg_t *	npf_alg_register(npf_t *, const char *, const npfa_funcs_t *);
@@ -428,6 +458,7 @@ npf_t *		npf_getkernctx(void);
 #ifdef __NetBSD__
 #define	pserialize_register(x)
 #define	pserialize_checkpoint(x)
+#define	pserialize_unregister(x)
 #endif
 
 #endif	/* _NPF_IMPL_H_ */

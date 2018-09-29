@@ -40,7 +40,7 @@
 
 #ifdef _KERNEL
 #include <sys/cdefs.h>
-__KERNEL_RCSID(0, "$NetBSD: npf_tableset.c,v 1.27 2017/03/10 02:21:37 christos Exp $");
+__KERNEL_RCSID(0, "$NetBSD: npf_tableset.c,v 1.28 2018/09/29 14:41:36 rmind Exp $");
 
 #include <sys/param.h>
 #include <sys/types.h>
@@ -52,7 +52,7 @@ __KERNEL_RCSID(0, "$NetBSD: npf_tableset.c,v 1.27 2017/03/10 02:21:37 christos E
 #include <sys/malloc.h>
 #include <sys/pool.h>
 #include <sys/queue.h>
-#include <sys/rwlock.h>
+#include <sys/mutex.h>
 #include <sys/systm.h>
 #include <sys/types.h>
 
@@ -97,7 +97,7 @@ struct npf_table {
 	 */
 	int			t_type;
 	u_int			t_id;
-	krwlock_t		t_lock;
+	kmutex_t		t_lock;
 
 	/* The number of items, reference count and table name. */
 	u_int			t_nitems;
@@ -394,7 +394,7 @@ npf_table_create(const char *name, u_int tid, int type,
 	default:
 		KASSERT(false);
 	}
-	rw_init(&t->t_lock);
+	mutex_init(&t->t_lock, MUTEX_DEFAULT, IPL_NET);
 	t->t_type = type;
 	t->t_id = tid;
 	return t;
@@ -427,7 +427,7 @@ npf_table_destroy(npf_table_t *t)
 	default:
 		KASSERT(false);
 	}
-	rw_destroy(&t->t_lock);
+	mutex_destroy(&t->t_lock);
 	kmem_free(t, sizeof(npf_table_t));
 }
 
@@ -509,7 +509,7 @@ npf_table_insert(npf_table_t *t, const int alen,
 	/*
 	 * Insert the entry.  Return an error on duplicate.
 	 */
-	rw_enter(&t->t_lock, RW_WRITER);
+	mutex_enter(&t->t_lock);
 	switch (t->t_type) {
 	case NPF_TABLE_HASH: {
 		struct npf_hashl *htbl;
@@ -549,7 +549,7 @@ npf_table_insert(npf_table_t *t, const int alen,
 	default:
 		KASSERT(false);
 	}
-	rw_exit(&t->t_lock);
+	mutex_exit(&t->t_lock);
 
 	if (error) {
 		pool_cache_put(tblent_cache, ent);
@@ -573,7 +573,7 @@ npf_table_remove(npf_table_t *t, const int alen,
 		return error;
 	}
 
-	rw_enter(&t->t_lock, RW_WRITER);
+	mutex_enter(&t->t_lock);
 	switch (t->t_type) {
 	case NPF_TABLE_HASH: {
 		struct npf_hashl *htbl;
@@ -602,7 +602,7 @@ npf_table_remove(npf_table_t *t, const int alen,
 		KASSERT(false);
 		ent = NULL;
 	}
-	rw_exit(&t->t_lock);
+	mutex_exit(&t->t_lock);
 
 	if (ent) {
 		pool_cache_put(tblent_cache, ent);
@@ -629,14 +629,14 @@ npf_table_lookup(npf_table_t *t, const int alen, const npf_addr_t *addr)
 
 	switch (t->t_type) {
 	case NPF_TABLE_HASH:
-		rw_enter(&t->t_lock, RW_READER);
+		mutex_enter(&t->t_lock);
 		found = table_hash_lookup(t, addr, alen, &htbl) != NULL;
-		rw_exit(&t->t_lock);
+		mutex_exit(&t->t_lock);
 		break;
 	case NPF_TABLE_TREE:
-		rw_enter(&t->t_lock, RW_READER);
+		mutex_enter(&t->t_lock);
 		found = lpm_lookup(t->t_lpm, addr, alen) != NULL;
-		rw_exit(&t->t_lock);
+		mutex_exit(&t->t_lock);
 		break;
 	case NPF_TABLE_CDB:
 		if (cdbr_find(t->t_cdb, addr, alen, &data, &dlen) == 0) {
@@ -732,7 +732,7 @@ npf_table_list(npf_table_t *t, void *ubuf, size_t len)
 {
 	int error = 0;
 
-	rw_enter(&t->t_lock, RW_READER);
+	mutex_enter(&t->t_lock);
 	switch (t->t_type) {
 	case NPF_TABLE_HASH:
 		error = table_hash_list(t, ubuf, len);
@@ -746,7 +746,7 @@ npf_table_list(npf_table_t *t, void *ubuf, size_t len)
 	default:
 		KASSERT(false);
 	}
-	rw_exit(&t->t_lock);
+	mutex_exit(&t->t_lock);
 
 	return error;
 }
@@ -759,7 +759,7 @@ npf_table_flush(npf_table_t *t)
 {
 	int error = 0;
 
-	rw_enter(&t->t_lock, RW_WRITER);
+	mutex_enter(&t->t_lock);
 	switch (t->t_type) {
 	case NPF_TABLE_HASH:
 		table_hash_flush(t);
@@ -775,6 +775,6 @@ npf_table_flush(npf_table_t *t)
 	default:
 		KASSERT(false);
 	}
-	rw_exit(&t->t_lock);
+	mutex_exit(&t->t_lock);
 	return error;
 }

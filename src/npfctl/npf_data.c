@@ -29,7 +29,7 @@
  */
 
 #include <sys/cdefs.h>
-__RCSID("$NetBSD: npf_data.c,v 1.28 2017/01/19 20:18:17 rmind Exp $");
+__RCSID("$NetBSD: npf_data.c,v 1.29 2018/09/29 14:41:36 rmind Exp $");
 
 #include <stdlib.h>
 #include <stddef.h>

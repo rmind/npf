@@ -1,4 +1,4 @@
-/*	$NetBSD: npf_rule_test.c,v 1.14 2017/01/29 04:12:52 christos Exp $	*/
+/*	$NetBSD: npf_rule_test.c,v 1.15 2018/09/29 14:41:36 rmind Exp $	*/
 
 /*
  * NPF ruleset test.

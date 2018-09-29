@@ -26,7 +26,7 @@
 
 #ifdef _KERNEL
 #include <sys/cdefs.h>
-__KERNEL_RCSID(0, "$NetBSD: npf_ext_normalize.c,v 1.8 2018/08/31 14:16:06 maxv Exp $");
+__KERNEL_RCSID(0, "$NetBSD: npf_ext_normalize.c,v 1.9 2018/09/29 14:41:36 rmind Exp $");
 
 #include <sys/types.h>
 #include <sys/module.h>

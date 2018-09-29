@@ -47,7 +47,7 @@
 
 #ifdef _KERNEL
 #include <sys/cdefs.h>
-__KERNEL_RCSID(0, "$NetBSD: npf_conf.c,v 1.11 2017/01/03 00:58:05 rmind Exp $");
+__KERNEL_RCSID(0, "$NetBSD: npf_conf.c,v 1.12 2018/09/29 14:41:36 rmind Exp $");
 
 #include <sys/param.h>
 #include <sys/types.h>
@@ -105,6 +105,7 @@ npf_config_fini(npf_t *npf)
 	/* Flush the connections. */
 	mutex_enter(&npf->config_lock);
 	npf_conn_tracking(npf, false);
+	pserialize_perform(npf->qsbr);
 	npf_conn_load(npf, cd, false);
 	npf_ifmap_flush(npf);
 	mutex_exit(&npf->config_lock);

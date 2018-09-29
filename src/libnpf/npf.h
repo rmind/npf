@@ -61,8 +61,6 @@ typedef void (*nl_table_callback_t)(unsigned, int);
 
 #endif
 
-#define	NPF_MAX_TABLE_ID	(16)
-
 nl_config_t *	npf_config_create(void);
 void		npf_config_destroy(nl_config_t *);
 int		npf_config_submit(nl_config_t *, int, npf_error_t *);
