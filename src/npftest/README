@@ -1,4 +1,4 @@
-$NetBSD: README,v 1.6 2014/06/25 00:21:42 rmind Exp $
+$NetBSD: README,v 1.7 2018/09/29 14:41:36 rmind Exp $
 
 npftest - a tool for regression testing and debugging NPF.
 It uses RUMP framework to run NPF kernel module in the userspace.

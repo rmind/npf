@@ -1,4 +1,4 @@
-/*	$NetBSD: npftest.c,v 1.20 2016/12/26 23:05:05 christos Exp $	*/
+/*	$NetBSD: npftest.c,v 1.22 2018/09/29 14:41:36 rmind Exp $	*/
 
 /*
  * NPF testing framework.
@@ -82,30 +82,8 @@ result(const char *testcase, bool ok)
 }
 
 static void
-load_npf_config_ifs(const nvlist_t *dbg_dict)
-{
-	const nvlist_t * const *iflist;
-	size_t nitems;
-
-	if (!nvlist_exists_nvlist_array(dbg_dict, "interfaces")) {
-		return;
-	}
-	iflist = nvlist_get_nvlist_array(dbg_dict, "interfaces", &nitems);
-	for (unsigned i = 0; i < nitems; i++) {
-		const nvlist_t *ifdict = iflist[i];
-		const char *ifname;
-
-		if ((ifname = nvlist_get_string(ifdict, "name")) != NULL) {
-			(void)rumpns_npf_test_addif(ifname, true, verbose);
-		}
-	}
-}
-
-static void
 load_npf_config(const char *fpath)
 {
-	nvlist_t *npf_dict;
-	const nvlist_t *dbg_dict;
 	struct stat sb;
 	int error, fd;
 	size_t len;
@@ -128,27 +106,13 @@ load_npf_config(const char *fpath)
 	close(fd);
 
 	/*
-	 * Unpack the binary to nvlist.
+	 * Load the NPF configuration.
 	 */
-	npf_dict = nvlist_unpack(buf, len, 0);
-	munmap(buf, len);
-	if (!npf_dict) {
-		errx(EXIT_FAILURE, "nvlist_unpack");
-	}
-
-	/* Inspect the debug data.  Create the interfaces, if any. */
-	if ((dbg_dict = dnvlist_get_nvlist(npf_dict, "debug", NULL)) != NULL) {
-		load_npf_config_ifs(dbg_dict);
-	}
-
-	/*
-	 * Load the NPF configuration.  Note: it will consume the nvpair.
-	 */
-	error = rumpns_npf_test_load(npf_dict);
+	error = rumpns_npf_test_load(buf, len, verbose);
 	if (error) {
 		errx(EXIT_FAILURE, "npf_test_load: %s\n", strerror(error));
 	}
-	npf_dict = NULL; // destroyed for us
+	munmap(buf, len);
 
 	if (verbose) {
 		printf("Loaded NPF config at '%s'\n", fpath);

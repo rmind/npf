@@ -28,7 +28,7 @@
  */
 
 #include <sys/cdefs.h>
-__RCSID("$NetBSD: npfctl.c,v 1.54 2017/10/30 04:53:43 ozaki-r Exp $");
+__RCSID("$NetBSD: npfctl.c,v 1.56 2018/09/29 14:41:36 rmind Exp $");
 
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -681,20 +681,20 @@ npfctl_conn_list(int fd, int argc, char **argv)
 static int
 npfctl_open_dev(const char *path)
 {
-	int fd, ver;
+	int fd, kernver;
 
 	fd = open(path, O_RDONLY);
 	if (fd == -1) {
 		err(EXIT_FAILURE, "cannot open '%s'", path);
 	}
-	if (ioctl(fd, IOC_NPF_VERSION, &ver) == -1) {
+	if (ioctl(fd, IOC_NPF_VERSION, &kernver) == -1) {
 		err(EXIT_FAILURE, "ioctl(IOC_NPF_VERSION)");
 	}
-	if (ver != NPF_VERSION) {
+	if (kernver != NPF_VERSION) {
 		errx(EXIT_FAILURE,
 		    "incompatible NPF interface version (%d, kernel %d)\n"
-		    "Hint: update %s?", NPF_VERSION, ver, 
-		    NPF_VERSION > ver ? "userland" : "kernel");
+		    "Hint: update %s?", NPF_VERSION, kernver, 
+		    kernver > NPF_VERSION ? "userland" : "kernel");
 	}
 	return fd;
 }

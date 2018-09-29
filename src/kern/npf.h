@@ -45,8 +45,6 @@
 #include <sys/ioctl.h>
 #include <netinet/in_systm.h>
 #include <netinet/in.h>
-#include <dnv.h>
-#include <nv.h>
 #endif
 
 struct npf;
@@ -190,31 +188,6 @@ npf_iscached(const npf_cache_t *npc, const int inf)
 #define	NPF_DST		1
 
 /*
- * NPF extensions and rule procedure interface.
- */
-
-struct npf_rproc;
-typedef struct npf_rproc	npf_rproc_t;
-
-typedef struct {
-	uint64_t	mi_rid;
-	unsigned	mi_retfl;
-	unsigned	mi_di;
-} npf_match_info_t;
-
-typedef struct {
-	u_int	version;
-	void *	ctx;
-	int	(*ctor)(npf_rproc_t *, const nvlist_t *);
-	void	(*dtor)(npf_rproc_t *, void *);
-	bool	(*proc)(npf_cache_t *, void *, const npf_match_info_t *, int *);
-} npf_ext_ops_t;
-
-void *		npf_ext_register(npf_t *, const char *, const npf_ext_ops_t *);
-int		npf_ext_unregister(npf_t *, void *);
-void		npf_rproc_assign(npf_rproc_t *, void *);
-
-/*
  * Misc.
  */
 
@@ -325,12 +298,12 @@ typedef struct npf_ioctl_table {
 
 #define	IOC_NPF_VERSION		_IOR('N', 100, int)
 #define	IOC_NPF_SWITCH		_IOW('N', 101, int)
-#define	IOC_NPF_LOAD		_IOWR('N', 102, struct plistref)
+#define	IOC_NPF_LOAD		_IOWR('N', 102, nvlist_ref_t)
 #define	IOC_NPF_TABLE		_IOW('N', 103, struct npf_ioctl_table)
 #define	IOC_NPF_STATS		_IOW('N', 104, void *)
-#define	IOC_NPF_SAVE		_IOR('N', 105, struct plistref)
-#define	IOC_NPF_RULE		_IOWR('N', 107, struct plistref)
-#define	IOC_NPF_CONN_LOOKUP	_IOWR('N', 108, struct plistref)
+#define	IOC_NPF_SAVE		_IOR('N', 105, nvlist_ref_t)
+#define	IOC_NPF_RULE		_IOWR('N', 107, nvlist_ref_t)
+#define	IOC_NPF_CONN_LOOKUP	_IOWR('N', 108, nvlist_ref_t)
 
 /*
  * NPF error report.

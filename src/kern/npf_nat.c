@@ -70,7 +70,7 @@
 
 #ifdef _KERNEL
 #include <sys/cdefs.h>
-__KERNEL_RCSID(0, "$NetBSD: npf_nat.c,v 1.43 2018/05/11 13:52:48 maxv Exp $");
+__KERNEL_RCSID(0, "$NetBSD: npf_nat.c,v 1.44 2018/09/29 14:41:36 rmind Exp $");
 
 #include <sys/param.h>
 #include <sys/types.h>

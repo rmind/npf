@@ -36,18 +36,18 @@
 
 #ifdef _KERNEL
 #include <sys/cdefs.h>
-__KERNEL_RCSID(0, "$NetBSD: npf_ctl.c,v 1.50 2017/12/10 01:18:21 rmind Exp $");
+__KERNEL_RCSID(0, "$NetBSD: npf_ctl.c,v 1.51 2018/09/29 14:41:36 rmind Exp $");
 
 #include <sys/param.h>
 #include <sys/conf.h>
 #include <sys/kmem.h>
 #include <net/bpf.h>
-
-#include <nv.h>
 #endif
 
 #include "npf_impl.h"
 #include "npf_conn.h"
+
+#define	NPF_IOCTL_DATA_LIMIT	(4 * 1024 * 1024)
 
 #define	NPF_ERR_DEBUG(e) \
 	nvlist_add_string((e), "source-file", __FILE__); \
@@ -83,7 +83,7 @@ npf_nvlist_copyin(u_long cmd, void *data, nvlist_t **nvl)
 #if defined(_NPF_TESTING) || defined(_NPF_STANDALONE)
 	*nvl = (nvlist_t *)data;
 #else
-	KASSERT(0); /* TODO */
+	error = nvlist_copyin(data, nvl, NPF_IOCTL_DATA_LIMIT);
 #endif
 	return error;
 }
@@ -96,7 +96,7 @@ npf_nvlist_copyout(u_long cmd, void *data, nvlist_t *nvl)
 #if defined(_NPF_TESTING) || defined(_NPF_STANDALONE)
 	(void)cmd; (void)data;
 #else
-	KASSERT(0); /* TODO */
+	error = nvlist_copyout(data, nvl);
 #endif
 	nvlist_destroy(nvl);
 	return error;
@@ -321,6 +321,7 @@ npf_mk_singlerule(npf_t *npf, const nvlist_t *rule, npf_rprocset_t *rpset,
 		npf_rproc_t *rp;
 
 		if (rpset == NULL) {
+			NPF_ERR_DEBUG(errdict);
 			error = EINVAL;
 			goto err;
 		}
@@ -340,6 +341,7 @@ npf_mk_singlerule(npf_t *npf, const nvlist_t *rule, npf_rprocset_t *rpset,
 
 		type = dnvlist_get_number(rule, "code-type", UINT64_MAX);
 		if (type != NPF_CODE_BPF) {
+			NPF_ERR_DEBUG(errdict);
 			error = ENOTSUP;
 			goto err;
 		}
@@ -375,14 +377,15 @@ npf_mk_rules(npf_t *npf, nvlist_t *npf_dict, nvlist_t *errdict,
 	size_t nitems;
 	int error = 0;
 
-	if (!nvlist_exists_nvlist_array(npf_dict, "rules")) {
-		NPF_ERR_DEBUG(errdict);
-		return EINVAL;
-	}
-	rules = nvlist_get_nvlist_array(npf_dict, "rules", &nitems);
-	if (nitems > NPF_MAX_RULES) {
-		NPF_ERR_DEBUG(errdict);
-		return E2BIG;
+	if (nvlist_exists_nvlist_array(npf_dict, "rules")) {
+		rules = nvlist_get_nvlist_array(npf_dict, "rules", &nitems);
+		if (nitems > NPF_MAX_RULES) {
+			NPF_ERR_DEBUG(errdict);
+			return E2BIG;
+		}
+	} else {
+		rules = NULL;
+		nitems = 0;
 	}
 	rlset = npf_ruleset_create(nitems);
 	for (unsigned i = 0; i < nitems; i++) {
@@ -419,14 +422,15 @@ npf_mk_natlist(npf_t *npf, nvlist_t *npf_dict, nvlist_t *errdict,
 	/*
 	 * NAT policies must be an array, but enforce a limit.
 	 */
-	if (!nvlist_exists_nvlist_array(npf_dict, "nat")) {
-		NPF_ERR_DEBUG(errdict);
-		return EINVAL;
-	}
-	nat_rules = nvlist_get_nvlist_array(npf_dict, "nat", &nitems);
-	if (nitems > NPF_MAX_RULES) {
-		NPF_ERR_DEBUG(errdict);
-		return E2BIG;
+	if (nvlist_exists_nvlist_array(npf_dict, "nat")) {
+		nat_rules = nvlist_get_nvlist_array(npf_dict, "nat", &nitems);
+		if (nitems > NPF_MAX_RULES) {
+			NPF_ERR_DEBUG(errdict);
+			return E2BIG;
+		}
+	} else {
+		nat_rules = NULL;
+		nitems = 0;
 	}
 	ntset = npf_ruleset_create(nitems);
 	for (unsigned i = 0; i < nitems; i++) {
@@ -763,8 +767,8 @@ npfctl_rule(npf_t *npf, u_long cmd, void *data)
 		npf_rule_free(rl);
 	}
 out:
-	if (retdict) {
-		error = npf_nvlist_copyout(cmd, data, retdict);
+	if (retdict && npf_nvlist_copyout(cmd, data, retdict) != 0) {
+		error = EFAULT; // copyout failure
 	}
 	nvlist_destroy(npf_rule);
 	return error;
