@@ -54,7 +54,6 @@ npf_sysinit(unsigned nworkers)
 	npf_bpf_sysinit();
 	npf_tableset_sysinit();
 	npf_nat_sysinit();
-	npf_alg_sysinit();
 	return npf_worker_sysinit(nworkers);
 }
 
@@ -62,7 +61,6 @@ __dso_public void
 npf_sysfini(void)
 {
 	npf_worker_sysfini();
-	npf_alg_sysfini();
 	npf_nat_sysfini();
 	npf_tableset_sysfini();
 	npf_bpf_sysfini();
