@@ -74,6 +74,23 @@
 #define	NPF_DIAG_MAGIC_VAL	(0x5a5a5a5a)
 
 /*
+ * Name/value pair library wrappers.
+ */
+
+static inline int
+npfkern_nvlist_xfer_ioctl(int fd, unsigned long cmd,
+    const nvlist_t *nvl, nvlist_t **nvlp)
+{
+	(void)fd; (void)cmd; (void)nvl; (void)nvlp;
+	errno = ENOTSUP;
+	return -1;
+}
+
+#define	nvlist_xfer_ioctl(a,b,c,d)	npfkern_nvlist_xfer_ioctl(a,b,c,d)
+#define	nvlist_send_ioctl(a,b,c)	npfkern_nvlist_xfer_ioctl(a,b,c,NULL)
+#define	nvlist_recv_ioctl(a,b,d)	npfkern_nvlist_xfer_ioctl(a,b,NULL,d)
+
+/*
  * Synchronisation primitives (mutex, condvar, etc).
  */
 
