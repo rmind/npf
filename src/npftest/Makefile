@@ -33,7 +33,7 @@ else
 CFLAGS+=	-DNDEBUG
 endif
 
-LDFLAGS=	-lpthread -lnv -lpcap -lcdb -lnpfkern
+LDFLAGS=	-lpthread -lnv -lpcap -lcdb -lnpfkern-dbg
 
 OBJS=		npftest.o npfstream.o
 
