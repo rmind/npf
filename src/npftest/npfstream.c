@@ -42,16 +42,19 @@ process_tcpip(const void *data, size_t len, FILE *fp, ifnet_t *ifp)
 	const struct tcphdr *th;
 	unsigned hlen, tcpdlen;
 	int error, packetno;
+	const void *p;
 	tcp_seq seq;
 	bool forw;
 
 	if (ntohs(eth->ether_type) != ETHERTYPE_IP) {
-		ip = (const struct ip *)((const char *)data + 4);
+		p = (const char *)data + 4;
+		ip = (const struct ip *)p;
 	} else {
 		ip = (const struct ip *)(eth + 1);
 	}
 	hlen = ip->ip_hl << 2;
-	th = (const struct tcphdr *)((const uint8_t *)ip + hlen);
+	p = (const uint8_t *)ip + hlen;
+	th = (const struct tcphdr *)p;
 
 	tcpdlen = ntohs(ip->ip_len) - hlen - (th->th_off << 2);
 	if (th->th_flags & TH_SYN) {
