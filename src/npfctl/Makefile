@@ -9,7 +9,7 @@ CFLAGS+=	-std=gnu99 -O2 -g -Wall -Wextra -Werror
 CFLAGS+=	-D_POSIX_C_SOURCE=200809L
 CFLAGS+=	-D_GNU_SOURCE -D_DEFAULT_SOURCE
 CFLAGS+=	-I. -D__RCSID\(x\)= -D__dead= -D__printflike\(x,y\)=
-CFLAGS+=	-Wno-unused-local-typedefs
+CFLAGS+=	-Wno-unused-local-typedefs -Wno-unused-result
 
 #
 # Extended warning flags.

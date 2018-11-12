@@ -30,8 +30,9 @@ install:
 script:
   # Build-test npfkern, libnpf and npfctl.
   - (cd src && make clean && LIBDIR=/usr/lib make all)
-  # Test the DEB package building.
+  # Build and install the packages.
   - (cd pkg && make deb && sudo dpkg -i ../libnpf*.deb)
+  - (cd pkg && dpkg -i ../npfctl*.deb)
   # Build npftest and run the tests.
   - (cd src/npftest && make && \
      npfctl debug npftest.conf /tmp/npf.nvlist && \

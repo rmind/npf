@@ -5,6 +5,8 @@ Build-Depends:
  debhelper (>= 9),
  make,
  libtool,
+ flex,
+ byacc,
  libnv-dev,
  libbpfjit-dev,
  libqsbr-dev,
@@ -18,12 +20,19 @@ Package: libnpf1
 Section: lib
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}
-Description: Standalone NPF package (libraries)
+Description: Standalone NPF package: libraries
  NPF is a layer 3 packet filter, supporting IPv4 and IPv6 as well as layer
  4 protocols such as TCP, UDP, and ICMP.  It was designed with a focus on
  high performance, scalability and modularity.  NPF was written from
  scratch in 2009.  It is written in C99 and distributed under the 2-clause
  BSD license.
+
+Package: npfctl
+Section: misc
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, libnpf1 (= ${binary:Version})
+Description: Standalone NPF package: npfctl utility
+ This package contains npfctl(8) utility of the standalone NPF package.
 
 Package: libnpf1-dbg
 Section: debug
