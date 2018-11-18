@@ -172,7 +172,6 @@ npf_worker(void *arg)
 	npf_worker_t *wrk = arg;
 
 	KASSERT(wrk != NULL);
-	KASSERT(!wrk->worker_exit);
 
 	while (!wrk->worker_exit) {
 		npf_t *npf;
