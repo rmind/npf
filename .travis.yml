@@ -26,7 +26,7 @@ install:
   - git clone https://github.com/rmind/liblpm
   - (cd liblpm/pkg && make deb && sudo dpkg -i ../liblpm*.deb)
   # bpfjit
-  - git clone https://github.com/rmind/bpfjit
+  - [ -d bpfjit ] || git clone https://github.com/rmind/bpfjit
   - (cd bpfjit && make deb && sudo dpkg -i ../libbpfjit*.deb)
   # libcdb
   - git clone https://github.com/rmind/libcdb
