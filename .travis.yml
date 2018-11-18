@@ -29,11 +29,11 @@ install:
   - (cd libcdb && make deb && sudo dpkg -i ../libcdb*.deb)
 
 script:
-  # Build-test npfkern, libnpf and npfctl.
-  - (cd src && make clean && LIBDIR=/usr/lib make all)
   # Build and install the packages.
   - (cd pkg && make deb && sudo dpkg -i ../libnpf*.deb ../npfctl*.deb)
   # Build npftest and run the tests.
+  - dpkg -l
+  - ls -la /usr/bin/npf* || true
   - (cd src/npftest && make && \
      npfctl debug npftest.conf /tmp/npf.nvlist && \
      ./npftest -c /tmp/npf.nvlist -t)
