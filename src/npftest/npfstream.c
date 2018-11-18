@@ -48,12 +48,11 @@ process_tcpip(const void *data, size_t len, FILE *fp, ifnet_t *ifp)
 
 	if (ntohs(eth->ether_type) != ETHERTYPE_IP) {
 		p = (const char *)data + 4;
-		ip = (const struct ip *)p;
 	} else {
 		p = eth + 1;
-		ip = (const struct ip *)p;
 	}
 	hlen = ip->ip_hl << 2;
+	ip = (const struct ip *)p;
 	p = (const uint8_t *)ip + hlen;
 	th = (const struct tcphdr *)p;
 

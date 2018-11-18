@@ -247,7 +247,8 @@ mbuf_icmp_append(struct mbuf *m, struct mbuf *m_orig)
 {
 	struct ip *iphdr = mtod(m, struct ip *);
 	const size_t hlen = iphdr->ip_hl << 2;
-	struct icmp *ic = (struct icmp *)((uint8_t *)iphdr + hlen);
+	const void *p = (uint8_t *)iphdr + hlen;
+	struct icmp *ic = (struct icmp *)p;
 	const size_t addlen = m_length(m_orig);
 
 	iphdr->ip_len = htons(ntohs(iphdr->ip_len) + addlen);
