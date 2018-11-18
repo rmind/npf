@@ -27,13 +27,6 @@ Description: Standalone NPF package: libraries
  scratch in 2009.  It is written in C99 and distributed under the 2-clause
  BSD license.
 
-Package: npfctl
-Section: misc
-Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, libnpf1 (= ${binary:Version})
-Description: Standalone NPF package: npfctl utility
- This package contains npfctl(8) utility of the standalone NPF package.
-
 Package: libnpf1-dbg
 Section: debug
 Architecture: any
@@ -47,3 +40,11 @@ Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}, libnpf1 (= ${binary:Version})
 Description: Development files for libnpf1
  Development files for libnpf1.
+
+Package: npfctl
+Section: misc
+Architecture: any
+Build-Depends: libnpf-dev
+Depends: ${shlibs:Depends}, ${misc:Depends}, libnpf1 (= ${binary:Version})
+Description: Standalone NPF package: npfctl utility
+ This package contains npfctl(8) utility of the standalone NPF package.

@@ -5,6 +5,8 @@
 PKGVERSION:=$(shell cat version.txt)
 DEB_HOST_MULTIARCH?=$(shell dpkg-architecture -qDEB_HOST_MULTIARCH)
 
+DESTDIR=$(CURDIR)/debian/tmp
+
 BINDIR:=/usr/bin
 LIBDIR:=/usr/lib/$(DEB_HOST_MULTIARCH)
 INCDIR:=/usr/include
@@ -15,7 +17,6 @@ MANDIR:=/usr/share/man
 
 override_dh_auto_build:
 	dh_auto_build -- LIBDIR=$(LIBDIR)
-	dh_auto_build -- -C npfctl
 	@ # Build the debug library for npftest
 	dh_auto_build -- -C kern lib DEBUG=1 LIBDIR=$(LIBDIR)
 
@@ -25,11 +26,13 @@ override_dh_auto_test:
 override_dh_auto_install:
 	dh_auto_install -- \
 	    LIBDIR=$(LIBDIR) INCDIR=$(INCDIR) MANDIR=$(MANDIR)
-	dh_auto_install -- -C npfctl \
-	    BINDIR=$(BINDIR) MANDIR=$(MANDIR)
 	@ # Install the debug library
 	dh_auto_install -- -C kern \
 	    DEBUG=1 LIBDIR=$(LIBDIR) INCDIR=$(INCDIR) MANDIR=$(MANDIR)
+	@ # Build and install npfctl; FIXME: figure out the DEB dependency mess
+	LIBRARY_PATH=$(DESTDIR)/$(LIBDIR) dh_auto_build -- -C npfctl
+	dh_auto_install -- -C npfctl \
+	    BINDIR=$(BINDIR) MANDIR=$(MANDIR)
 
 override_dh_strip:
 	dh_strip -p libnpf1 --dbg-package=libnpf1-dbg
