@@ -51,8 +51,8 @@ process_tcpip(const void *data, size_t len, FILE *fp, ifnet_t *ifp)
 	} else {
 		p = eth + 1;
 	}
-	hlen = ip->ip_hl << 2;
 	ip = (const struct ip *)p;
+	hlen = ip->ip_hl << 2;
 	p = (const uint8_t *)ip + hlen;
 	th = (const struct tcphdr *)p;
 
