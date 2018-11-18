@@ -59,14 +59,14 @@ IMPORTANT: Stateful rules imply `flags S/SAFR` for TCP packets.
 
 ---
 
-It is important to understand the implications of "stateful-ends".  Bypassing
+It is important to understand the implications of `stateful-ends`.  Bypassing
 the ruleset on other interfaces can have undesirable effects, e.g. a packet
 with a spoofed IP address might bypass ingress filtering.  Associating a state
 with two interfaces (forwarding case) may also cause problems if the routes
 change.  On the other hand, picking up the state on any interface may lead
 to higher performance in certain configurations and may also handle some
 asymmetric routing cases.  The administrator is free to choose whether
-"stateful" or "stateful-ends" is more suitable.
+`stateful` or `stateful-ends` is more suitable.
 
 ---
 WARNING: The `stateful-ends` keyword must be used with precaution.

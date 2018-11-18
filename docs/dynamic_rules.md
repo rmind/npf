@@ -30,8 +30,8 @@ Each rule gets a unique identifier which is returned on addition.  The
 identifier should be considered as alphanumeric string.  As shown in the
 example, there are two methods to remove a rule:
 
-* Using a unique identifier ('rem-id' command).
-* Passing the exact rule and using a hash computed on a rule ('rem' command).
+* Using a unique identifier (`rem-id` command).
+* Passing the exact rule and using a hash computed on a rule (`rem` command).
 
 In the second case, SHA1 hash is computed on a rule to identify it.  Although
 very unlikely, it is subject to hash collisions.  For a fully reliable and

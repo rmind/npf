@@ -95,14 +95,14 @@ Usage:  npfctl start | stop | flush | show | stats
 ```
 
 Any modifications of npf.conf require reloading of the ruleset by performing
-a 'reload' command in order to make the changes active.  One difference from
-other packet filters is the behaviour of the 'start' and 'stop' commands.
+a `reload` command in order to make the changes active.  One difference from
+other packet filters is the behaviour of the `start` and `stop` commands.
 These commands do not actually change (i.e. load or unload) the active
-configuration.  Running 'start' will only enable the passing of packets
-through NPF, while 'stop' will disable such passing.  Therefore,
-configuration should first be activated using the 'reload' command and then
-filtering enabled with 'start'.  Similarly, clearing of the active
-configuration is done by performing the 'stop' and 'flush' commands.
+configuration.  Running `start` will only enable the passing of packets
+through NPF, while `stop` will disable such passing.  Therefore,
+configuration should first be activated using the `reload` command and then
+filtering enabled with `start`.  Similarly, clearing of the active
+configuration is done by performing the `stop` and `flush` commands.
 Such behaviour allows users to efficiently disable and enable filtering
 without actually changing the active configuration, as it may be unnecessary.
 
@@ -114,7 +114,7 @@ are used to define one of the following: IP addresses, networks, ports or
 interfaces.  A variable can contain multiple elements.
 
 In the example above, network interfaces are defined using the `$ext_if` and
-`$int_if` variables (note that the dollar sign ('$') indicates a variable),
+`$int_if` variables (note that the dollar sign (`$`) indicates a variable),
 which can be used further in the configuration file.
 
 Certain functions can be applied to the interfaces: `inet4()` and `inet6()`.
