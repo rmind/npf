@@ -30,7 +30,7 @@ install:
   #
   # Build and install the NPF packages.
   #
-  - (cd pkg && make deb && (sudo dpkg -i ../libnpf*.deb ../npfctl*.deb)
+  - (cd pkg && make deb && sudo dpkg -i ../libnpf*.deb ../npfctl*.deb)
 
 script:
   - (cd src/npftest && make && npfctl debug npftest.conf /tmp/npf.nvlist)
