@@ -11,6 +11,7 @@ install:
   # build essentials
   - sudo apt-get install -y build-essential fakeroot debhelper
   - sudo apt-get install -y make libtool libjemalloc-dev libpcap-dev
+  - sudo apt-get install -y byacc flex
   # libnv
   - git clone https://github.com/rmind/nvlist
   - (cd nvlist/pkg && make deb && sudo dpkg -i ../libnv*.deb)
@@ -28,5 +29,9 @@ install:
   - (cd libcdb && make deb && sudo dpkg -i ../libcdb*.deb)
 
 script:
-  - (cd src && make clean && LIBDIR=/usr/lib make all)
-  - (cd pkg && make deb)
+  # Build and install the NPF packages.
+  - (cd pkg && make deb && sudo dpkg -i ../libnpf*.deb ../npfctl*.deb)
+  # Setup the npftest configuration.
+  - (cd src/npftest && make && npfctl debug npftest.conf /tmp/npf.nvlist)
+  # Run the tests.
+  - (cd src/npftest && ./npftest -c /tmp/npf.nvlist -t)

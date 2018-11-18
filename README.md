@@ -41,9 +41,9 @@ http://www.netbsd.org/~rmind/npf/
 - bpfjit: `git clone https://github.com/rmind/bpfjit`
 - libcdb: `git clone https://github.com/rmind/libcdb`
 
-Each repository provides build files for the RPM (`cd pkg && make rpm`)
-or DEB (`cd pkg && make deb`) packages.  You can also check the
-[Travis](.travis.yml) for an example of how to build everything.
+Each repository provides the build files for RPM (`cd pkg && make rpm`)
+and DEB (`cd pkg && make deb`) packages.  You can also check the
+[Travis](.travis.yml) file for an example of how to build everything.
 
 ## Source code structure
 

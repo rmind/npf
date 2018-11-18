@@ -60,10 +60,9 @@ struct mbuf {
 	struct {
 		int	len;
 	} m_pkthdr;
-	char *		m_data;
-	char		m_data0[MLEN];
+	void *		m_data;
+	unsigned char	m_data0[MLEN];
 };
-
 
 #define	MT_FREE			0
 #define	M_UNWRITABLE(m, l)	false

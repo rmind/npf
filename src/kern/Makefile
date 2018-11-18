@@ -33,9 +33,11 @@ CFLAGS+=	-Wsuggest-attribute=noreturn #-Wjump-misses-init
 ifeq ($(DEBUG),1)
 CFLAGS+=	-Og -DDEBUG -fno-omit-frame-pointer
 CFLAGS+=	-D_NPF_TESTING
+OBJDIR=		debug
 else
 CFLAGS+=	-fvisibility=hidden
 CFLAGS+=	-DNDEBUG
+OBJDIR=		build
 endif
 
 LDFLAGS+=	-lpthread -lnv -lpcap -lqsbr -llpm -lcdb -lbpfjit
@@ -79,11 +81,11 @@ install:	IMANDIR=	$(DESTDIR)/$(MANDIR)/man3/
 
 lib: $(LIB).la
 
-%.lo: %.c
-	libtool --mode=compile --tag CC $(CC) $(CFLAGS) -c $<
+$(OBJDIR)/%.lo: %.c
+	libtool --mode=compile --tag CC $(CC) $(CFLAGS) -c -o $@ $<
 
-$(LIB).la: $(shell echo $(OBJS) | sed 's/\.o/\.lo/g')
-	libtool --mode=link --tag CC $(CC) $(LDFLAGS) -o $@ $(notdir $^)
+$(LIB).la: $(addprefix $(OBJDIR)/,$(shell echo $(OBJS) | sed 's/\.o/\.lo/g'))
+	libtool --mode=link --tag CC $(CC) $(LDFLAGS) -o $@ $^
 
 install/%.la: %.la
 	mkdir -p $(ILIBDIR)
@@ -96,6 +98,6 @@ install: $(addprefix install/,$(LIB).la)
 
 clean:
 	libtool --mode=clean rm
-	rm -rf .libs *.o *.lo *.la stand/*.o stand/*.lo stand/*.la
+	rm -rf .libs $(OBJDIR) $(LIB).la
 
 .PHONY: all lib install clean
