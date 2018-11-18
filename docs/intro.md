@@ -48,8 +48,8 @@ IPv4 or IPv6 header or some fields.  Incoming IP packets are passed to NPF
 before the IP reassembly.  Unless disabled, reassembly is performed by NPF.
 
 Processing is performed on each interface a packet is traversing, either as
-+incoming+ or +outgoing+.  Support for processing on +forwarding+ path and
-fast-forward optimisations are planned for the future release.
+_incoming_ or _outgoing_.  Support for processing on _forwarding_ path and
+fast-forward optimisations is planned for the future release.
 
 Processing order within NPF is as follows:
 ```
