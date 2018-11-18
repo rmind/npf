@@ -7,6 +7,10 @@ compiler:
   - gcc
   - clang
 
+cache:
+  directories:
+  - bpfjit
+
 install:
   # build essentials
   - sudo apt-get install -y build-essential fakeroot debhelper
@@ -29,11 +33,11 @@ install:
   - (cd libcdb && make deb && sudo dpkg -i ../libcdb*.deb)
 
 script:
-  # Build and install the packages.
-  - (cd pkg && make deb && sudo dpkg -i ../libnpf*.deb ../npfctl*.deb)
-  # Build npftest and run the tests.
-  - dpkg -l
-  - ls -la /usr/bin/npf* || true
-  - (cd src/npftest && make && \
+  #
+  # - Build and install the packages.
+  # - Build npftest and run the tests.
+  #
+  - (cd pkg && make deb && sudo dpkg -i ../libnpf*.deb ../npfctl*.deb) && \
+    (cd src/npftest && make && \
      npfctl debug npftest.conf /tmp/npf.nvlist && \
      ./npftest -c /tmp/npf.nvlist -t)
