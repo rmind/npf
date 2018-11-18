@@ -31,7 +31,7 @@ and other manual pages.
 
 ## Documentation
 
-http://www.netbsd.org/~rmind/npf/
+See the [docs](docs) directory.
 
 ## Dependencies
 
