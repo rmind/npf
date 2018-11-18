@@ -27,12 +27,11 @@ install:
   # libcdb
   - git clone https://github.com/rmind/libcdb
   - (cd libcdb && make deb && sudo dpkg -i ../libcdb*.deb)
+  #
+  # Build and install the NPF packages.
+  #
+  - (cd pkg && make deb && (sudo dpkg -i ../libnpf*.deb ../npfctl*.deb)
 
 script:
-  #
-  # - Build and install the packages.
-  # - Build npftest and run the tests.
-  #
-  - (cd pkg && make deb && (sudo dpkg -i ../libnpf*.deb ../npfctl*.deb) && \
-    cd ../src/npftest && make && npfctl debug npftest.conf /tmp/npf.nvlist)
+  - (cd src/npftest && make && npfctl debug npftest.conf /tmp/npf.nvlist)
   - (cd src && ./npftest -c /tmp/npf.nvlist -t)
