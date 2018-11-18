@@ -38,6 +38,5 @@ script:
   # - Build npftest and run the tests.
   #
   - (cd pkg && make deb && sudo dpkg -i ../libnpf*.deb ../npfctl*.deb && \
-     cd ../src/npftest && make && \
-     npfctl debug npftest.conf /tmp/npf.nvlist && \
-     ./npftest -c /tmp/npf.nvlist -t)
+     cd ../src/npftest && make && npfctl debug npftest.conf /tmp/npf.nvlist)
+  - (cd src && ./npftest -c /tmp/npf.nvlist -t)
