@@ -33,5 +33,7 @@ install:
   - (cd pkg && make deb && sudo dpkg -i ../libnpf*.deb ../npfctl*.deb)
 
 script:
+  - dpkg -L npfctl
+  - find / -name 'npfctl'
   - (cd src/npftest && make && npfctl debug npftest.conf /tmp/npf.nvlist)
   - (cd src && ./npftest -c /tmp/npf.nvlist -t)
