@@ -31,7 +31,8 @@ and other manual pages.
 
 ## Documentation
 
-See the [docs](docs) directory.
+See on [Github Pages](http://rmind.github.io/npf).
+Source in the [docs](docs) directory.
 
 ## Dependencies
 
