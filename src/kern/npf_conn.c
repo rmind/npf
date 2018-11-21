@@ -132,7 +132,6 @@ CTASSERT(PFIL_ALL == (0x001 | 0x002));
 
 enum { CONN_TRACKING_OFF, CONN_TRACKING_ON };
 
-static void	npf_conn_destroy(npf_t *, npf_conn_t *);
 static nvlist_t *npf_conn_export(npf_t *, const npf_conn_t *);
 
 /*
@@ -201,7 +200,7 @@ npf_conn_load(npf_t *npf, npf_conndb_t *ndb, bool track)
 		 * Flush all, no sync since the caller did it for us.
 		 * Also, release the pool cache memory.
 		 */
-		npf_conn_gc(npf, odb, true, false);
+		npf_conndb_gc(npf, odb, true, false);
 		npf_conndb_destroy(odb);
 		pool_cache_invalidate(npf->conn_cache);
 	}
@@ -603,7 +602,7 @@ err:
 	return error ? NULL : con;
 }
 
-static void
+void
 npf_conn_destroy(npf_t *npf, npf_conn_t *con)
 {
 	KASSERT(con->c_refcnt == 0);
@@ -815,7 +814,7 @@ npf_conn_expired(const npf_conn_t *con, uint64_t tsnow)
  * => If 'sync' is true, then perform passive serialisation.
  */
 bool
-npf_conn_gc(npf_conn_t *con, uint64_t tsnow)
+npf_conn_gc(npf_conndb_t *cd, npf_conn_t *con, uint64_t tsnow)
 {
 	/* Check whether the connection has expired. */
 	if (!npf_conn_expired(con, tsnow)) {
@@ -845,7 +844,7 @@ npf_conn_gc(npf_conn_t *con, uint64_t tsnow)
 void
 npf_conn_worker(npf_t *npf)
 {
-	npf_conn_gc(npf, npf->conn_db, false, true);
+	npf_conndb_gc(npf, npf->conn_db, false, true);
 }
 
 /*
