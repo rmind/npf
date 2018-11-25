@@ -13,12 +13,14 @@ BuildRequires:	libtool
 BuildRequires:	libnv
 BuildRequires:	libbpfjit
 BuildRequires:	libqsbr
+BuildRequires:	libthmap
 BuildRequires:	liblpm >= 0.2.0
 BuildRequires:	libcdb
 
 Requires:	libnv
 Requires:	libbpfjit
 Requires:	libqsbr
+Requires:	libthmap
 Requires:	liblpm
 Requires:	libcdb
 Requires:	jemalloc

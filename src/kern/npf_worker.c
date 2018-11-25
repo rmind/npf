@@ -129,9 +129,15 @@ npf_worker_testset(npf_worker_t *wrk, npf_workfunc_t find, npf_workfunc_t set)
 void
 npf_worker_register(npf_t *npf, npf_workfunc_t func)
 {
-	const unsigned idx = cprng_fast32() % npf_worker_count;
-	npf_worker_t *wrk = &npf_workers[idx];
+	npf_worker_t *wrk;
+	unsigned idx;
 
+	if (!npf_worker_count) {
+		return;
+	}
+
+	idx = cprng_fast32() % npf_worker_count;
+	wrk = &npf_workers[idx];
 	mutex_enter(&wrk->worker_lock);
 
 	npf->worker_id = idx;
@@ -149,9 +155,11 @@ npf_worker_unregister(npf_t *npf, npf_workfunc_t func)
 	npf_worker_t *wrk;
 	npf_t *instance;
 
-	if (!npf_worker_count)
+	if (!npf_worker_count) {
 		return;
+	}
 	wrk = &npf_workers[idx];
+
 	mutex_enter(&wrk->worker_lock);
 	npf_worker_testset(wrk, func, NULL);
 	if ((instance = wrk->instances) == npf) {
@@ -180,6 +188,11 @@ npf_worker(void *arg)
 		while (npf) {
 			u_int i = NPF_MAX_WORKS;
 			npf_workfunc_t work;
+
+			if (!npf->sync_registered) {
+				npf_thread_register(npf);
+				npf->sync_registered = true;
+			}
 
 			/* Run the jobs. */
 			while (i--) {

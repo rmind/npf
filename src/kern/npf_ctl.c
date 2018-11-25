@@ -495,7 +495,7 @@ npf_mk_connlist(npf_t *npf, nvlist_t *npf_dict, nvlist_t *errdict,
 		}
 	}
 	if (error) {
-		npf_conn_gc(npf, cd, true, false);
+		npf_conndb_gc(npf, cd, true, false);
 		npf_conndb_destroy(cd);
 	} else {
 		*conndb = cd;

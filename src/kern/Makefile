@@ -40,7 +40,7 @@ CFLAGS+=	-DNDEBUG
 OBJDIR=		build
 endif
 
-LDFLAGS+=	-lpthread -lnv -lpcap -lqsbr -llpm -lcdb -lbpfjit
+LDFLAGS+=	-lpthread -lnv -lpcap -lqsbr -lthmap -llpm -lcdb -lbpfjit
 ifeq ($(SYSNAME),Linux)
 LDFLAGS+=	-ljemalloc
 endif
@@ -56,7 +56,7 @@ OBJS=		$(shell grep ^file files.npf | cut -f2 | \
 		    grep -v if_npflog | grep -v lpm)
 
 OBJS+=		stand/bpf_filter.o
-OBJS+=		stand/rb.o stand/murmurhash.o stand/subr_hash.o stand/misc.o
+OBJS+=		stand/murmurhash.o stand/subr_hash.o stand/misc.o
 
 #
 # Flags for the library target

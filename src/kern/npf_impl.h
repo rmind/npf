@@ -48,7 +48,6 @@
 #ifdef _KERNEL
 #include <sys/types.h>
 #include <sys/queue.h>
-#include <sys/rbtree.h>
 
 #include <net/bpf.h>
 #include <net/bpfjit.h>
@@ -197,6 +196,7 @@ struct npf {
 	/* Associated worker thread. */
 	unsigned		worker_id;
 	void *			worker_entry;
+	bool			sync_registered;
 
 	/* List of extensions and its lock. */
 	LIST_HEAD(, npf_ext)	ext_list;
