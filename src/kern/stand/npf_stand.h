@@ -288,10 +288,6 @@ npfkern_copy(void *dst, const void *src, size_t len)
  * Hashing.
  */
 
-enum hashtype { HASH_LIST, HASH_SLIST, HASH_TAILQ };
-
-void *		hashinit(u_int, enum hashtype, bool, u_long *);
-void		hashdone(void *, enum hashtype, u_long);
 uint32_t	murmurhash2(const void *, size_t, uint32_t);
 
 /*
