@@ -989,7 +989,7 @@ npf_nat_dump(const npf_nat_t *nt)
 	struct in_addr ip;
 
 	np = nt->nt_natpolicy;
-	memcpy(&ip, &np->nt_taddr, sizeof(ip));
+	memcpy(&ip, &nt->nt_taddr, sizeof(ip));
 	printf("\tNATP(%p): type %d flags 0x%x taddr %s tport %d\n", np,
 	    np->n_type, np->n_flags, inet_ntoa(ip), ntohs(np->n_tport));
 	memcpy(&ip, &nt->nt_oaddr, sizeof(ip));
