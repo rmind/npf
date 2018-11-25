@@ -196,6 +196,7 @@ struct npf {
 	/* Associated worker thread. */
 	unsigned		worker_id;
 	void *			worker_entry;
+	bool			sync_registered;
 
 	/* List of extensions and its lock. */
 	LIST_HEAD(, npf_ext)	ext_list;

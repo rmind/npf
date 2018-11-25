@@ -96,16 +96,16 @@ npf_conndb_destroy(npf_conndb_t *cd)
  * npf_conndb_lookup: find a connection given the key.
  */
 npf_conn_t *
-npf_conndb_lookup(npf_conndb_t *cd, const npf_connkey_t *key, bool *forw)
+npf_conndb_lookup(npf_conndb_t *cd, const npf_connkey_t *ck, bool *forw)
 {
-	const unsigned keylen = NPF_CONN_KEYLEN(key);
+	const unsigned keylen = NPF_CONN_KEYLEN(ck);
 	npf_connkey_t *foundkey;
 	npf_conn_t *con;
 
 	/*
 	 * Lookup the connection key in the key-value map.
 	 */
-	foundkey = thmap_get(cd->cd_map, key, keylen);
+	foundkey = thmap_get(cd->cd_map, ck->ck_key, keylen);
 	if (!foundkey) {
 		return NULL;
 	}
@@ -126,10 +126,10 @@ npf_conndb_lookup(npf_conndb_t *cd, const npf_connkey_t *key, bool *forw)
  * => Returns true on success and false on failure.
  */
 bool
-npf_conndb_insert(npf_conndb_t *cd, npf_connkey_t *key)
+npf_conndb_insert(npf_conndb_t *cd, npf_connkey_t *ck)
 {
-	const unsigned keylen = NPF_CONN_KEYLEN(key);
-	return thmap_put(cd->cd_map, key, keylen, key) == key;
+	const unsigned keylen = NPF_CONN_KEYLEN(ck);
+	return thmap_put(cd->cd_map, ck->ck_key, keylen, ck) == ck;
 }
 
 /*
@@ -137,13 +137,13 @@ npf_conndb_insert(npf_conndb_t *cd, npf_connkey_t *key)
  * connection it represents.
  */
 npf_conn_t *
-npf_conndb_remove(npf_conndb_t *cd, npf_connkey_t *key)
+npf_conndb_remove(npf_conndb_t *cd, npf_connkey_t *ck)
 {
-	const unsigned keylen = NPF_CONN_KEYLEN(key);
+	const unsigned keylen = NPF_CONN_KEYLEN(ck);
 	npf_connkey_t *foundkey;
 	npf_conn_t *con;
 
-	foundkey = thmap_del(cd->cd_map, key, keylen);
+	foundkey = thmap_del(cd->cd_map, ck->ck_key, keylen);
 	if (!foundkey) {
 		return NULL;
 	}
