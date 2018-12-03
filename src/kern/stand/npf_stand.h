@@ -271,7 +271,7 @@ npfkern_copy(void *dst, const void *src, size_t len)
 static inline size_t
 strlcpy(char *dst, const char *src, size_t len)
 {
-	(void)stpncpy(dst, src, len);
+	(void)stpncpy(dst, src, len - 1);
 	dst[len - 1] = '\0';
 	return strlen(src);
 }

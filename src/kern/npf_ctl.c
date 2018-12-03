@@ -797,7 +797,7 @@ npfctl_table(npf_t *npf, void *data)
 	npf_table_t *t;
 	int error;
 
-	error = copyinstr(nct->nct_name, tname, sizeof(tname), NULL);
+	error = copyinstr(nct->nct_name, tname, sizeof(tname) - 1, NULL);
 	if (error) {
 		return error;
 	}
