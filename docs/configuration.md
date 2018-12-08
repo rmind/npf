@@ -303,10 +303,8 @@ The available normalization options are:
 
 | Parameter | Description |
 | --- | --- |
-| "max‐mss" value | Enforce a maximum value for the Maximum Segment
-Size (MSS) TCP option.  Typically, for “MSS clamping”.
-| "min‐ttl" value | Enforce a minimum value for the IPv4 Time To
-Live (TTL) parameter.
+| "max‐mss" value | Enforce a maximum value for the Maximum Segment Size (MSS) TCP option.  Typically, for "MSS clamping".
+| "min‐ttl" value | Enforce a minimum value for the IPv4 Time To Live (TTL) parameter.
 | "no‐df" | Remove the Don't Fragment (DF) flag from IPv4 packets.
 | "random‐id" | Randomize the IPv4 ID parameter. |
 
