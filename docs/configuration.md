@@ -11,7 +11,8 @@ library.  See the libnpf(3) and npfkern(3) manual pages for the API.
 NetBSD beginners can consult
 [rc(8)](http://man.netbsd.org/cgi-bin/man-cgi?rc+8+NetBSD-current),
 [rc.conf(5)](http://man.netbsd.org/cgi-bin/man-cgi?rc.conf+5+NetBSD-current),
-[ifconfig.if(5)](http://man.netbsd.org/cgi-bin/man-cgi?ifconfig.if+5+NetBSD-current)
+[ifconfig.if(5)](http://man.netbsd.org/cgi-bin/man-cgi?ifconfig.if+5+NetBSD-current),
+[route(8)](http://man.netbsd.org/cgi-bin/man-cgi?route+8+NetBSD-current)
 and other manual pages for the general networking configuration in the system.
 
 ---
@@ -220,10 +221,11 @@ Network Address Translation (NAT) is expressed in a form of segment map‐
 ping.  The translation may be dynamic (stateful) or static (stateless).
 The following mapping types are available:
 
-|:-----:| ------------------------------------------------------------ |
-| `‐>`  | outbound NAT (translation of the source)                     |
-| `<‐`  | inbound NAT (translation of the destination)                 |
-| `<‐>` | bi‐directional NAT (combination of inbound and outbound NAT) |
+| Syntax | Description |
+|:------:| --- |
+| `‐>`   | outbound NAT (translation of the source) |
+| `<‐`   | inbound NAT (translation of the destination) |
+| `<‐>`  | bi‐directional NAT (combination of inbound and outbound NAT) |
 
 The following would translate the source (10.1.1.0/24) to the IP address
 specified by `$pub_ip` for the packets on the interface `$ext_if`.
@@ -249,8 +251,9 @@ The static NAT can have different address translation algorithms, which
 can be chosen using the `algo` keyword.  The currently available algorithms
 are:
 
-|:-----:| ----------------------------------------------- |
-| npt66 | IPv6‐to‐IPv6 network prefix translation (NPTv6) |
+| Algorithm | Description |
+|:---------:| --- |
+| npt66     | IPv6‐to‐IPv6 network prefix translation (NPTv6) |
 
 Currently, the static NAT algorithms do not perform port translation.
 
@@ -263,6 +266,7 @@ formed by packet filter extensions called Application Level Gateways
 
 NPF supports the following ALGs:
 
+| ALG | Description |
 | --- | --- |
 | icmp | ICMP ALG.  Applies to IPv4 and IPv6.  Allows to find an
 active connection by looking at the ICMP payload, and to
@@ -289,41 +293,34 @@ have none).  Every extension call has a name and a list of options in the
 form of key‐value pairs.  Depending on the call, the key might represent
 the argument and the value might be optional.  Available options:
 
-           log: interface        Log events.  This requires the npf_ext_log
-                                 kernel module, which would normally get auto‐
-                                 loaded by NPF.  The specified npflog inter‐
-                                 face would also be auto‐created once the con‐
-                                 figuration is loaded.  The log packets can be
-                                 written to a file using the npfd(8) daemon.
+| Extension | Description |
+| `log: interface` | Log events.  This requires the `npf_ext_log`
+kernel module, which would normally get auto loaded by NPF.  The specified
+npflog interface would also be auto‐created once the configuration is loaded.
+The log packets can be written to a file using the `npfd(8)` daemon.
+| `normalize: option1[, option2 ...]` | Modify packets according to the
+specified normalization options.  This requires the `npf_ext_normalize`
+kernel module, which would normally get auto‐loaded by NPF. |
 
-           normalize: option1[, option2 ...]
-                                 Modify packets according to the specified
-                                 normalization options.  This requires the
-                                 npf_ext_normalize kernel module, which would
-                                 normally get auto‐loaded by NPF.
+The available normalization options are:
 
-     The available normalization options are:
+| Parameter | Description |
+| "max‐mss" value | Enforce a maximum value for the Maximum Segment
+Size (MSS) TCP option.  Typically, for “MSS clamping”.
+| "min‐ttl" value | Enforce a minimum value for the IPv4 Time To
+Live (TTL) parameter.
+| "no‐df" | Remove the Don't Fragment (DF) flag from IPv4 packets.
+| "random‐id" | Randomize the IPv4 ID parameter. |
 
-           "max‐mss" value        Enforce a maximum value for the Maximum Seg‐
-                                  ment Size (MSS) TCP option.  Typically, for
-                                  “MSS clamping”.
+For example:
+```
+procedure "someproc" {
+  log: npflog0
+  normalize: "random‐id", "min‐ttl" 64, "max‐mss" 1432
+}
+```
 
-           "min‐ttl" value        Enforce a minimum value for the IPv4 Time To
-                                  Live (TTL) parameter.
-
-           "no‐df"                Remove the Don’t Fragment (DF) flag from
-                                  IPv4 packets.
-
-           "random‐id"            Randomize the IPv4 ID parameter.
-
-     For example:
-
-           procedure "someproc" {
-                   log: npflog0
-                   normalize: "random‐id", "min‐ttl" 64, "max‐mss" 1432
-           }
-
-     In this case, the procedure calls the logging and normalization modules.
+In this case, the procedure calls the logging and normalization modules.
 
 ### Misc
 
@@ -333,7 +330,7 @@ next line is considered an extension of the present line.
 
 ## Control
 
-NPF can be controlled through the
+NPF is controlled using the
 [npfctl(8)](http://man.netbsd.org/cgi-bin/man-cgi?npfctl+8+NetBSD-current)
 utility.
 ```

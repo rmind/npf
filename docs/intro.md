@@ -36,8 +36,8 @@ be easily added at userspace level without any modifications to the kernel
 itself.
 
 NPF provides rule procedures as the main interface to implement custom
-extensions.  Syntax of the configuration file supports arbitrary procedures
-with their parameters, as supplied by the extensions.  An extensions consists
+extensions.  The configuration syntax file supports arbitrary procedures
+with their parameters, as supplied by the extensions.  An extension consists
 of two parts: a dynamic module (.so file) supplementing the
 [npfctl(8)](http://man.netbsd.org/cgi-bin/man-cgi?npfctl+8+NetBSD-current)
 utility and a kernel module (.kmod file).  Kernel interfaces are available
@@ -45,7 +45,7 @@ for use and avoid modifications to the NPF core code.
 
 The internals of NPF are abstracted into well defined modules and follow
 strict interfacing principles to ease the extensibility.  Communication
-between userspace and the kernel is provided through the library -- libnpf,
+between userspace and the kernel is provided through the library -- **libnpf**,
 described in the
 [libnpf(3)](http://man.netbsd.org/cgi-bin/man-cgi?libnpf+3+NetBSD-current)
 manual page.  It can be conveniently used by the developers who create their
@@ -56,19 +56,26 @@ are also abstracted in separate modules.
 
 ## Processing
 
-NPF intercepts the packets at layer 3 on entry to the IP stack.  The packet
+NPF intercepts the packets at layer 3 of the TCP/IP stack.  The packet
 may be rejected before the NPF inspection if it is malformed and has invalid
 IPv4 or IPv6 header or some fields.  Incoming IP packets are passed to NPF
 before the IP reassembly.  Unless disabled, reassembly is performed by NPF.
 
 Processing is performed on each interface a packet is traversing, either as
 _incoming_ or _outgoing_.  Support for processing on _forwarding_ path and
-fast-forward optimisations is planned for the future release.
+fast-forward optimisation is planned for the future release.
+
+Packets can be _incoming_ or _outgoing_ with respect to an interface.
+_Connection direction_ is identified by the direction of its first packet.
+The meaning of incoming/outgoing packet in the context of connection direction
+can be confusing.  Therefore, we will use the terms _forwards stream_ and
+_backwards stream_, where packets in the forwards stream mean the packets
+travelling in the direction as the connection direction.
 
 Processing order within NPF is as follows:
 ```
-    state inspection
-        -> rule inspection (if no state)
-            -> address/port translation
-                -> rule procedure processing
+state inspection
+  -> rule inspection (if no state)
+    -> address/port translation
+      -> rule procedure processing
 ```
