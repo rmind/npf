@@ -17,7 +17,7 @@ and other manual pages for the general networking configuration in the system.
 
 ---
 
-## The npf.conf file
+## Structure and syntax
 
 The NPF configuration is represented by a file, called `npf.conf` (the
 default location is `/etc/npf.conf`).  It is loaded and NPF is generally
@@ -363,9 +363,9 @@ In NetBSD, the rc.d system can be used to start NPF on boot.  The following
 is an example for starting NPF and loading the configuration through the rc.d
 script:
 ```
-srv# echo 'npf=YES' >> /etc/rc.conf
-srv# /etc/rc.d/npf reload
+$ echo 'npf=YES' >> /etc/rc.conf
+$ /etc/rc.d/npf reload
 Reloading NPF ruleset.
-srv# /etc/rc.d/npf start
+$ /etc/rc.d/npf start
 Enabling NPF.
 ```
