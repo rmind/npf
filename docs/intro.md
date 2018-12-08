@@ -3,12 +3,26 @@
 NPF is a layer 3 packet filter, supporting IPv4 and IPv6, as well as layer 4
 protocols such as TCP, UDP and ICMP.  NPF offers a traditional set of features
 provided by most packet filters.  This includes stateful packet filtering,
-network address translation (NAT), tables (which provide different data
-structures as a container), rule procedures for easy development of NPF
-extensions, packet normalisation and logging, connection saving and restoring
-and more.  NPF focuses on high performance design, ability to handle large
-volume of clients and using the speed of multi-core systems.  It was written
-from scratch in 2009 and is released under permissive 2-clause BSD license.
+various forms of network address translation (NAT), IP sets (tables which
+provide different data structures as a container), rule procedures for easy
+development of NPF extensions, packet normalisation and logging, connection
+saving and restoring and more.
+
+It was designed with a focus on high performance, scalability, multi-threading
+and modularity. NPF was written from scratch in 2009.  It is written in C99
+and distributed under the 2-clause BSD license.
+
+## Mode of operation
+
+NPF was originally developed for the NetBSD operating system.  However, NPF
+is also provided as a userspace library to be used in a bespoke application
+to process packets.  Typically, in combination with such frameworks like
+[Data Plane Development Kit (DPDK)](https://www.dpdk.org/) or
+[netmap](https://www.freebsd.org/cgi/man.cgi?query=netmap&sektion=4).
+
+Some aspects of this documentation, particularly concerning the configuration,
+will be in the context of NetBSD (or other UNIX-like system).  However, the
+general principles and concepts apply to the standalone NPF (as-a-library).
 
 ## Brief notes on design
 

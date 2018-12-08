@@ -1,97 +1,360 @@
 # Configuration
 
-The first step is configuring general networking settings in the system,
-for example assigning the addresses and bringing up the interfaces.  NetBSD
-beginners can consult
+This chapter will describe NPF configuration in the context of NetBSD
+or a similar UNIX-like system environment.
+
+The standalone NPF configuration would be constructed using the `libnpf`
+library and submitted to the kernel-side component, using the `npfkern`
+library.  See the libnpf(3) and npfkern(3) manual pages for the API.
+
+---
+NetBSD beginners can consult
 [rc(8)](http://man.netbsd.org/cgi-bin/man-cgi?rc+8+NetBSD-current),
 [rc.conf(5)](http://man.netbsd.org/cgi-bin/man-cgi?rc.conf+5+NetBSD-current),
 [ifconfig.if(5)](http://man.netbsd.org/cgi-bin/man-cgi?ifconfig.if+5+NetBSD-current)
-and other manual pages.
-The second step is to create NPF's configuration file (by default,
-/etc/npf.conf).  We will give an overview with some simple and practical
-examples.  A detailed description of the syntax and options is provided in the
+and other manual pages for the general networking configuration in the system.
+
+---
+
+## The npf.conf file
+
+The NPF configuration is represented by a file, called `npf.conf` (the
+default location is `/etc/npf.conf`).  It is loaded and NPF is generally
+operated via the command line utility called `npfctl`.  For a reference,
+use
 [npf.conf(5)](http://man.netbsd.org/cgi-bin/man-cgi?npf.conf+5+NetBSD-current)
-manual page.  The following is an example configuration for small office/home
-office (SOHO) network.  It contains two groups for two network interfaces and
-a default group:
+and
+[npfctl(8)](http://man.netbsd.org/cgi-bin/man-cgi?npfctl+8+NetBSD-current)
+manual pages.
 
+There are multiple structural elements that `npf.conf` may contain, such as:
+- variables
+- table definitions (with or without content)
+- abstraction groups
+- packet filtering rules
+- map rules for address translation
+- application level gateways
+- procedure definitions to call on filtered packets.
+
+### Variables
+
+Variables are specified using the dollar (`$`) sign, which is used for both
+definition and referencing of a variable.  Variables are defined by
+assigning a value to them as follows:
 ```
-$ext_if = { inet4(wm0) }
-$int_if = { inet4(wm1) }
+$var1 = 10.0.0.1
+```
+A variable may also be defined as a set:
+```
+$var2 = { 10.0.0.1, 10.0.0.2 }
+```
 
-table <blacklist> type hash file "/etc/npf_blacklist"
-table <limited> type tree dynamic
+Common variable definitions are for IP addresses, networks, ports, and
+interfaces.
 
-$services_tcp = { http, https, smtp, domain, 6000, 9022 }
-$services_udp = { domain, ntp, 6000 }
-$localnet = { 10.1.1.0/24 }
+### Tables
 
-alg "icmp"
+Tables are specified using a name between angle brackets `<` and `>`.
+The following is an example of table definition:
+```
+table <blocklist> type ipset
+```
 
-# Note: if $ext_if has multiple IP address (e.g. IPv6 as well),
-# then the translation address has to be specified explicitly.
-map $ext_if dynamic 10.1.1.0/24 ‐> $ext_if
-map $ext_if dynamic proto tcp 10.1.1.2 port 22 <‐ $ext_if port 9022
+Currently, tables support three data storage types: `ipset`, `lpm`, or `const`.
+The contents of the table may be pre-loaded from the specified file.
+The `const` tables are immutable (no insertions or deletions after loading)
+and therefore must always be loaded from a file.
 
-procedure "log" {
-  # The logging facility can be used together with npfd(8).
-  log: npflog0
-}
+The specified file should contain a list of IP addresses and/or networks
+in the form of 10.1.1.1 or 10.0.0.0/24
 
-group "external" on $ext_if {
-  pass stateful out final all
+Tables of type `ipset` and `const` can only contain IP addresses.  The `lpm`
+tables can contain networks and they will perform the longest prefix match
+on lookup.
 
-  block in final from <blacklist>
-  pass stateful in final family inet4 proto tcp to $ext_if port ssh apply "log"
-  pass stateful in final proto tcp to $ext_if port $services_tcp
-  pass stateful in final proto udp to $ext_if port $services_udp
-  pass stateful in final proto tcp to $ext_if port 49151‐65535  # passive FTP
-  pass stateful in final proto udp to $ext_if port 33434‐33600  # traceroute
-}
+### Interfaces
 
-group "internal" on $int_if {
-  block in all
-  block in final from <limited>
+In NPF, an interface can be referenced directly by using its name, or can
+be passed to an extraction function which will return a list of IP
+addresses configured on the actual associated interface.
 
-  # Ingress filtering as per BCP 38 / RFC 2827.
-  pass in final from $localnet
-  pass out final all
-}
+It is legal to pass an extracted list from an interface in keywords where
+NPF would expect instead a direct reference to said interface.  In this
+case, NPF infers a direct reference to the interface, and does not con‐
+sider the list.
 
+There are two types of IP address lists.  With a static list, NPF will
+capture the interface addresses on configuration load, whereas with a
+dynamic list NPF will capture the runtime list of addresses, reflecting
+any changes to the interface, including the attach and detach.  Note that
+with a dynamic list, bringing the interface down has no effect, all
+addresses will remain present.
+
+Three functions exist, to extract addresses from an interface with a cho‐
+sen list type and IP address type:
+
+| ------------------ | ------------ | -------------- |
+| inet4(interface)   | static list  | IPv4 addresses |
+| inet6(interface)   | static list  | IPv6 addresses |
+| ifaddrs(interface) | dynamic list | Both IPv4 and IPv6.
+The family keyword of a filtering rule can be used in combination
+to explicitly select an IP address type. |
+
+Example of configuration:
+```
+$var1 = inet4(wm0)
+$var2 = ifaddrs(wm0)
 group default {
- pass final on lo0 all
- block all
+  block in on wm0 all               # rule 1
+  block in on $var1 all             # rule 2
+  block in on inet4(wm0) all        # rule 3
+  pass in on inet6(wm0) from $var2  # rule 4
+  pass in on wm0 from ifaddrs(wm0)  # rule 5
 }
 ```
 
-It will be explained in detail below.
+In the above example, $var1 is the static list of IPv4 addresses configured
+on wm0, and $var2 is the dynamic list of all the IPv4 and IPv6
+addresses configured on wm0.  The first three rules are equivalent,
+because with the `block ... on <interface>` syntax, NPF expects a direct
+reference to an interface, and therefore does not consider the extraction
+functions.  The fourth and fifth rules are equivalent, for the same reason.
+
+### Groups
+
+NPF requires that all rules be defined within groups.  Groups can be
+thought of as higher level rules which can contain subrules.  Groups may
+have the following options: name, interface, and direction.  Packets
+matching group criteria are passed to the ruleset of that group.  If a
+packet does not match any group, it is passed to the default group.  The
+default group must always be defined.
+
+Example of configuration:
+```
+group "my‐name" in on wm0 {
+  # List of rules, for packets received on wm0
+}
+group default {
+  # List of rules, for the other packets
+}
+```
+
+### Rules
+
+With a rule statement NPF is instructed to `pass` or `block` a packet
+depending on packet header information, transit direction and the interface it
+arrived on, either immediately upon match or using the last match.
+
+If a packet matches a rule which has the final option set, this rule is
+considered the last matching rule, and evaluation of subsequent rules is
+skipped.  Otherwise, the last matching rule is used.
+
+The `proto` keyword can be used to filter packets by layer 4 protocol (TCP,
+UDP, ICMP or other).  Its parameter should be a protocol number or its
+symbolic name, as specified in the `/etc/protocols` file.  This keyword can
+additionally have protocol‐specific options, such as `flags`.
+
+The `flags` keyword can be used to match the packets against specific TCP
+flags, according to the following syntax:
+```
+proto tcp flags match[/mask]
+```
+
+Where match is the set of TCP flags to be matched, out of the mask set,
+both sets being represented as a string combination of: `S` (SYN), `A`
+(ACK), `F` (FIN), and `R` (RST).  The flags that are not present in _mask_
+are ignored.
+
+To notify the sender of a blocking decision, three return options can be
+used in conjunction with a block rule:
+
+| ------ | --- |
+| return | Behaves as return‐rst or return‐icmp, depending on
+whether the packet being blocked is TCP or UDP. |
+| return‐rst | Return a TCP RST message, when the packet being
+blocked is a TCP packet.  Applies to IPv4 and IPv6. |
+| return‐icmp | Return an ICMP UNREACHABLE message, when the packet
+being blocked is a UDP packet.  Applies to IPv4 and IPv6. |
+
+Further packet specification at present is limited to TCP and UDP under‐
+standing source and destination ports, and ICMP and IPv6‐ICMP understand‐
+ing icmp‐type.
+
+A rule can also instruct NPF to create an entry in the state table when
+passing the packet or to apply a procedure to the packet (e.g. "log").
+
+A "fully‐featured" rule would for example be:
+```
+pass stateful in final family inet4 proto tcp flags S/SA \
+        from $source port $sport to $dest port $dport    \
+        apply "someproc"
+```
+
+Alternatively, NPF supports
+[pcap-filter(7)](http://man.netbsd.org/cgi-bin/man-cgi?pcap-filter+7+NetBSD-current)
+syntax, for example:
+```
+block out final pcap‐filter "tcp and dst 10.1.1.252"
+```
+
+Fragments are not selectable since NPF always reassembles packets before
+further processing.
+
+### Stateful
+
+Stateful packet inspection is enabled using the `stateful` or `stateful‐ends`
+keywords.  The former creates a state which is uniquely identified by a
+5‐tuple (source and destination IP addresses, port numbers and an inter‐
+face identifier).  The latter excludes the interface identifier and must
+be used with precaution.  In both cases, a full TCP state tracking is
+performed for TCP connections and a limited tracking for message‐based
+protocols (UDP and ICMP).
+
+By default, a stateful rule implies SYN‐only flag check ("flags S/SAFR")
+for the TCP packets.  It is not advisable to change this behavior; how‐
+ever, it can be overridden with the aforementioned `flags` keyword.
+
+### Map
+
+Network Address Translation (NAT) is expressed in a form of segment map‐
+ping.  The translation may be dynamic (stateful) or static (stateless).
+The following mapping types are available:
+
+|:-----:| ------------------------------------------------------------ |
+| `‐>`  | outbound NAT (translation of the source)                     |
+| `<‐`  | inbound NAT (translation of the destination)                 |
+| `<‐>` | bi‐directional NAT (combination of inbound and outbound NAT) |
+
+The following would translate the source (10.1.1.0/24) to the IP address
+specified by `$pub_ip` for the packets on the interface `$ext_if`.
+```
+map $ext_if dynamic 10.1.1.0/24 ‐> $pub_ip
+```
+
+Translations are implicitly filtered by limiting the operation to the
+network segments specified, that is, translation would be performed only
+on packets originating from the 10.1.1.0/24 network.  Explicit filter
+criteria can be specified using `pass criteria ...` as an additional option
+of the mapping.
+
+The dynamic NAT implies network address and port translation (NAPT).  The
+port translation can be controlled explicitly.  For example, the following
+provides "port forwarding", redirecting the public port 9022 to the
+port 22 of an internal host:
+```
+map $ext_if dynamic proto tcp 10.1.1.2 port 22 <‐ $ext_if port 9022
+```
+
+The static NAT can have different address translation algorithms, which
+can be chosen using the `algo` keyword.  The currently available algorithms
+are:
+
+|:-----:| ----------------------------------------------- |
+| npt66 | IPv6‐to‐IPv6 network prefix translation (NPTv6) |
+
+Currently, the static NAT algorithms do not perform port translation.
+
+### Application Level Gateways
+
+Certain application layer protocols are not compatible with NAT and
+require translation outside layers 3 and 4.  Such translation is per‐
+formed by packet filter extensions called Application Level Gateways
+(ALGs).
+
+NPF supports the following ALGs:
+
+| --- | --- |
+| icmp | ICMP ALG.  Applies to IPv4 and IPv6.  Allows to find an
+active connection by looking at the ICMP payload, and to
+perform NAT translation of the ICMP payload.  Generally,
+this ALG is necessary to support traceroute(8) behind the
+NAT, when using the UDP or TCP probes. |
+
+The ALGs are built‐in.  If NPF is used as kernel module, then they come
+as kernel modules too.  In such case, the ALG kernel modules can be
+autoloaded through the configuration, using the `alg` keyword.
+
+For example:
+```
+alg "icmp"
+```
+
+Alternatively, the ALG kernel modules can be loaded manually, using
+`modload(8)`.
+
+### Procedures
+
+A rule procedure is defined as a collection of extension calls (it may
+have none).  Every extension call has a name and a list of options in the
+form of key‐value pairs.  Depending on the call, the key might represent
+the argument and the value might be optional.  Available options:
+
+           log: interface        Log events.  This requires the npf_ext_log
+                                 kernel module, which would normally get auto‐
+                                 loaded by NPF.  The specified npflog inter‐
+                                 face would also be auto‐created once the con‐
+                                 figuration is loaded.  The log packets can be
+                                 written to a file using the npfd(8) daemon.
+
+           normalize: option1[, option2 ...]
+                                 Modify packets according to the specified
+                                 normalization options.  This requires the
+                                 npf_ext_normalize kernel module, which would
+                                 normally get auto‐loaded by NPF.
+
+     The available normalization options are:
+
+           "max‐mss" value        Enforce a maximum value for the Maximum Seg‐
+                                  ment Size (MSS) TCP option.  Typically, for
+                                  “MSS clamping”.
+
+           "min‐ttl" value        Enforce a minimum value for the IPv4 Time To
+                                  Live (TTL) parameter.
+
+           "no‐df"                Remove the Don’t Fragment (DF) flag from
+                                  IPv4 packets.
+
+           "random‐id"            Randomize the IPv4 ID parameter.
+
+     For example:
+
+           procedure "someproc" {
+                   log: npflog0
+                   normalize: "random‐id", "min‐ttl" 64, "max‐mss" 1432
+           }
+
+     In this case, the procedure calls the logging and normalization modules.
+
+### Misc
+
+Text after a hash (`#`) character is considered a comment.  The backslash
+(`\`) character at the end of a line marks a continuation line, i.e., the
+next line is considered an extension of the present line.
 
 ## Control
 
 NPF can be controlled through the
 [npfctl(8)](http://man.netbsd.org/cgi-bin/man-cgi?npfctl+8+NetBSD-current)
-utility or NetBSD's rc.d system.
-The latter is used during system startup, but essentially it is a convenience
-wrapper.  The following is an example for starting NPF and loading the
-configuration through the rc.d script:
-
+utility.
 ```
-srv# echo 'npf=YES' >> /etc/rc.conf
-srv# /etc/rc.d/npf reload
-Reloading NPF ruleset.
-srv# /etc/rc.d/npf start
-Enabling NPF.
+$ npfctl
+Usage:	npfctl start | stop | flush | show | stats
+	npfctl validate | reload [<rule-file>]
+	npfctl rule "rule-name" { add | rem } <rule-syntax>
+	npfctl rule "rule-name" rem-id <rule-id>
+	npfctl rule "rule-name" { list | flush }
+	npfctl table <tid> { add | rem | test } <address/mask>
+	npfctl table <tid> { list | flush }
+	npfctl save | load
+	npfctl list [-46hNnw] [-i <ifname>]
+	npfctl debug [<rule-file>] [<raw-output>]
+```
 
-srv# npfctl
-Usage:  npfctl start | stop | flush | show | stats
-        npfctl validate | reload [<rule-file>]
-        npfctl rule "rule-name" { add | rem } <rule-syntax>
-        npfctl rule "rule-name" rem-id <rule-id>
-        npfctl rule "rule-name" { list | flush }
-        npfctl table <tid> { add | rem | test } <address/mask>
-        npfctl table <tid> { list | flush }
-        npfctl save | load
-        npfctl list [-46hNnw] [-i <ifname>]
+Once the NPF configuration file has been written, use `npfctl` to load it
+and then start the packet handling:
+```
+$ npfctl load
+$ npfctl start
 ```
 
 Any modifications of npf.conf require reloading of the ruleset by performing
@@ -106,203 +369,15 @@ configuration is done by performing the `stop` and `flush` commands.
 Such behaviour allows users to efficiently disable and enable filtering
 without actually changing the active configuration, as it may be unnecessary.
 
-## Variables
+### Autostart on boot
 
-Variables are general purpose keywords which can be used in the ruleset
-to make it more flexible and easier to manage.  Most commonly, variables
-are used to define one of the following: IP addresses, networks, ports or
-interfaces.  A variable can contain multiple elements.
-
-In the example above, network interfaces are defined using the `$ext_if` and
-`$int_if` variables (note that the dollar sign (`$`) indicates a variable),
-which can be used further in the configuration file.
-
-Certain functions can be applied to the interfaces: `inet4()` and `inet6()`.
-The functions extract IPv4 or IPv6 addresses respectively.
-
-## Groups
-
-Having one huge ruleset for all interfaces or directions might be
-inefficient;  therefore, NPF requires that all rules be defined within
-groups.  Groups can be thought of as higher level rules which can contain
-subrules.  The main properties of a group are its interface and traffic
-direction.  Packets matching group criteria are passed to the ruleset of
-that group.  If a packet does not match any group, it is passed to the
-default group.  The default group must always be defined.
-
-In the given example, packets passing the _wm0_ network interface will
-first be inspected by the rules in the group named "external" and if none
-matches, the default group will be inspected.  Accordingly, if the packet is
-passing _wm1_, group "internal" will be inspected first, etc.  If the
-packet is neither on _wm0_ nor _wm1_, then the default group would be
-inspected first.
-
-An important aspect to understand is that the groups (and the `on` keyword
-for regular rules) take the symbolic representation of the interface.
-They may reference interfaces which not exist at the time of configuration
-load.  When the interface with a specified name is attached, the groups/rules
-filtering on it will become activate; when the interface is detached, they
-become inactive.  Therefore, NPF performs dynamic handling of the interface
-arrivals and departures.
-
-// Currently, grouping is done by the interfaces, but extensions are planned
-// for abstracting different layers through the groups.
-
-## Rules
-
-Rules, which are the main part of the NPF configuration, describe the criteria
-used to inspect and make decisions about packets.  Currently, NPF supports
-filtering on the following criteria: interface, traffic direction, protocol,
-IP address or network, TCP/UDP port or range, TCP flags and ICMP type/code.
-Supported actions are blocking or passing the packet.
-
-Each rule has a priority, which is set according to its order in the
-ruleset.  Rules defined first are inspected first.  All rules in the group
-are inspected sequentially and the last matching one dictates the action to
-be taken.  Rules, however, may be explicitly marked as final.  In such cases,
-processing stops after encountering the first matching rule marked as final.
-If there is no matching rule in the custom group, then as described previously,
-rules in the default group will be inspected.
-
-The rules which block the packets may additionally have `return-rst`,
-`return-icmp` or `return` option.  Such option indicates NPF to generate TCP
-RST reply for TCP and/or ICMP destination unreachable (administratively
-prohibited; type 3, code 13) reply for UDP packets.  These reply packets,
-however, have to be passed in the ruleset as NPF will not pass them implicitly.
-Such behaviour allows users to apply rule procedures for these reply packets.
-
-Additionally, NPF supports
-[pcap-filter(7)](http://man.netbsd.org/cgi-bin/man-cgi?pcap-filter+7+NetBSD-current)
-syntax and capabilities, for example:
+In NetBSD, the rc.d system can be used to start NPF on boot.  The following
+is an example for starting NPF and loading the configuration through the rc.d
+script:
 ```
-block out final pcap-filter "tcp and dst 10.1.1.252"
-```
-
-Virtually any filter pattern can be constructed using this mechanism.
-
-## Tables
-
-A common problem is the addition or removal of many IP addresses for a
-particular rule or rules.  Reloading the entire configuration is a
-relatively expensive operation and is not suitable for a stream of constant
-changes.  It is also inefficient to have many different rules with the same
-logic just for different IP addresses.  Therefore, NPF tables are provided
-as a high performance container to solve this problem.
-
-NPF tables are containers designed for large IP sets and frequent
-updates without reloading the entire ruleset.  They are managed separately,
-without reloading of the active configuration.  It can either be done
-dynamically or table contents can be loaded from a separate file,
-which is useful for large static tables.
-
-The following table types are supported by NPF:
-
-* hash -- provides amortised O(1) lookup time; a good option for sets which
-do not change significantly.
-* cdb -- constant database which guarantees O(1) lookup; ideal for sets which
-change very rarely.
-* tree -- provides O(k) lookup and prefix matching support (given a netmask);
-a good option when the set changes often and requires prefix matching.
-
-The following fragment is an example using two tables:
-
-```
-table <blacklist> type hash file "/etc/npf_blacklist"
-table <permitted> type tree dynamic
-
-group "external" on $ext_if {
-  block in final from <blacklist>
-  pass stateful out final from <permitted>
-}
-```
-
-The static table identified as "blacklist" is loaded from a file (in this
-case, located at `/etc/npf_blacklist`).  The dynamic table is initially empty
-and has to be filled once the configuration is loaded.  Tables can be filled
-and controlled using the
-[npfctl(8)](http://man.netbsd.org/cgi-bin/man-cgi?npfctl+8+NetBSD-current)
-utility.  Examples to flush a table, add
-an entry and remove an entry from the table:
-
-```
-srv# npfctl table "blacklist" flush
-srv# npfctl table "permitted" add 10.0.1.0/24
-srv# npfctl table "permitted" rem 10.0.2.1
-```
-
-A public
-[ioctl(2)](http://man.netbsd.org/cgi-bin/man-cgi?ioctl+2+NetBSD-current)
-interface for applications to manage the NPF tables is
-also provided.
-
-## Rule procedures
-
-Rule procedures are a key interface in NPF, which is designed to perform
-custom actions on packets.  Users can implement their own specific
-functionality as a kernel module extending NPF.  The NPF extensions will be
-discussed thoroughly in the further chapter on
-[extensions API](docs/extensions.md).
-
-The configuration file is flexible to accept calls to such procedures
-with variable arguments.  Apart from syntax validation, the
-[npfctl(8)](http://man.netbsd.org/cgi-bin/man-cgi?npfctl+8+NetBSD-current)
-utility has to perform extra checks
-while loading the configuration.  It checks whether the custom procedure
-is registered in the kernel and whether the arguments of the procedure are
-valid (e.g. that the passed values are permitted).  There are built-in rule
-procedures provided by NPF, e.g. packet logging and traffic normalisation.
-
-The following is an example of two rule procedure definitions -- one for
-logging and another one for normalisation:
-
-```
-procedure "log" {
-  log: npflog0
-}
-
-procedure "norm" {
-  normalize: "random-id", "min-ttl" 512, "max-mss" 1432
-}
-```
-
-Traffic normalisation has a set of different mechanisms. In the example
-above, the normalisation procedure has arguments which apply the following
-mechanisms: IPv4 ID randomisation, Don't Fragment (DF) flag cleansing,
-minimum TTL enforcement and TCP MSS "clamping".
-
-To execute the procedure for a certain rule, use the `apply` keyword:
-
-```
-group "external" on $ext_if {
-  block in final from <blacklist> apply "log"
-}
-```
-
-In the case of stateful inspection (when a rule contains the `stateful`
-keyword), the rule procedure will be associated with the state i.e.
-the connection.
-Therefore, a rule procedure would be applied not only for the first packets
-which match the rule, but also for all subsequent packets belonging to
-the connection. It should be noted that a rule procedure is associated
-with the connections for their entire life cycle (until all associated
-connections close) i.e. a rule procedure may stay active even if it was
-removed from the configuration.
-
-## Application Level Gateways
-
-Certain application layer protocols are not compatible with NAT and require
-translation outside layer 3 and 4.  Such translation is performed by the
-packet filter extensions called application level gateways (ALGs).  Some
-common cases are: traceroute and FTP applications.
-
-Support for traceroute (both ICMP and UDP cases) is built-in, unless NPF
-is used from kernel modules.  In that case, kernel module can be autoloaded
-though the configuration, e.g. by adding the following line in npf.conf:
-```
-alg "icmp"
-```
-
-Alternatively, ALG kernel module can be loaded manually:
-```
-modload npf_alg_icmp
+srv# echo 'npf=YES' >> /etc/rc.conf
+srv# /etc/rc.d/npf reload
+Reloading NPF ruleset.
+srv# /etc/rc.d/npf start
+Enabling NPF.
 ```
