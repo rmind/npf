@@ -169,13 +169,14 @@ are ignored.
 To notify the sender of a blocking decision, three return options can be
 used in conjunction with a block rule:
 
-| ------ | --- |
+| Keyword | Description |
+| --- | --- |
 | return | Behaves as return‐rst or return‐icmp, depending on
-whether the packet being blocked is TCP or UDP. |
+  whether the packet being blocked is TCP or UDP. |
 | return‐rst | Return a TCP RST message, when the packet being
-blocked is a TCP packet.  Applies to IPv4 and IPv6. |
+  blocked is a TCP packet.  Applies to IPv4 and IPv6. |
 | return‐icmp | Return an ICMP UNREACHABLE message, when the packet
-being blocked is a UDP packet.  Applies to IPv4 and IPv6. |
+  being blocked is a UDP packet.  Applies to IPv4 and IPv6. |
 
 Further packet specification at present is limited to TCP and UDP under‐
 standing source and destination ports, and ICMP and IPv6‐ICMP understand‐
@@ -187,8 +188,7 @@ passing the packet or to apply a procedure to the packet (e.g. "log").
 A "fully‐featured" rule would for example be:
 ```
 pass stateful in final family inet4 proto tcp flags S/SA \
-        from $source port $sport to $dest port $dport    \
-        apply "someproc"
+  from $source port $sport to $dest port $dport apply "someproc"
 ```
 
 Alternatively, NPF supports
@@ -294,6 +294,7 @@ form of key‐value pairs.  Depending on the call, the key might represent
 the argument and the value might be optional.  Available options:
 
 | Extension | Description |
+| --- | --- |
 | `log: interface` | Log events.  This requires the `npf_ext_log`
 kernel module, which would normally get auto loaded by NPF.  The specified
 npflog interface would also be auto‐created once the configuration is loaded.
@@ -305,6 +306,7 @@ kernel module, which would normally get auto‐loaded by NPF. |
 The available normalization options are:
 
 | Parameter | Description |
+| --- | --- |
 | "max‐mss" value | Enforce a maximum value for the Maximum Segment
 Size (MSS) TCP option.  Typically, for “MSS clamping”.
 | "min‐ttl" value | Enforce a minimum value for the IPv4 Time To
