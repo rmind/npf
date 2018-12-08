@@ -1,5 +1,4 @@
-Network Address Translation
----------------------------
+# Network Address Translation
 
 NPF supports various forms of network address translation (NAT).  The
 translation may be dynamic (stateful) or static (stateless).  This includes

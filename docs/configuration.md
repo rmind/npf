@@ -319,7 +319,7 @@ Text after a hash (`#`) character is considered a comment.  The backslash
 (`\`) character at the end of a line marks a continuation line, i.e., the
 next line is considered an extension of the present line.
 
-## Control
+## Control and operation
 
 NPF is controlled using the
 [npfctl(8)](http://man.netbsd.org/cgi-bin/man-cgi?npfctl+8+NetBSD-current)
