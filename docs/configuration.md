@@ -91,9 +91,10 @@ any changes to the interface, including the attach and detach.  Note that
 with a dynamic list, bringing the interface down has no effect, all
 addresses will remain present.
 
-Three functions exist, to extract addresses from an interface with a cho‐
-sen list type and IP address type:
+The following functions exist, to extract addresses from an interface with
+a chosen list type and IP address type:
 
+| Function | Type | Description |
 | ------------------ | ------------ | -------------- |
 | inet4(interface)   | static list  | IPv4 addresses |
 | inet6(interface)   | static list  | IPv6 addresses |
@@ -105,6 +106,7 @@ Example of configuration:
 ```
 $var1 = inet4(wm0)
 $var2 = ifaddrs(wm0)
+
 group default {
   block in on wm0 all               # rule 1
   block in on $var1 all             # rule 2
@@ -135,6 +137,7 @@ Example of configuration:
 group "my‐name" in on wm0 {
   # List of rules, for packets received on wm0
 }
+
 group default {
   # List of rules, for the other packets
 }
@@ -171,12 +174,9 @@ used in conjunction with a block rule:
 
 | Keyword | Description |
 | --- | --- |
-| return | Behaves as return‐rst or return‐icmp, depending on
-  whether the packet being blocked is TCP or UDP. |
-| return‐rst | Return a TCP RST message, when the packet being
-  blocked is a TCP packet.  Applies to IPv4 and IPv6. |
-| return‐icmp | Return an ICMP UNREACHABLE message, when the packet
-  being blocked is a UDP packet.  Applies to IPv4 and IPv6. |
+| return | Behaves as return‐rst or return‐icmp, depending on whether the packet being blocked is TCP or UDP. |
+| return‐rst | Return a TCP RST message, when the packet being blocked is a TCP packet.  Applies to IPv4 and IPv6. |
+| return‐icmp | Return an ICMP UNREACHABLE message, when the packet being blocked is a UDP packet.  Applies to IPv4 and IPv6. |
 
 Further packet specification at present is limited to TCP and UDP under‐
 standing source and destination ports, and ICMP and IPv6‐ICMP understand‐
@@ -265,14 +265,10 @@ formed by packet filter extensions called Application Level Gateways
 (ALGs).
 
 NPF supports the following ALGs:
-
-| ALG | Description |
-| --- | --- |
-| icmp | ICMP ALG.  Applies to IPv4 and IPv6.  Allows to find an
-active connection by looking at the ICMP payload, and to
-perform NAT translation of the ICMP payload.  Generally,
-this ALG is necessary to support traceroute(8) behind the
-NAT, when using the UDP or TCP probes. |
+- ICMP ALG (keyword `icmp`): Applies to IPv4 and IPv6.  Allows to find an
+  active connection by looking at the ICMP payload, and to perform NAT
+  translation of the ICMP payload.  Generally, this ALG is necessary to
+  support `traceroute(8)` behind the NAT, when using the UDP or TCP probes.
 
 The ALGs are built‐in.  If NPF is used as kernel module, then they come
 as kernel modules too.  In such case, the ALG kernel modules can be
