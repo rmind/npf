@@ -95,12 +95,10 @@ The following functions exist, to extract addresses from an interface with
 a chosen list type and IP address type:
 
 | Function | Type | Description |
-| ------------------ | ------------ | -------------- |
-| inet4(interface)   | static list  | IPv4 addresses |
-| inet6(interface)   | static list  | IPv6 addresses |
-| ifaddrs(interface) | dynamic list | Both IPv4 and IPv6.
-The family keyword of a filtering rule can be used in combination
-to explicitly select an IP address type. |
+| -------------------- | ------------ | -------------- |
+| `inet4(interface)`   | static list  | IPv4 addresses |
+| `inet6(interface)`   | static list  | IPv6 addresses |
+| `ifaddrs(interface)` | dynamic list | Both IPv4 and IPv6.  The family keyword of a filtering rule can be used in combination to explicitly select an IP address type. |
 
 Example of configuration:
 ```
@@ -174,9 +172,9 @@ used in conjunction with a block rule:
 
 | Keyword | Description |
 | --- | --- |
-| return | Behaves as return‐rst or return‐icmp, depending on whether the packet being blocked is TCP or UDP. |
-| return‐rst | Return a TCP RST message, when the packet being blocked is a TCP packet.  Applies to IPv4 and IPv6. |
-| return‐icmp | Return an ICMP UNREACHABLE message, when the packet being blocked is a UDP packet.  Applies to IPv4 and IPv6. |
+| `return` | Behaves as return‐rst or return‐icmp, depending on whether the packet being blocked is TCP or UDP. |
+| `return‐rst` | Return a TCP RST message, when the packet being blocked is a TCP packet.  Applies to IPv4 and IPv6. |
+| `return‐icmp` | Return an ICMP UNREACHABLE message, when the packet being blocked is a UDP packet.  Applies to IPv4 and IPv6. |
 
 Further packet specification at present is limited to TCP and UDP under‐
 standing source and destination ports, and ICMP and IPv6‐ICMP understand‐
@@ -253,7 +251,7 @@ are:
 
 | Algorithm | Description |
 |:---------:| --- |
-| npt66     | IPv6‐to‐IPv6 network prefix translation (NPTv6) |
+| `npt66`   | IPv6‐to‐IPv6 network prefix translation (NPTv6) |
 
 Currently, the static NAT algorithms do not perform port translation.
 
@@ -288,25 +286,22 @@ A rule procedure is defined as a collection of extension calls (it may
 have none).  Every extension call has a name and a list of options in the
 form of key‐value pairs.  Depending on the call, the key might represent
 the argument and the value might be optional.  Available options:
-
-| Extension | Description |
-| --- | --- |
-| `log: interface` | Log events.  This requires the `npf_ext_log`
-kernel module, which would normally get auto loaded by NPF.  The specified
-npflog interface would also be auto‐created once the configuration is loaded.
-The log packets can be written to a file using the `npfd(8)` daemon.
-| `normalize: option1[, option2 ...]` | Modify packets according to the
-specified normalization options.  This requires the `npf_ext_normalize`
-kernel module, which would normally get auto‐loaded by NPF. |
+- `log: interface`: Log events. This requires the `npf_ext_log`
+  kernel module, which would normally get auto loaded by NPF.  The specified
+  npflog interface would also be auto‐created once the configuration is loaded.
+  The log packets can be written to a file using the `npfd(8)` daemon.
+- `normalize: option1[, option2 ...]`: Modify packets according to the
+  specified normalization options.  This requires the `npf_ext_normalize`
+  kernel module, which would normally get auto‐loaded by NPF.
 
 The available normalization options are:
 
 | Parameter | Description |
 | --- | --- |
-| "max‐mss" value | Enforce a maximum value for the Maximum Segment Size (MSS) TCP option.  Typically, for "MSS clamping".
-| "min‐ttl" value | Enforce a minimum value for the IPv4 Time To Live (TTL) parameter.
-| "no‐df" | Remove the Don't Fragment (DF) flag from IPv4 packets.
-| "random‐id" | Randomize the IPv4 ID parameter. |
+| `max‐mss <value>` | Enforce a maximum value for the Maximum Segment Size (MSS) TCP option.  Typically, for "MSS clamping".
+| `min‐ttl <value>` | Enforce a minimum value for the IPv4 Time To Live (TTL) parameter.
+| `no‐df` | Remove the Don't Fragment (DF) flag from IPv4 packets.
+| `random‐id` | Randomize the IPv4 ID parameter. |
 
 For example:
 ```
