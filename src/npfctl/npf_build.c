@@ -738,7 +738,7 @@ npfctl_build_natseg(int sd, int type, unsigned mflags, const char *ifname,
 
 	if (algo == NPF_ALGO_NPT66) {
 		/*
-		 * NPTv6 is a special case using special an adjustment value.
+		 * NPTv6 is a special case using special adjustment value.
 		 * It is always bidirectional NAT.
 		 */
 		assert(nt1 && nt2);

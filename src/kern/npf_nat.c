@@ -232,7 +232,7 @@ npf_nat_newpolicy(npf_t *npf, const nvlist_t *nat, npf_ruleset_t *rset)
 	 */
 	if (nvlist_exists_number(nat, "nat-table-id")) {
 		npf_tableset_t *ts = npf_config_tableset(npf);
-		np->n_tid = nvlist_get_number(nat, "nat-table");
+		np->n_tid = nvlist_get_number(nat, "nat-table-id");
 
 		if (np->n_flags & NPF_NAT_STATIC) {
 			goto err;

@@ -86,7 +86,7 @@ and
 .Sq Li > .
 The following is an example of table definition:
 .Pp
-.Dl table <blacklist> type ipset
+.Dl table <blocklist> type ipset
 .Pp
 Currently, tables support three data storage types:
 .Cm ipset ,
@@ -550,7 +550,7 @@ directory containing further examples
 $ext_if = { inet4(wm0) }
 $int_if = { inet4(wm1) }
 
-table <blacklist> type ipset file "/etc/npf_blacklist"
+table <blocklist> type ipset file "/etc/npf_blocklist"
 table <limited> type lpm
 
 $services_tcp = { http, https, smtp, domain, 6000, 9022 }
@@ -572,7 +572,7 @@ procedure "log" {
 group "external" on $ext_if {
 	pass stateful out final all
 
-	block in final from <blacklist>
+	block in final from <blocklist>
 	pass stateful in final family inet4 proto tcp to $ext_if \e
 		port ssh apply "log"
 	pass stateful in final proto tcp to $ext_if \e

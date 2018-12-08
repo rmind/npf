@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2009-2016 The NetBSD Foundation, Inc.
+ * Copyright (c) 2009-2018 The NetBSD Foundation, Inc.
  * All rights reserved.
  *
  * This material is based upon work partially supported by The
@@ -83,18 +83,18 @@ struct npf_table {
 		};
 	} /* C11 */;
 	LIST_HEAD(, npf_tblent)		t_list;
+	unsigned			t_nitems;
 
 	/*
 	 * Table ID, type and lock.  The ID may change during the
 	 * config reload, it is protected by the npf_config_lock.
 	 */
 	int			t_type;
-	u_int			t_id;
+	unsigned		t_id;
 	kmutex_t		t_lock;
 
-	/* The number of items, reference count and table name. */
-	u_int			t_nitems;
-	u_int			t_refcnt;
+	/* Reference count and table name. */
+	unsigned		t_refcnt;
 	char			t_name[NPF_TABLE_MAXNAMELEN];
 };
 
@@ -385,7 +385,7 @@ npf_table_create(const char *name, u_int tid, int type,
 	default:
 		KASSERT(false);
 	}
-	mutex_init(&t->t_lock, MUTEX_DEFAULT, IPL_NET);
+	mutex_init(&t->t_lock, MUTEX_DEFAULT, IPL_NONE);
 	t->t_type = type;
 	t->t_id = tid;
 	return t;
@@ -514,7 +514,7 @@ npf_table_insert(npf_table_t *t, const int alen,
 			error = EINVAL;
 			break;
 		}
-		if (!thmap_put(t->t_map, addr, alen, ent)) {
+		if (thmap_put(t->t_map, addr, alen, ent) == ent) {
 			LIST_INSERT_HEAD(&t->t_list, ent, te_listent);
 			t->t_nitems++;
 		} else {
@@ -524,10 +524,11 @@ npf_table_insert(npf_table_t *t, const int alen,
 	case NPF_TABLE_LPM: {
 		const unsigned preflen =
 		    (mask == NPF_NO_NETMASK) ? (alen * 8) : mask;
+		ent->te_preflen = preflen;
+
 		if (lpm_lookup(t->t_lpm, addr, alen) == NULL &&
 		    lpm_insert(t->t_lpm, addr, alen, preflen, ent) == 0) {
 			LIST_INSERT_HEAD(&t->t_list, ent, te_listent);
-			ent->te_preflen = preflen;
 			t->t_nitems++;
 			error = 0;
 		} else {
