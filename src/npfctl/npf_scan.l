@@ -103,6 +103,7 @@ set			return SET;
 "<-"			return ARROWLEFT;
 "->"			return ARROWRIGHT;
 algo			return ALGO;
+netmap			return NETMAP;
 "ip-hash"		return IPHASH;
 "ip-set"		return IPSET;
 "round-robin"		return ROUNDROBIN;

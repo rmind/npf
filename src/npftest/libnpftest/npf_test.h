@@ -43,10 +43,14 @@
 #define	REMOTE_IP1	"192.0.2.101"
 #define	REMOTE_IP2	"192.0.2.102"
 #define	REMOTE_IP3	"192.0.2.103"
+#define	REMOTE_IP4	"192.0.2.104"
 
 #define	LOCAL_IP6	"fd01:203:405:1::1234"
 #define	REMOTE_IP6	"2001:db8:fefe::1010"
 #define	EXPECTED_IP6	"2001:db8:1:d550::1234"
+
+#define	NET_A_IP1	"10.100.7.126"
+#define	NET_B_IP1	"10.255.7.126"
 
 #if defined(_NPF_STANDALONE)
 

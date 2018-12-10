@@ -125,6 +125,16 @@ static const struct test_case {
 	},
 
 	/*
+	 * NETMAP case:
+	 *	map $ext_if static algo netmap $net_a <-> $net_b
+	 */
+	{
+		NET_A_IP1,	12345,		REMOTE_IP4,	12345,
+		NPF_BINAT,	IFNAME_EXT,	PFIL_OUT,
+		RESULT_PASS,	AF_INET,	NET_B_IP1,	12345
+	},
+
+	/*
 	 * NPTv6 case:
 	 *	map $ext_if static algo npt66 $net6_inner <-> $net6_outer
 	 */

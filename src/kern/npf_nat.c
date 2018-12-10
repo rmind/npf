@@ -721,7 +721,7 @@ static inline int
 npf_nat_algo(npf_cache_t *npc, const npf_natpolicy_t *np, bool forw)
 {
 	const u_int which = npf_nat_which(np->n_type, forw);
-	const npf_addr_t *taddr;
+	const npf_addr_t *taddr, *orig_addr;
 	npf_addr_t addr;
 
 	KASSERT(np->n_flags & NPF_NAT_STATIC);
@@ -737,8 +737,9 @@ npf_nat_algo(npf_cache_t *npc, const npf_natpolicy_t *np, bool forw)
 		 *
 		 *	addr = net-addr | (orig-addr & ~mask)
 		 */
+		orig_addr = npc->npc_ips[which];
 		npf_addr_mask(&np->n_taddr, np->n_tmask, npc->npc_alen, &addr);
-		npf_addr_bitor(&np->n_taddr, np->n_tmask, npc->npc_alen, &addr);
+		npf_addr_bitor(orig_addr, np->n_tmask, npc->npc_alen, &addr);
 		taddr = &addr;
 		break;
 	default:
