@@ -88,9 +88,18 @@ npfkern_nvlist_xfer_ioctl(int fd, unsigned long cmd,
 	return -1;
 }
 
+static inline int
+npfkern_nvlist_copy(const void *a, const void *b, size_t c)
+{
+	(void)a; (void)b; (void)c;
+	return ENOTSUP;
+}
+
 #define	nvlist_xfer_ioctl(a,b,c,d)	npfkern_nvlist_xfer_ioctl(a,b,c,d)
 #define	nvlist_send_ioctl(a,b,c)	npfkern_nvlist_xfer_ioctl(a,b,c,NULL)
 #define	nvlist_recv_ioctl(a,b,d)	npfkern_nvlist_xfer_ioctl(a,b,NULL,d)
+#define	nvlist_copyin(a,b,c)		npfkern_nvlist_copy(a,b,c)
+#define	nvlist_copyout(a,b)		npfkern_nvlist_copy(a,b,0)
 
 /*
  * Synchronisation primitives (mutex, condvar, etc).
