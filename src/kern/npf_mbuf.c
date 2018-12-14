@@ -338,7 +338,7 @@ nbuf_find_tag(nbuf_t *nbuf, uint32_t *val)
 
 	KASSERT(m_flags_p(m, M_PKTHDR));
 
-	mt = m_tag_find(m, PACKET_TAG_NPF, NULL);
+	mt = m_tag_find(m, PACKET_TAG_NPF);
 	if (mt == NULL) {
 		return EINVAL;
 	}
