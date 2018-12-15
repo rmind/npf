@@ -40,7 +40,7 @@ __KERNEL_RCSID(0, "$NetBSD: npf_conndb.c,v 1.4 2018/09/29 14:41:36 rmind Exp $")
 
 #include <sys/atomic.h>
 #include <sys/kmem.h>
-#include <thmap.h>
+#include <sys/thmap.h>
 #endif
 
 #define __NPF_CONN_PRIVATE

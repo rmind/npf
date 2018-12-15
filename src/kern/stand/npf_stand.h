@@ -112,16 +112,6 @@ npfkern_nvlist_copy(const void *a, const void *b, size_t c)
 #define	mutex_owned(l)		true
 #define	mutex_destroy(l)	pthread_mutex_destroy(l)
 
-#define	RW_READER		0
-#define	RW_WRITER		1
-
-#define	krwlock_t		pthread_rwlock_t
-#define	rw_init(l)		pthread_rwlock_init(l, NULL)
-#define	rw_destroy(l)		pthread_rwlock_destroy(l)
-#define	rw_enter(l, op)		\
-    (op) == RW_READER ? pthread_rwlock_rdlock(l) : pthread_rwlock_wrlock(l)
-#define	rw_exit(l)		pthread_rwlock_unlock(l)
-
 static inline int
 npfkern_pthread_cond_timedwait(pthread_cond_t *t, pthread_mutex_t *l,
     const unsigned msec)
@@ -193,7 +183,7 @@ again:
 #define	membar_sync()		__sync_synchronize()
 #define	membar_producer()	__sync_synchronize()
 #define	atomic_inc_uint(x)	__sync_fetch_and_add(x, 1)
-#define	atomic_inv_uint_nv(x)	__sync_add_and_fetch(x, 1)
+#define	atomic_inc_uint_nv(x)	__sync_add_and_fetch(x, 1)
 #define	atomic_dec_uint(x)	__sync_sub_and_fetch(x, 1)
 #define	atomic_dec_uint_nv(x)	__sync_sub_and_fetch(x, 1)
 #define	atomic_or_uint(x, v)	__sync_fetch_and_or(x, v)
@@ -410,13 +400,7 @@ typedef int modcmd_t;
 #define	EPROGMISMATCH		ENOTSUP
 #endif
 
-#ifndef HASH32_BUF_INIT
-#define	HASH32_BUF_INIT		5381
-#define	hash32_buf(b, l, s)	murmurhash2(b, l, s)
-#endif
-
 #define	ffs32(x)		ffs(x)
-#define	fls32(x)		flsl((unsigned long)(x))
 
 struct cpu_info { unsigned id; };
 

@@ -603,7 +603,7 @@ npf_nat_create(npf_cache_t *npc, npf_natpolicy_t *np, npf_conn_t *con)
 		 */
 		switch (np->n_algo) {
 		case NPF_ALGO_RR:
-			idx = atomic_inv_uint_nv(&np->n_rr_idx);
+			idx = atomic_inc_uint_nv(&np->n_rr_idx);
 			break;
 		case NPF_ALGO_IPHASH:
 		default:

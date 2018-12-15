@@ -50,7 +50,7 @@ __KERNEL_RCSID(0, "$NetBSD: npf_tableset.c,v 1.28 2018/09/29 14:41:36 rmind Exp 
 #include <sys/pool.h>
 #include <sys/queue.h>
 #include <sys/mutex.h>
-#include <thmap.h>
+#include <sys/thmap.h>
 
 #include "lpm.h"
 #endif
