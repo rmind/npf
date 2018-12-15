@@ -782,17 +782,17 @@ npfctl_table(npf_t *npf, void *data)
 	char tname[NPF_TABLE_MAXNAMELEN];
 	npf_tableset_t *ts;
 	npf_table_t *t;
-	int s, error;
+	int error;
 
 	error = copyinstr(nct->nct_name, tname, sizeof(tname), NULL);
 	if (error) {
 		return error;
 	}
 
-	s = npf_config_read_enter(); /* XXX */
+	npf_config_enter(npf);
 	ts = npf_config_tableset(npf);
 	if ((t = npf_tableset_getbyname(ts, tname)) == NULL) {
-		npf_config_read_exit(s);
+		npf_config_exit(npf);
 		return EINVAL;
 	}
 
@@ -820,7 +820,7 @@ npfctl_table(npf_t *npf, void *data)
 		error = EINVAL;
 		break;
 	}
-	npf_config_read_exit(s);
+	npf_config_exit(npf);
 
 	return error;
 }

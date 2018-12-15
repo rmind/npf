@@ -227,7 +227,7 @@ npf_conndb_gc(npf_t *npf, npf_conndb_t *cd, bool flush, bool sync)
 	getnanouptime(&tsnow);
 
 	/* First, migrate all new connections. */
-	mutex_exit(&npf->conn_lock);
+	mutex_enter(&npf->conn_lock);
 	npf_conndb_update(cd);
 
 	/*
