@@ -180,7 +180,7 @@ npf_conndb_update(npf_conndb_t *cd)
 	con = atomic_swap_ptr(&cd->cd_new, NULL);
 	while (con) {
 		npf_conn_t *next = con->c_next; // union
-		LIST_INSERT_HEAD(&cd->cd_gclist, con, c_entry);
+		LIST_INSERT_HEAD(&cd->cd_list, con, c_entry);
 		con = next;
 	}
 }
@@ -251,10 +251,11 @@ npf_conndb_gc(npf_t *npf, npf_conndb_t *cd, bool flush, bool sync)
 		/*
 		 * Can we G/C this connection?
 		 */
-		if (flush || npf_conn_gc(cd, con, tsnow.tv_sec)) {
+		if (flush || npf_conn_expired(con, tsnow.tv_sec)) {
 			/* Yes: move to the G/C list. */
 			LIST_REMOVE(con, c_entry);
 			LIST_INSERT_HEAD(&cd->cd_gclist, con, c_entry);
+			npf_conn_remove(cd, con);
 
 			/* This connection cannot be a new marker anymore. */
 			if (con == next) {

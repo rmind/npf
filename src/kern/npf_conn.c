@@ -380,7 +380,7 @@ conn_update_atime(npf_conn_t *con)
 }
 
 /*
- * npf_conn_ok: check if the connection is active, and has the right direction.
+ * npf_conn_ok: check if the connection is active and has the right direction.
  */
 static bool
 npf_conn_ok(const npf_conn_t *con, const int di, bool forw)
@@ -791,7 +791,7 @@ npf_conn_getnat(npf_conn_t *con, const int di, bool *forw)
 /*
  * npf_conn_expired: criterion to check if connection is expired.
  */
-static inline bool
+bool
 npf_conn_expired(const npf_conn_t *con, uint64_t tsnow)
 {
 	const int etime = npf_state_etime(&con->c_state, con->c_proto);
@@ -811,20 +811,11 @@ npf_conn_expired(const npf_conn_t *con, uint64_t tsnow)
 }
 
 /*
- * npf_conn_gc: garbage collect the expired connections.
- *
- * => Must run in a single-threaded manner.
- * => If 'flush' is true, then destroy all connections.
- * => If 'sync' is true, then perform passive serialisation.
+ * npf_conn_remove: unlink the connection and mark as expired.
  */
-bool
-npf_conn_gc(npf_conndb_t *cd, npf_conn_t *con, uint64_t tsnow)
+void
+npf_conn_remove(npf_conndb_t *cd, npf_conn_t *con)
 {
-	/* Check whether the connection has expired. */
-	if (!npf_conn_expired(con, tsnow)) {
-		return false;
-	}
-
 	/* Remove both entries of the connection. */
 	mutex_enter(&con->c_lock);
 	if ((con->c_flags & CONN_REMOVED) == 0) {
@@ -839,7 +830,6 @@ npf_conn_gc(npf_conndb_t *cd, npf_conn_t *con, uint64_t tsnow)
 	/* Flag the removal and expiration. */
 	atomic_or_uint(&con->c_flags, CONN_REMOVED | CONN_EXPIRE);
 	mutex_exit(&con->c_lock);
-	return true;
 }
 
 /*
