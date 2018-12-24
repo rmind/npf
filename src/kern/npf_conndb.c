@@ -265,15 +265,15 @@ npf_conndb_gc(npf_t *npf, npf_conndb_t *cd, bool flush, bool sync)
 				cd->cd_marker = next;
 			}
 		}
+		con = next;
 
 		/*
-		 * Circular iteration: if we returned back to the marker
-		 * connection, then stop.
+		 * Circular iteration: if we returned back to the
+		 * marker connection, then stop.
 		 */
-		if (next == cd->cd_marker) {
+		if (con == cd->cd_marker) {
 			break;
 		}
-		con = next;
 	}
 	cd->cd_marker = con;
 	mutex_exit(&npf->conn_lock);
