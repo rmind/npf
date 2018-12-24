@@ -1,5 +1,3 @@
-/*	$NetBSD$	*/
-
 /*
  * NPF testing - helper routines.
  *

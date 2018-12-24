@@ -1,7 +1,5 @@
-/*	$NetBSD: npf_table_test.c,v 1.10 2018/09/29 14:41:36 rmind Exp $	*/
-
 /*
- * NPF tableset test.
+ * NPF tableset tests.
  *
  * Public Domain.
  */

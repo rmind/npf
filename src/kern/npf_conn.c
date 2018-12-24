@@ -848,7 +848,7 @@ npf_conn_worker(npf_t *npf)
 int
 npf_conndb_export(npf_t *npf, nvlist_t *npf_dict)
 {
-	npf_conn_t *con;
+	npf_conn_t *head, *con;
 
 	/*
 	 * Note: acquire conn_lock to prevent from the database
@@ -859,7 +859,8 @@ npf_conndb_export(npf_t *npf, nvlist_t *npf_dict)
 		mutex_exit(&npf->conn_lock);
 		return 0;
 	}
-	con = npf_conndb_getlist(npf->conn_db);
+	head = npf_conndb_getlist(npf->conn_db);
+	con = head;
 	while (con) {
 		nvlist_t *cdict;
 
@@ -867,7 +868,9 @@ npf_conndb_export(npf_t *npf, nvlist_t *npf_dict)
 			nvlist_append_nvlist_array(npf_dict, "conn-list", cdict);
 			nvlist_destroy(cdict);
 		}
-		con = con->c_next;
+		if ((con = npf_conndb_getnext(npf->conn_db, con)) == head) {
+			break;
+		}
 	}
 	mutex_exit(&npf->conn_lock);
 	return 0;

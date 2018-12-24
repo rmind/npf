@@ -145,6 +145,7 @@ npf_conn_t *	npf_conndb_remove(npf_conndb_t *, npf_connkey_t *);
 
 void		npf_conndb_enqueue(npf_conndb_t *, npf_conn_t *);
 npf_conn_t *	npf_conndb_getlist(npf_conndb_t *);
+npf_conn_t *	npf_conndb_getnext(npf_conndb_t *, npf_conn_t *);
 int		npf_conndb_export(npf_t *, nvlist_t *);
 void		npf_conndb_gc(npf_t *, npf_conndb_t *, bool, bool);
 

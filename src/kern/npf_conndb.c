@@ -199,7 +199,7 @@ npf_conndb_getlist(npf_conndb_t *cd)
  * npf_conndb_getnext: return the next connection, implementing
  * the circular iteration.
  */
-static inline npf_conn_t *
+npf_conn_t *
 npf_conndb_getnext(npf_conndb_t *cd, npf_conn_t *con)
 {
 	/* Next.. */
