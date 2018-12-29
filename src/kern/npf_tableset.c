@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2009-2016 The NetBSD Foundation, Inc.
+ * Copyright (c) 2009-2018 The NetBSD Foundation, Inc.
  * All rights reserved.
  *
  * This material is based upon work partially supported by The
@@ -34,8 +34,7 @@
  *
  *	The tableset is an array of tables.  After the creation, the array
  *	is immutable.  The caller is responsible to synchronise the access
- *	to the tableset.  The table can either be a hash or a tree.  Its
- *	entries are protected by a read-write lock.
+ *	to the tableset.
  */
 
 #ifdef _KERNEL
@@ -46,15 +45,12 @@ __KERNEL_RCSID(0, "$NetBSD: npf_tableset.c,v 1.28 2018/09/29 14:41:36 rmind Exp 
 #include <sys/types.h>
 
 #include <sys/atomic.h>
-#include <sys/hash.h>
 #include <sys/cdbr.h>
 #include <sys/kmem.h>
-#include <sys/malloc.h>
 #include <sys/pool.h>
 #include <sys/queue.h>
 #include <sys/mutex.h>
-#include <sys/systm.h>
-#include <sys/types.h>
+#include <sys/thmap.h>
 
 #include "lpm.h"
 #endif
@@ -68,40 +64,37 @@ typedef struct npf_tblent {
 	npf_addr_t		te_addr;
 } npf_tblent_t;
 
-LIST_HEAD(npf_hashl, npf_tblent);
-
 struct npf_table {
 	/*
-	 * The storage type can be: a) hash b) tree c) cdb.
+	 * The storage type can be: a) hashmap b) LPM c) cdb.
 	 * There are separate trees for IPv4 and IPv6.
 	 */
 	union {
-		struct {
-			struct npf_hashl *t_hashl;
-			u_long		t_hashmask;
-		};
-		struct {
-			lpm_t *		t_lpm;
-			LIST_HEAD(, npf_tblent) t_list;
-		};
+		thmap_t *		t_map;
+		lpm_t *			t_lpm;
 		struct {
 			void *		t_blob;
 			size_t		t_bsize;
 			struct cdbr *	t_cdb;
 		};
+		struct {
+			npf_tblent_t **	t_elements;
+			size_t		t_allocated;
+		};
 	} /* C11 */;
+	LIST_HEAD(, npf_tblent)		t_list;
+	unsigned			t_nitems;
 
 	/*
 	 * Table ID, type and lock.  The ID may change during the
 	 * config reload, it is protected by the npf_config_lock.
 	 */
 	int			t_type;
-	u_int			t_id;
+	unsigned		t_id;
 	kmutex_t		t_lock;
 
-	/* The number of items, reference count and table name. */
-	u_int			t_nitems;
-	u_int			t_refcnt;
+	/* Reference count and table name. */
+	unsigned		t_refcnt;
 	char			t_name[NPF_TABLE_MAXNAMELEN];
 };
 
@@ -113,7 +106,9 @@ struct npf_tableset {
 #define	NPF_TABLESET_SIZE(n)	\
     (offsetof(npf_tableset_t, ts_map[n]) * sizeof(npf_table_t *))
 
-#define	NPF_ADDRLEN2TREE(alen)	((alen) >> 4)
+#define	NPF_ADDRLEN2IDX(alen)	((alen) >> 4)
+
+#define	NPF_IFADDR_STEP		4
 
 static pool_cache_t		tblent_cache	__read_mostly;
 
@@ -300,41 +295,17 @@ npf_tableset_export(npf_t *npf, const npf_tableset_t *ts, nvlist_t *npf_dict)
  * Few helper routines.
  */
 
-static npf_tblent_t *
-table_hash_lookup(const npf_table_t *t, const npf_addr_t *addr,
-    const int alen, struct npf_hashl **rhtbl)
+static void
+table_ipset_flush(npf_table_t *t)
 {
-	const uint32_t hidx = hash32_buf(addr, alen, HASH32_BUF_INIT);
-	struct npf_hashl *htbl = &t->t_hashl[hidx & t->t_hashmask];
 	npf_tblent_t *ent;
 
-	/*
-	 * Lookup the hash table and check for duplicates.
-	 * Note: mask is ignored for the hash storage.
-	 */
-	LIST_FOREACH(ent, htbl, te_listent) {
-		if (ent->te_alen != alen) {
-			continue;
-		}
-		if (memcmp(&ent->te_addr, addr, alen) == 0) {
-			break;
-		}
+	while ((ent = LIST_FIRST(&t->t_list)) != NULL) {
+		thmap_del(t->t_map, &ent->te_addr, ent->te_alen);
+		LIST_REMOVE(ent, te_listent);
+		pool_cache_put(tblent_cache, ent);
 	}
-	*rhtbl = htbl;
-	return ent;
-}
-
-static void
-table_hash_flush(npf_table_t *t)
-{
-	for (unsigned n = 0; n <= t->t_hashmask; n++) {
-		npf_tblent_t *ent;
-
-		while ((ent = LIST_FIRST(&t->t_hashl[n])) != NULL) {
-			LIST_REMOVE(ent, te_listent);
-			pool_cache_put(tblent_cache, ent);
-		}
-	}
+	t->t_nitems = 0;
 }
 
 static void
@@ -347,6 +318,25 @@ table_tree_flush(npf_table_t *t)
 		pool_cache_put(tblent_cache, ent);
 	}
 	lpm_clear(t->t_lpm, NULL, NULL);
+	t->t_nitems = 0;
+}
+
+static void
+table_ifaddr_flush(npf_table_t *t)
+{
+	if (!t->t_allocated) {
+		KASSERT(t->t_elements == NULL);
+		return;
+	}
+	for (unsigned i = 0; i < t->t_nitems; i++) {
+		npf_tblent_t *ent = t->t_elements[i];
+		LIST_REMOVE(ent, te_listent);
+		pool_cache_put(tblent_cache, ent);
+	}
+	kmem_free(t->t_elements, t->t_allocated * sizeof(npf_tblent_t *));
+	t->t_elements = NULL;
+	t->t_allocated = 0;
+	t->t_nitems = 0;
 }
 
 /*
@@ -362,20 +352,19 @@ npf_table_create(const char *name, u_int tid, int type,
 	strlcpy(t->t_name, name, NPF_TABLE_MAXNAMELEN);
 
 	switch (type) {
-	case NPF_TABLE_TREE:
+	case NPF_TABLE_LPM:
 		if ((t->t_lpm = lpm_create()) == NULL) {
 			goto out;
 		}
 		LIST_INIT(&t->t_list);
 		break;
-	case NPF_TABLE_HASH:
-		size = MIN(MAX(size, 1024 * 1024), 8); // XXX
-		t->t_hashl = hashinit(size, HASH_LIST, true, &t->t_hashmask);
-		if (t->t_hashl == NULL) {
+	case NPF_TABLE_IPSET:
+		t->t_map = thmap_create(0, NULL, THMAP_NOCOPY);
+		if (t->t_map == NULL) {
 			goto out;
 		}
 		break;
-	case NPF_TABLE_CDB:
+	case NPF_TABLE_CONST:
 		t->t_blob = kmem_alloc(size, KM_SLEEP);
 		if (t->t_blob == NULL) {
 			goto out;
@@ -391,10 +380,12 @@ npf_table_create(const char *name, u_int tid, int type,
 		}
 		t->t_nitems = cdbr_entries(t->t_cdb);
 		break;
+	case NPF_TABLE_IFADDR:
+		break;
 	default:
 		KASSERT(false);
 	}
-	mutex_init(&t->t_lock, MUTEX_DEFAULT, IPL_NET);
+	mutex_init(&t->t_lock, MUTEX_DEFAULT, IPL_NONE);
 	t->t_type = type;
 	t->t_id = tid;
 	return t;
@@ -412,17 +403,20 @@ npf_table_destroy(npf_table_t *t)
 	KASSERT(t->t_refcnt == 0);
 
 	switch (t->t_type) {
-	case NPF_TABLE_HASH:
-		table_hash_flush(t);
-		hashdone(t->t_hashl, HASH_LIST, t->t_hashmask);
+	case NPF_TABLE_IPSET:
+		table_ipset_flush(t);
+		thmap_destroy(t->t_map);
 		break;
-	case NPF_TABLE_TREE:
+	case NPF_TABLE_LPM:
 		table_tree_flush(t);
 		lpm_destroy(t->t_lpm);
 		break;
-	case NPF_TABLE_CDB:
+	case NPF_TABLE_CONST:
 		cdbr_close(t->t_cdb);
 		kmem_free(t->t_blob, t->t_bsize);
+		break;
+	case NPF_TABLE_IFADDR:
+		table_ifaddr_flush(t);
 		break;
 	default:
 		KASSERT(false);
@@ -450,9 +444,9 @@ npf_table_check(npf_tableset_t *ts, const char *name, uint64_t tid, uint64_t typ
 		return EEXIST;
 	}
 	switch (type) {
-	case NPF_TABLE_TREE:
-	case NPF_TABLE_HASH:
-	case NPF_TABLE_CDB:
+	case NPF_TABLE_LPM:
+	case NPF_TABLE_IPSET:
+	case NPF_TABLE_CONST:
 		break;
 	default:
 		return EINVAL;
@@ -494,7 +488,7 @@ int
 npf_table_insert(npf_table_t *t, const int alen,
     const npf_addr_t *addr, const npf_netmask_t mask)
 {
-	const u_int aidx = NPF_ADDRLEN2TREE(alen);
+	const u_int aidx = NPF_ADDRLEN2IDX(alen);
 	npf_tblent_t *ent;
 	int error;
 
@@ -505,37 +499,36 @@ npf_table_insert(npf_table_t *t, const int alen,
 	ent = pool_cache_get(tblent_cache, PR_WAITOK);
 	memcpy(&ent->te_addr, addr, alen);
 	ent->te_alen = alen;
+	ent->te_preflen = 0;
 
 	/*
 	 * Insert the entry.  Return an error on duplicate.
 	 */
 	mutex_enter(&t->t_lock);
 	switch (t->t_type) {
-	case NPF_TABLE_HASH: {
-		struct npf_hashl *htbl;
-
+	case NPF_TABLE_IPSET:
 		/*
-		 * Hash tables by the concept support only IPs.
+		 * Hashmap supports only IPs.
 		 */
 		if (mask != NPF_NO_NETMASK) {
 			error = EINVAL;
 			break;
 		}
-		if (!table_hash_lookup(t, addr, alen, &htbl)) {
-			LIST_INSERT_HEAD(htbl, ent, te_listent);
+		if (thmap_put(t->t_map, addr, alen, ent) == ent) {
+			LIST_INSERT_HEAD(&t->t_list, ent, te_listent);
 			t->t_nitems++;
 		} else {
 			error = EEXIST;
 		}
 		break;
-	}
-	case NPF_TABLE_TREE: {
+	case NPF_TABLE_LPM: {
 		const unsigned preflen =
 		    (mask == NPF_NO_NETMASK) ? (alen * 8) : mask;
+		ent->te_preflen = preflen;
+
 		if (lpm_lookup(t->t_lpm, addr, alen) == NULL &&
 		    lpm_insert(t->t_lpm, addr, alen, preflen, ent) == 0) {
 			LIST_INSERT_HEAD(&t->t_list, ent, te_listent);
-			ent->te_preflen = preflen;
 			t->t_nitems++;
 			error = 0;
 		} else {
@@ -543,8 +536,30 @@ npf_table_insert(npf_table_t *t, const int alen,
 		}
 		break;
 	}
-	case NPF_TABLE_CDB:
+	case NPF_TABLE_CONST:
 		error = EINVAL;
+		break;
+	case NPF_TABLE_IFADDR:
+		/*
+		 * No need to check for duplicates.
+		 */
+		if (t->t_allocated <= t->t_nitems) {
+			npf_tblent_t **elements;
+			size_t toalloc, newsize;
+
+			toalloc = roundup2(t->t_allocated + 1, NPF_IFADDR_STEP);
+			newsize = toalloc * sizeof(npf_tblent_t *);
+			elements = kmem_zalloc(newsize, KM_SLEEP);
+			for (unsigned i = 0; i < t->t_nitems; i++) {
+				elements[i] = t->t_elements[i];
+			}
+			kmem_free(t->t_elements,
+			    t->t_allocated * sizeof(npf_tblent_t *));
+			t->t_elements = elements;
+			t->t_allocated = toalloc;
+		}
+		t->t_elements[t->t_nitems] = ent;
+		t->t_nitems++;
 		break;
 	default:
 		KASSERT(false);
@@ -564,7 +579,7 @@ int
 npf_table_remove(npf_table_t *t, const int alen,
     const npf_addr_t *addr, const npf_netmask_t mask)
 {
-	const u_int aidx = NPF_ADDRLEN2TREE(alen);
+	const u_int aidx = NPF_ADDRLEN2IDX(alen);
 	npf_tblent_t *ent = NULL;
 	int error = ENOENT;
 
@@ -575,17 +590,14 @@ npf_table_remove(npf_table_t *t, const int alen,
 
 	mutex_enter(&t->t_lock);
 	switch (t->t_type) {
-	case NPF_TABLE_HASH: {
-		struct npf_hashl *htbl;
-
-		ent = table_hash_lookup(t, addr, alen, &htbl);
+	case NPF_TABLE_IPSET:
+		ent = thmap_del(t->t_map, addr, alen);
 		if (__predict_true(ent != NULL)) {
 			LIST_REMOVE(ent, te_listent);
 			t->t_nitems--;
 		}
 		break;
-	}
-	case NPF_TABLE_TREE: {
+	case NPF_TABLE_LPM:
 		ent = lpm_lookup(t->t_lpm, addr, alen);
 		if (__predict_true(ent != NULL)) {
 			LIST_REMOVE(ent, te_listent);
@@ -594,8 +606,8 @@ npf_table_remove(npf_table_t *t, const int alen,
 			t->t_nitems--;
 		}
 		break;
-	}
-	case NPF_TABLE_CDB:
+	case NPF_TABLE_CONST:
+	case NPF_TABLE_IFADDR:
 		error = EINVAL;
 		break;
 	default:
@@ -617,8 +629,7 @@ npf_table_remove(npf_table_t *t, const int alen,
 int
 npf_table_lookup(npf_table_t *t, const int alen, const npf_addr_t *addr)
 {
-	const u_int aidx = NPF_ADDRLEN2TREE(alen);
-	struct npf_hashl *htbl;
+	const u_int aidx = NPF_ADDRLEN2IDX(alen);
 	const void *data;
 	size_t dlen;
 	bool found;
@@ -628,22 +639,35 @@ npf_table_lookup(npf_table_t *t, const int alen, const npf_addr_t *addr)
 	}
 
 	switch (t->t_type) {
-	case NPF_TABLE_HASH:
-		mutex_enter(&t->t_lock);
-		found = table_hash_lookup(t, addr, alen, &htbl) != NULL;
-		mutex_exit(&t->t_lock);
+	case NPF_TABLE_IPSET:
+		found = thmap_get(t->t_map, addr, alen) != NULL;
 		break;
-	case NPF_TABLE_TREE:
+	case NPF_TABLE_LPM:
 		mutex_enter(&t->t_lock);
 		found = lpm_lookup(t->t_lpm, addr, alen) != NULL;
 		mutex_exit(&t->t_lock);
 		break;
-	case NPF_TABLE_CDB:
+	case NPF_TABLE_CONST:
 		if (cdbr_find(t->t_cdb, addr, alen, &data, &dlen) == 0) {
 			found = dlen == (u_int)alen &&
 			    memcmp(addr, data, dlen) == 0;
 		} else {
 			found = false;
+		}
+		break;
+	case NPF_TABLE_IFADDR:
+		found = false;
+		for (unsigned i = 0; i < t->t_nitems; i++) {
+			const npf_tblent_t *elm = t->t_elements[i];
+
+			if (elm->te_alen != alen) {
+				continue;
+			}
+			if (memcmp(&elm->te_addr, addr, alen)) {
+				continue;
+			}
+			found = true;
+			break;
 		}
 		break;
 	default:
@@ -652,6 +676,23 @@ npf_table_lookup(npf_table_t *t, const int alen, const npf_addr_t *addr)
 	}
 
 	return found ? 0 : ENOENT;
+}
+
+npf_addr_t *
+npf_table_getsome(npf_table_t *t, const int alen, unsigned idx)
+{
+	npf_tblent_t *elm;
+
+	KASSERT(t->t_type == NPF_TABLE_IFADDR);
+
+	/*
+	 * No need to acquire the lock, since the table is immutable.
+	 */
+	if (t->t_nitems == 0) {
+		return NULL;
+	}
+	elm = t->t_elements[idx % t->t_nitems];
+	return &elm->te_addr;
 }
 
 static int
@@ -672,26 +713,7 @@ table_ent_copyout(const npf_addr_t *addr, const int alen, npf_netmask_t mask,
 }
 
 static int
-table_hash_list(const npf_table_t *t, void *ubuf, size_t len)
-{
-	size_t off = 0;
-	int error = 0;
-
-	for (unsigned n = 0; n <= t->t_hashmask; n++) {
-		npf_tblent_t *ent;
-
-		LIST_FOREACH(ent, &t->t_hashl[n], te_listent) {
-			error = table_ent_copyout(&ent->te_addr,
-			    ent->te_alen, 0, ubuf, len, &off);
-			if (error)
-				break;
-		}
-	}
-	return error;
-}
-
-static int
-table_tree_list(const npf_table_t *t, void *ubuf, size_t len)
+table_generic_list(const npf_table_t *t, void *ubuf, size_t len)
 {
 	npf_tblent_t *ent;
 	size_t off = 0;
@@ -699,7 +721,7 @@ table_tree_list(const npf_table_t *t, void *ubuf, size_t len)
 
 	LIST_FOREACH(ent, &t->t_list, te_listent) {
 		error = table_ent_copyout(&ent->te_addr,
-		    ent->te_alen, 0, ubuf, len, &off);
+		    ent->te_alen, ent->te_preflen, ubuf, len, &off);
 		if (error)
 			break;
 	}
@@ -724,6 +746,22 @@ table_cdb_list(npf_table_t *t, void *ubuf, size_t len)
 	return error;
 }
 
+static int
+table_ifaddr_list(const npf_table_t *t, void *ubuf, size_t len)
+{
+	size_t off = 0;
+	int error = 0;
+
+	for (unsigned i = 0; i < t->t_nitems; i++) {
+		npf_tblent_t *ent = t->t_elements[i];
+		error = table_ent_copyout(&ent->te_addr,
+		    ent->te_alen, 0, ubuf, len, &off);
+		if (error)
+			break;
+	}
+	return error;
+}
+
 /*
  * npf_table_list: copy a list of all table entries into a userspace buffer.
  */
@@ -734,14 +772,17 @@ npf_table_list(npf_table_t *t, void *ubuf, size_t len)
 
 	mutex_enter(&t->t_lock);
 	switch (t->t_type) {
-	case NPF_TABLE_HASH:
-		error = table_hash_list(t, ubuf, len);
+	case NPF_TABLE_IPSET:
+		error = table_generic_list(t, ubuf, len);
 		break;
-	case NPF_TABLE_TREE:
-		error = table_tree_list(t, ubuf, len);
+	case NPF_TABLE_LPM:
+		error = table_generic_list(t, ubuf, len);
 		break;
-	case NPF_TABLE_CDB:
+	case NPF_TABLE_CONST:
 		error = table_cdb_list(t, ubuf, len);
+		break;
+	case NPF_TABLE_IFADDR:
+		error = table_ifaddr_list(t, ubuf, len);
 		break;
 	default:
 		KASSERT(false);
@@ -761,15 +802,14 @@ npf_table_flush(npf_table_t *t)
 
 	mutex_enter(&t->t_lock);
 	switch (t->t_type) {
-	case NPF_TABLE_HASH:
-		table_hash_flush(t);
-		t->t_nitems = 0;
+	case NPF_TABLE_IPSET:
+		table_ipset_flush(t);
 		break;
-	case NPF_TABLE_TREE:
+	case NPF_TABLE_LPM:
 		table_tree_flush(t);
-		t->t_nitems = 0;
 		break;
-	case NPF_TABLE_CDB:
+	case NPF_TABLE_CONST:
+	case NPF_TABLE_IFADDR:
 		error = EINVAL;
 		break;
 	default:

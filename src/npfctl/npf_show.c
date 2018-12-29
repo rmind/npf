@@ -172,7 +172,14 @@ print_table(npf_conf_info_t *ctx, const uint32_t *words)
 	/* XXX: Iterating all as we need to rewind for the next call. */
 	while ((tl = npf_table_iterate(ctx->conf)) != NULL) {
 		if (!p && npf_table_getid(tl) == tid) {
-			easprintf(&p, "%s", npf_table_getname(tl));
+			const char *tname = npf_table_getname(tl);
+			size_t preflen = sizeof(NPF_IFNET_TABLE_PREF) - 1;
+
+			if (!strncmp(tname, NPF_IFNET_TABLE_PREF, preflen)) {
+			        easprintf(&p, "ifaddrs(%s)", tname + preflen);
+			} else {
+			        easprintf(&p, "<%s>", tname);
+			}
 		}
 	}
 	assert(p != NULL);
@@ -273,11 +280,11 @@ static const struct mark_keyword_mapent {
 	{ BM_ICMP_CODE,	"code %s",	NULL, 0,	print_number,	1 },
 
 	{ BM_SRC_CIDR,	"from %s",	", ", SEEN_SRC,	print_address,	6 },
-	{ BM_SRC_TABLE,	"from <%s>",	NULL, SEEN_SRC,	print_table,	1 },
+	{ BM_SRC_TABLE,	"from %s",	NULL, SEEN_SRC,	print_table,	1 },
 	{ BM_SRC_PORTS,	"%s",		", ", 0,	print_portrange,2 },
 
 	{ BM_DST_CIDR,	"to %s",	", ", SEEN_DST,	print_address,	6 },
-	{ BM_DST_TABLE,	"to <%s>",	NULL, SEEN_DST,	print_table,	1 },
+	{ BM_DST_TABLE,	"to %s",	NULL, SEEN_DST,	print_table,	1 },
 	{ BM_DST_PORTS,	"%s",		", ", 0,	print_portrange,2 },
 };
 
@@ -478,9 +485,9 @@ npfctl_print_table(npf_conf_info_t *ctx, nl_table_t *tl)
 	const char *name = npf_table_getname(tl);
 	const unsigned type = npf_table_gettype(tl);
 	const char *table_types[] = {
-		[NPF_TABLE_HASH] = "hash",
-		[NPF_TABLE_TREE] = "tree",
-		[NPF_TABLE_CDB]  = "cdb",
+		[NPF_TABLE_IPSET]	= "ipset",
+		[NPF_TABLE_LPM]		= "lpm",
+		[NPF_TABLE_CONST]	= "const",
 	};
 
 	if (name[0] == '.') {

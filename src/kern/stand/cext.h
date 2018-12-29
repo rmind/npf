@@ -158,76 +158,11 @@
 #define	MAX(x, y)	((x) > (y) ? (x) : (y))
 #endif
 
-#ifndef roundup
-#define	roundup(x, y)	((((x) + ((y) - 1)) / (y)) * (y))
-#endif
-#ifndef rounddown
-#define	rounddown(x,y)	(((x) / (y)) * (y))
-#endif
 #ifndef roundup2
 #define	roundup2(x, m)	(((x) + (m) - 1) & ~((m) - 1))
-#endif
-#ifndef powerof2
-#define	powerof2(x)	((((x) - 1) & (x)) == 0)
-#endif
-
-/*
- * Maths helpers: log2 on integer, fast division and remainder.
- */
-
-#ifndef flsl
-#define	flsl(x)		(__predict_true(x) ? \
-    (sizeof(unsigned long) * CHAR_BIT) - __builtin_clzl(x) : 0)
-#endif
-#ifndef flsll
-#define	flsll(x)	(__predict_true(x) ? \
-    (sizeof(unsigned long long) * CHAR_BIT) - __builtin_clzll(x) : 0)
-#endif
-
-#ifndef ilog2
-#define	ilog2(x)	(flsl(x) - 1)
-#endif
-
-#ifndef fast_div32_prep
-
-static inline uint64_t
-fast_div32_prep(uint32_t div)
-{
-	const int l = flsl(div - 1);
-	uint64_t mt, m;
-	uint8_t s1, s2;
-
-	mt = (uint64_t)(0x100000000ULL * ((1ULL << l) - div));
-	m = (uint32_t)(mt / div + 1);
-	s1 = (l > 1) ? 1 : l;
-	s2 = (l == 0) ? 0 : l - 1;
-
-	return m | (uint64_t)s1 << 32 | (uint64_t)s2 << 40;
-}
-
-static inline uint32_t
-fast_div32(uint32_t v, uint32_t div, uint64_t inv)
-{
-	const uint32_t m = inv & 0xffffffff;
-	const uint32_t t = (uint32_t)(((uint64_t)v * m) >> 32);
-	const uint8_t s1 = (inv >> 32) & 0xff, s2 = (inv >> 40) & 0xff;
-	(void)div;
-
-	return (t + ((v - t) >> s1)) >> s2;
-}
-
-static inline uint32_t
-fast_rem32(uint32_t v, uint32_t div, uint64_t inv)
-{
-	return v - div * fast_div32(v, div, inv);
-}
-
 #endif
 
 #define	zalloc(len)	calloc(1, (len))
 #define	ASSERT		assert
-
-#define atomic_compare_exchange_weak(ptr, expected, desired) \
-    __sync_bool_compare_and_swap(ptr, expected, desired)
 
 #endif

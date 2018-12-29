@@ -85,7 +85,7 @@
 .\" ---
 .Ft nl_nat_t *
 .Fn npf_nat_create "int type" "u_int flags" "const char *ifname" \
-"npf_addr_t *addr" "int af" "in_port_t port"
+"npf_addr_t *addr" "npf_netmask_t mask" "int af" "in_port_t port"
 .Ft int
 .Fn npf_nat_insert "nl_config_t *ncf" "nl_nat_t *nt" "pri_t pri"
 .\" ---
@@ -282,7 +282,7 @@ The rule procedure must not be referenced after insertion.
 .\" -----
 .Ss Translation interface
 .Bl -tag -width 4n
-.It Fn npf_nat_create "type" "flags" "ifname" "addr" "af" "port"
+.It Fn npf_nat_create "type" "flags" "ifname" "addr" "mask" "af" "port"
 Create a NAT policy of a specified type.
 There are two types:
 .Bl -tag -width "NPF_NAT_PORTMAP "
@@ -324,12 +324,30 @@ The family must be either
 for IPv4 or
 .Dv AF_INET6
 for IPv6 address.
+Additionally,
+.Fa mask
+may be specified to indicate the translation network.
+In such case, a custom algorithm may need to be specified using the
+.Fn npf_nat_setalgo
+function.
 .\" ---
 .It Fn npf_nat_setalgo "nt" "algo"
 Set a particular NAT algorithm.
-Currently, only
-.Dv NPF_ALGO_NPT66
-algorithm is supported for NPTv6 (RFC 6296).
+Currently, the following algorithms are supported:
+.Bl -tag -width "NPF_ALGO_NETMAP"
+.It Dv NPF_ALGO_NETMAP
+Network-to-network map where the translation network prefix (address
+after applying the mask) is bitwise OR-ed with the host part of the
+original address (zero bits of the mask).
+.It Dv NPF_ALGO_IPHASH
+Hash of the source and destination addresses.
+.It Dv NPF_ALGO_RR
+Round-robin for the translation addresses.
+Applicable with dynamic NAT only.
+.It Dv NPF_ALGO_NPT66
+IPv6-to-IPv6 Network Prefix Translation (NPTv6, defined in RFC 6296).
+Applicable with static NAT only.
+.El
 .\" ---
 .It Fn npf_nat_insert "ncf" "nt" "pri"
 Insert NAT policy, its rule, into the specified configuration.
@@ -348,17 +366,20 @@ which should be in the range between 1 and
 .Dv NPF_MAX_TABLES .
 .Pp
 The following types are supported:
-.Bl -tag -width "NPF_TABLE_HASH"
-.It Dv NPF_TABLE_HASH
-Indicates to use a hash table for storage.
-.It Dv NPF_TABLE_TREE
-Indicates to use a tree for storage, supporting the longest
-prefix match.
-.It Dv NPF_TABLE_CDB
-Indicates to use constant database for storage, typically using
-a perfect hash table, which will be generated on table insertion
-into the configuration.
-Such table will be immutable.
+.Bl -tag -width "NPF_TABLE_IPSET"
+.It Dv NPF_TABLE_IPSET
+Indicates to use a regular associative array for storage of IP sets.
+Currently implemented as a hashmap.
+.It Dv NPF_TABLE_LPM
+Indicates to the table can contain networks (as well as hosts) and the
+longest prefix match should be performed on lookup.
+.It Dv NPF_TABLE_CONST
+Indicates that the table contents will be constant and the table can be
+considered immutable (no inserts/removes after load).
+If such constraint is acceptable, this table type will provide the best
+performance.
+It is currently implemented as a perfect hash table, generated on table
+insertion into the configuration.
 .El
 .\" ---
 .It Fn npf_table_add_entry "tl" "af" "addr" "mask"

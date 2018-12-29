@@ -153,6 +153,9 @@ usage(void)
 	fprintf(stderr,
 	    "\t%s list [-46hNnw] [-i <ifname>]\n",
 	    progname);
+	fprintf(stderr,
+	    "\t%s debug [<rule-file>] [<raw-output>]\n",
+	    progname);
 	exit(EXIT_FAILURE);
 }
 

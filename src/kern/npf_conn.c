@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2014-2015 Mindaugas Rasiukevicius <rmind at netbsd org>
+ * Copyright (c) 2014-2018 Mindaugas Rasiukevicius <rmind at netbsd org>
  * Copyright (c) 2010-2014 The NetBSD Foundation, Inc.
  * All rights reserved.
  *
@@ -33,11 +33,15 @@
  *
  * Overview
  *
+ *	Packets can be incoming or outgoing with respect to an interface.
  *	Connection direction is identified by the direction of its first
- *	packet.  Packets can be incoming or outgoing with respect to an
- *	interface.  To describe the packet in the context of connection
- *	direction we will use the terms "forwards stream" and "backwards
- *	stream".  All connections have two keys and thus two entries:
+ *	packet.  The meaning of incoming/outgoing packet in the context of
+ *	connection direction can be confusing.  Therefore, we will use the
+ *	terms "forwards stream" and "backwards stream", where packets in
+ *	the forwards stream mean the packets travelling in the direction
+ *	as the connection direction.
+ *
+ *	All connections have two keys and thus two entries:
  *
  *		npf_conn_t::c_forw_entry for the forwards stream and
  *		npf_conn_t::c_back_entry for the backwards stream.
@@ -376,7 +380,7 @@ conn_update_atime(npf_conn_t *con)
 }
 
 /*
- * npf_conn_ok: check if the connection is active, and has the right direction.
+ * npf_conn_ok: check if the connection is active and has the right direction.
  */
 static bool
 npf_conn_ok(const npf_conn_t *con, const int di, bool forw)
@@ -787,7 +791,7 @@ npf_conn_getnat(npf_conn_t *con, const int di, bool *forw)
 /*
  * npf_conn_expired: criterion to check if connection is expired.
  */
-static inline bool
+bool
 npf_conn_expired(const npf_conn_t *con, uint64_t tsnow)
 {
 	const int etime = npf_state_etime(&con->c_state, con->c_proto);
@@ -807,20 +811,11 @@ npf_conn_expired(const npf_conn_t *con, uint64_t tsnow)
 }
 
 /*
- * npf_conn_gc: garbage collect the expired connections.
- *
- * => Must run in a single-threaded manner.
- * => If 'flush' is true, then destroy all connections.
- * => If 'sync' is true, then perform passive serialisation.
+ * npf_conn_remove: unlink the connection and mark as expired.
  */
-bool
-npf_conn_gc(npf_conndb_t *cd, npf_conn_t *con, uint64_t tsnow)
+void
+npf_conn_remove(npf_conndb_t *cd, npf_conn_t *con)
 {
-	/* Check whether the connection has expired. */
-	if (!npf_conn_expired(con, tsnow)) {
-		return false;
-	}
-
 	/* Remove both entries of the connection. */
 	mutex_enter(&con->c_lock);
 	if ((con->c_flags & CONN_REMOVED) == 0) {
@@ -835,7 +830,6 @@ npf_conn_gc(npf_conndb_t *cd, npf_conn_t *con, uint64_t tsnow)
 	/* Flag the removal and expiration. */
 	atomic_or_uint(&con->c_flags, CONN_REMOVED | CONN_EXPIRE);
 	mutex_exit(&con->c_lock);
-	return true;
 }
 
 /*
@@ -854,7 +848,7 @@ npf_conn_worker(npf_t *npf)
 int
 npf_conndb_export(npf_t *npf, nvlist_t *npf_dict)
 {
-	npf_conn_t *con;
+	npf_conn_t *head, *con;
 
 	/*
 	 * Note: acquire conn_lock to prevent from the database
@@ -865,7 +859,8 @@ npf_conndb_export(npf_t *npf, nvlist_t *npf_dict)
 		mutex_exit(&npf->conn_lock);
 		return 0;
 	}
-	con = npf_conndb_getlist(npf->conn_db);
+	head = npf_conndb_getlist(npf->conn_db);
+	con = head;
 	while (con) {
 		nvlist_t *cdict;
 
@@ -873,7 +868,9 @@ npf_conndb_export(npf_t *npf, nvlist_t *npf_dict)
 			nvlist_append_nvlist_array(npf_dict, "conn-list", cdict);
 			nvlist_destroy(cdict);
 		}
-		con = con->c_next;
+		if ((con = npf_conndb_getnext(npf->conn_db, con)) == head) {
+			break;
+		}
 	}
 	mutex_exit(&npf->conn_lock);
 	return 0;

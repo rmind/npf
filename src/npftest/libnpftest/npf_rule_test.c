@@ -1,7 +1,5 @@
-/*	$NetBSD: npf_rule_test.c,v 1.15 2018/09/29 14:41:36 rmind Exp $	*/
-
 /*
- * NPF ruleset test.
+ * NPF ruleset tests.
  *
  * Public Domain.
  */

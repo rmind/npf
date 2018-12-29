@@ -1,5 +1,3 @@
-/*	$NetBSD: npf_test_subr.c,v 1.13 2018/09/29 14:41:36 rmind Exp $	*/
-
 /*
  * NPF initialisation and handler routines.
  *

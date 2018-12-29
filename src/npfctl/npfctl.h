@@ -104,6 +104,8 @@ typedef struct proc_param {
 
 enum { NPFCTL_PARSE_FILE, NPFCTL_PARSE_STRING };
 
+#define	NPF_IFNET_TABLE_PREF	".ifnet-"
+
 bool		join(char *, size_t, int, char **, const char *);
 void		yyerror(const char *, ...) __printflike(1, 2) __dead;
 void		npfctl_bpfjit(bool);
