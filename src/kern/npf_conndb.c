@@ -85,6 +85,7 @@ void
 npf_conndb_destroy(npf_conndb_t *cd)
 {
 	KASSERT(cd->cd_new == NULL);
+	KASSERT(cd->cd_marker == NULL);
 	KASSERT(LIST_EMPTY(&cd->cd_list));
 	KASSERT(LIST_EMPTY(&cd->cd_gclist));
 
@@ -210,25 +211,13 @@ npf_conndb_getnext(npf_conndb_t *cd, npf_conn_t *con)
 }
 
 /*
- * npf_conndb_gc: garbage collect the expired connections.
- *
- * => Must run in a single-threaded manner.
- * => If 'flush' is true, then destroy all connections.
- * => If 'sync' is true, then perform passive serialisation.
+ * npf_conndb_gc_incr: incremental G/C of the expired connections.
  */
-void
-npf_conndb_gc(npf_t *npf, npf_conndb_t *cd, bool flush, bool sync)
+static void
+npf_conndb_gc_incr(npf_conndb_t *cd, const time_t now)
 {
 	unsigned target = NPF_GC_STEP;
-	struct timespec tsnow;
 	npf_conn_t *con;
-	void *gcref;
-
-	getnanouptime(&tsnow);
-
-	/* First, migrate all new connections. */
-	mutex_enter(&npf->conn_lock);
-	npf_conndb_update(cd);
 
 	/*
 	 * Second, start from the "last" (marker) connection.
@@ -251,7 +240,7 @@ npf_conndb_gc(npf_t *npf, npf_conndb_t *cd, bool flush, bool sync)
 		/*
 		 * Can we G/C this connection?
 		 */
-		if (flush || npf_conn_expired(con, tsnow.tv_sec)) {
+		if (npf_conn_expired(con, now)) {
 			/* Yes: move to the G/C list. */
 			LIST_REMOVE(con, c_entry);
 			LIST_INSERT_HEAD(&cd->cd_gclist, con, c_entry);
@@ -276,6 +265,39 @@ npf_conndb_gc(npf_t *npf, npf_conndb_t *cd, bool flush, bool sync)
 		}
 	}
 	cd->cd_marker = con;
+}
+
+/*
+ * npf_conndb_gc: garbage collect the expired connections.
+ *
+ * => Must run in a single-threaded manner.
+ * => If 'flush' is true, then destroy all connections.
+ * => If 'sync' is true, then perform passive serialisation.
+ */
+void
+npf_conndb_gc(npf_t *npf, npf_conndb_t *cd, bool flush, bool sync)
+{
+	struct timespec tsnow;
+	npf_conn_t *con;
+	void *gcref;
+
+	getnanouptime(&tsnow);
+
+	/* First, migrate all new connections. */
+	mutex_enter(&npf->conn_lock);
+	npf_conndb_update(cd);
+	if (flush) {
+		/* Just unlink and move all connections to the G/C list. */
+		while ((con = LIST_FIRST(&cd->cd_list)) != NULL) {
+			LIST_REMOVE(con, c_entry);
+			LIST_INSERT_HEAD(&cd->cd_gclist, con, c_entry);
+			npf_conn_remove(cd, con);
+		}
+		cd->cd_marker = NULL;
+	} else {
+		/* Incremental G/C of the expired connections. */
+		npf_conndb_gc_incr(cd, tsnow.tv_sec);
+	}
 	mutex_exit(&npf->conn_lock);
 
 	/*
