@@ -8,6 +8,11 @@ on high performance, scalability, multi-threading and modularity.  NPF was
 written from scratch in 2009.  It is written in C99 and distributed under
 the 2-clause BSD license.
 
+NPF is provided as a **userspace library** to be used in a bespoke application
+to process packets. Typically, in combination with such frameworks like
+[Data Plane Development Kit (DPDK)](https://www.dpdk.org/) or
+[netmap](https://www.freebsd.org/cgi/man.cgi?query=netmap&sektion=4).
+
 ## Features
 
 NPF offers the traditional set of features provided by packet filters.
@@ -48,6 +53,7 @@ and DEB (`cd pkg && make deb`) packages.  You can also check the
 
 ## Source code structure
 
+    docs/               - documentation
     src/                - root source code directory
         kern/           - the kernel component (npfkern library)
         libnpf/         - library to manage the NPF configuration
