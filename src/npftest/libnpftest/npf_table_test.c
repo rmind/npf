@@ -125,7 +125,7 @@ static bool
 verify_ip4(npf_tableset_t *tblset)
 {
 	npf_addr_t addr_storage, *addr = &addr_storage;
-	const size_t alen = sizeof(struct in6_addr);
+	const size_t alen = sizeof(struct in_addr);
 	const int nm = NPF_NO_NETMASK;
 	npf_table_t *t;
 	int error;
@@ -252,7 +252,30 @@ test_ip6(npf_tableset_t *tblset)
 }
 
 static bool
-test_lpm_masks(npf_tableset_t *tblset)
+test_lpm_masks4(npf_tableset_t *tblset)
+{
+	npf_table_t *t = npf_tableset_getbyname(tblset, LPM_NAME);
+	npf_addr_t addr_storage, *addr = &addr_storage;
+	const size_t alen = sizeof(struct in_addr);
+	int error;
+
+	addr->word32[0] = inet_addr("172.16.90.0");
+	error = npf_table_insert(t, alen, addr, 25);
+	CHECK_TRUE(error == 0);
+
+	addr->word32[0] = inet_addr("172.16.90.126");
+	error = npf_table_lookup(t, alen, addr);
+	CHECK_TRUE(error == 0);
+
+	addr->word32[0] = inet_addr("172.16.90.128");
+	error = npf_table_lookup(t, alen, addr);
+	CHECK_TRUE(error != 0);
+
+	return true;
+}
+
+static bool
+test_lpm_masks6(npf_tableset_t *tblset)
 {
 	npf_table_t *t = npf_tableset_getbyname(tblset, LPM_NAME);
 	npf_addr_t addr_storage, *addr = &addr_storage;
@@ -336,8 +359,8 @@ test_const_table(npf_tableset_t *tblset, void *blob, size_t size)
 static bool
 test_ifaddr_table(npf_tableset_t *tblset)
 {
+	npf_addr_t addr_storage, *addr = &addr_storage;
 	npf_table_t *t;
-	npf_addr_t *addr;
 	int error;
 	bool ok;
 
@@ -353,7 +376,15 @@ test_ifaddr_table(npf_tableset_t *tblset)
 
 	ok = ip4list_insert_lookup(t, 1);
 	CHECK_TRUE(ok);
-
+#if 0
+	/* And one IPv6 address. */
+	memcpy(addr, ip6_list[0], sizeof(ip6_list[0]));
+	error = npf_table_insert(t, sizeof(struct in6_addr), addr, NPF_NO_NETMASK);
+	CHECK_TRUE(error == 0);
+#endif
+	/*
+	 * Get IPv4 addresses.
+	 */
 	addr = npf_table_getsome(t, sizeof(struct in_addr), 0);
 	ok = check_ip4(addr, "192.168.1.1");
 	CHECK_TRUE(ok);
@@ -396,7 +427,10 @@ npf_table_test(bool verbose, void *blob, size_t size)
 	ok = test_ip6(tblset);
 	CHECK_TRUE(ok);
 
-	ok = test_lpm_masks(tblset);
+	ok = test_lpm_masks4(tblset);
+	CHECK_TRUE(ok);
+
+	ok = test_lpm_masks6(tblset);
 	CHECK_TRUE(ok);
 
 	ok = test_const_table(tblset, blob, size);
@@ -405,7 +439,9 @@ npf_table_test(bool verbose, void *blob, size_t size)
 	ok = test_ifaddr_table(tblset);
 	CHECK_TRUE(ok);
 
-	/* Remove the above IPv4 addresses. */
+	/*
+	 * Remove the above IPv4 addresses -- they must have been untouched.
+	 */
 	ok = clear_ip4(tblset);
 	CHECK_TRUE(ok);
 

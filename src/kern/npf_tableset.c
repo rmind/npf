@@ -79,7 +79,7 @@ struct npf_table {
 		};
 		struct {
 			npf_tblent_t **	t_elements;
-			size_t		t_allocated;
+			unsigned	t_allocated;
 		};
 	} /* C11 */;
 	LIST_HEAD(, npf_tblent)		t_list;
@@ -330,6 +330,7 @@ table_ifaddr_flush(npf_table_t *t)
 	}
 	for (unsigned i = 0; i < t->t_nitems; i++) {
 		npf_tblent_t *ent = t->t_elements[i];
+		LIST_REMOVE(ent, te_listent);
 		pool_cache_put(tblent_cache, ent);
 	}
 	kmem_free(t->t_elements, t->t_allocated * sizeof(npf_tblent_t *));
@@ -562,6 +563,7 @@ npf_table_insert(npf_table_t *t, const int alen,
 			t->t_elements = elements;
 			t->t_allocated = toalloc;
 		}
+		LIST_INSERT_HEAD(&t->t_list, ent, te_listent);
 		t->t_elements[t->t_nitems] = ent;
 		t->t_nitems++;
 		break;
@@ -752,22 +754,6 @@ table_cdb_list(npf_table_t *t, void *ubuf, size_t len)
 	return error;
 }
 
-static int
-table_ifaddr_list(const npf_table_t *t, void *ubuf, size_t len)
-{
-	size_t off = 0;
-	int error = 0;
-
-	for (unsigned i = 0; i < t->t_nitems; i++) {
-		npf_tblent_t *ent = t->t_elements[i];
-		error = table_ent_copyout(&ent->te_addr,
-		    ent->te_alen, 0, ubuf, len, &off);
-		if (error)
-			break;
-	}
-	return error;
-}
-
 /*
  * npf_table_list: copy a list of all table entries into a userspace buffer.
  */
@@ -788,7 +774,7 @@ npf_table_list(npf_table_t *t, void *ubuf, size_t len)
 		error = table_cdb_list(t, ubuf, len);
 		break;
 	case NPF_TABLE_IFADDR:
-		error = table_ifaddr_list(t, ubuf, len);
+		error = table_generic_list(t, ubuf, len);
 		break;
 	default:
 		KASSERT(false);
