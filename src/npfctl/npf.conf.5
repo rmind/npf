@@ -1,6 +1,6 @@
-.\"    $NetBSD: npf.conf.5,v 1.79 2018/09/21 10:59:11 uwe Exp $
+.\"    $NetBSD: npf.conf.5,v 1.83 2019/01/08 11:36:10 uwe Exp $
 .\"
-.\" Copyright (c) 2009-2017 The NetBSD Foundation, Inc.
+.\" Copyright (c) 2009-2018 The NetBSD Foundation, Inc.
 .\" All rights reserved.
 .\"
 .\" This material is based upon work partially supported by The
@@ -27,7 +27,7 @@
 .\" ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 .\" POSSIBILITY OF SUCH DAMAGE.
 .\"
-.Dd September 21, 2018
+.Dd January 14, 2019
 .Dt NPF.CONF 5
 .Os
 .Sh NAME
@@ -109,7 +109,7 @@ Tables of type
 .Cm ipset
 and
 .Cm const
-can only contain IP addresses.
+can only contain IP addresses (without masks).
 The
 .Cm lpm
 tables can contain networks and they will perform the longest
@@ -136,11 +136,14 @@ Three functions exist, to extract addresses from an interface with a chosen
 list type and IP address type:
 .Bl -tag -width "Fn ifaddrs interface" -offset indent
 .It Fn inet4 interface
-Static list.  IPv4 addresses.
+Static list.
+IPv4 addresses.
 .It Fn inet6 interface
-Static list.  IPv6 addresses.
+Static list.
+IPv6 addresses.
 .It Fn ifaddrs interface
-Dynamic list.  Both IPv4 and IPv6.
+Dynamic list.
+Both IPv4 and IPv6.
 The
 .Cm family
 keyword of a filtering rule can be used in combination to explicitly select
@@ -167,7 +170,7 @@ on wm0, and
 .Li $var2
 is the dynamic list of all the IPv4 and IPv6 addresses configured on wm0.
 The first three rules are equivalent, because with the
-.Li Ic block Ar "..." Cm on Li < Ns Ar interface Ns Li >
+.Ic block Ar "..." Cm on Li < Ns Ar interface Ns Li >
 syntax, NPF expects a direct reference to an interface, and therefore does
 not consider the extraction functions.
 The fourth and fifth rules are equivalent, for the same reason.
@@ -223,7 +226,7 @@ The
 keyword can be used to match the packets against specific TCP flags,
 according to the following syntax:
 .Pp
-.Dl Ic proto Cm tcp flags Ar match Ns Li [/ Ns Ar mask Ns Li ]
+.D1 Ic proto Cm tcp flags Ar match Ns Op Li / Ns Ar mask
 .Pp
 Where
 .Ar match
@@ -347,16 +350,41 @@ redirecting the public port 9022 to the port 22 of an internal host:
 .Pp
 .Dl map $ext_if dynamic proto tcp 10.1.1.2 port 22 <- $ext_if port 9022
 .Pp
-The static NAT can have different address translation algorithms, which
-can be chosen using the
+If the dynamic NAT is configured with multiple translation addresses,
+then a custom selection algorithm can be chosen using the
 .Cm algo
 keyword.
 The currently available algorithms are:
-.Bl -tag -width "Cm npt66" -offset indent
+.Bl -tag -width "Cm round-robin" -offset indent
+.It Cm ip-hash
+The translation address for a new connection is selected based on a
+hash of the original source and destination addresses.
+This algorithms attempts to keep all connections of particular client
+associated with the same translation address.
+This is the default algorithm.
+.Pp
+.It Cm round-robin
+The translation address for each new connection is selected on a
+round-robin basis.
+.El
+.Pp
+The static NAT can also have different address translation algorithms,
+chosen using the
+.Cm algo
+keyword.
+The currently available algorithms are:
+.Bl -tag -width "Cm netmap" -offset indent
+.It Cm netmap
+Network address mapping from one segment to another, leaving the host
+part as-is.
+The new address is computed as following:
+.Pp
+.Dl addr = net-addr | (orig-addr & ~mask)
 .It Cm npt66
 IPv6-to-IPv6 network prefix translation (NPTv6).
 .El
 .Pp
+If no algorithm is specified, then 1:1 address mapping is assumed.
 Currently, the static NAT algorithms do not perform port translation.
 .Ss Application Level Gateways
 Certain application layer protocols are not compatible with NAT and require

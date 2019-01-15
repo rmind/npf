@@ -852,6 +852,8 @@ ifname
 		npfvar_t *vp = npfvar_lookup($1);
 		const int type = npfvar_get_type(vp, 0);
 		ifnet_addr_t *ifna;
+		unsigned *tid;
+		const char *s;
 
 		switch (type) {
 		case NPFVAR_STRING:
@@ -864,6 +866,16 @@ ifname
 				    "multiple interfaces are not supported");
 			ifna = npfvar_get_data(vp, type, 0);
 			$$ = ifna->ifna_name;
+			break;
+		case NPFVAR_TABLE:
+			tid = npfvar_get_data(vp, type, 0);
+			s = npfctl_table_getname(*tid);
+			if (strncmp(s, NPF_IFNET_TABLE_PREF,
+			    sizeof(NPF_IFNET_TABLE_PREF) - 1)) {
+				yyerror("variable '%s' references a table "
+				    "%s instead of an interface", $1, s);
+			}
+			$$ = estrdup(s + sizeof(NPF_IFNET_TABLE_PREF) - 1);
 			break;
 		case -1:
 			yyerror("undefined variable '%s' for interface", $1);

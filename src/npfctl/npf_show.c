@@ -431,7 +431,7 @@ static void
 npfctl_print_nat(npf_conf_info_t *ctx, nl_nat_t *nt)
 {
 	nl_rule_t *rl = (nl_nat_t *)nt;
-	const char *ifname, *seg1, *seg2, *arrow;
+	const char *ifname, *algo, *seg1, *seg2, *arrow;
 	npf_addr_t addr;
 	in_port_t port;
 	size_t alen;
@@ -467,11 +467,31 @@ npfctl_print_nat(npf_conf_info_t *ctx, nl_nat_t *nt)
 	}
 	flags = npf_nat_getflags(nt);
 
+	/* NAT algorithm. */
+	switch (npf_nat_getalgo(nt)) {
+	case NPF_ALGO_NETMAP:
+		algo = "algo netmap ";
+		break;
+	case NPF_ALGO_IPHASH:
+		algo = "algo ip-hash ";
+		break;
+	case NPF_ALGO_RR:
+		algo = "algo round-robin ";
+		break;
+	case NPF_ALGO_NPT66:
+		algo = "algo npt66";
+		break;
+	default:
+		algo = "";
+		break;
+	}
+
+	/* FIXME also handle "any" */
+
 	/* Print out the NAT policy with the filter criteria. */
 	fprintf(ctx->fp, "map %s %s %s%s%s %s %s pass ",
 	    ifname, (flags & NPF_NAT_STATIC) ? "static" : "dynamic",
-	    "" /* XXX algo, */,
-	    (flags & NPF_NAT_PORTS) ? "" : "no-ports ",
+	    algo, (flags & NPF_NAT_PORTS) ? "" : "no-ports ",
 	    seg1, arrow, seg2);
 	npfctl_print_filter(ctx, rl);
 	npfctl_print_id(ctx, rl);

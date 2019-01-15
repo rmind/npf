@@ -147,7 +147,7 @@ With a rule statement NPF is instructed to `pass` or `block` a packet
 depending on packet header information, transit direction and the interface it
 arrived on, either immediately upon match or using the last match.
 
-If a packet matches a rule which has the final option set, this rule is
+If a packet matches a rule which has the `final` option set, this rule is
 considered the last matching rule, and evaluation of subsequent rules is
 skipped.  Otherwise, the last matching rule is used.
 
@@ -245,14 +245,24 @@ port 22 of an internal host:
 map $ext_if dynamic proto tcp 10.1.1.2 port 22 <‐ $ext_if port 9022
 ```
 
-The static NAT can have different address translation algorithms, which
-can be chosen using the `algo` keyword.  The currently available algorithms
-are:
+If the dynamic NAT is configured with multiple translation addresses,
+then a custom selection algorithm can be chosen using the `algo` keyword.
+The currently available algorithms are:
 
 | Algorithm | Description |
 |:---------:| --- |
+| `ip-hash` | The translation address for a new connection is selected based on a hash of the original source and destination addresses. This algorithms attempts to keep all connections of particular client associated with the same translation address. This is the default algorithm. |
+| `round-robin` | The translation address for each new connection is selected on a round-robin basis. |
+
+The static NAT can also have different address translation algorithms,
+chosen using the `algo` keyword.  The currently available algorithms are:
+
+| Algorithm | Description |
+|:---------:| --- |
+| `netmap`  | Network address mapping from one segment to another, leaving the host part as-is. The new address is computed as following: `addr = net-addr | (orig-addr & ~mask)` |
 | `npt66`   | IPv6‐to‐IPv6 network prefix translation (NPTv6) |
 
+If no algorithm is specified, then 1:1 address mapping is assumed.
 Currently, the static NAT algorithms do not perform port translation.
 
 ### Application Level Gateways

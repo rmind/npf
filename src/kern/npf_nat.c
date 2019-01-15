@@ -186,7 +186,7 @@ static pool_cache_t		nat_cache	__read_mostly;
 void
 npf_nat_sysinit(void)
 {
-	nat_cache = pool_cache_init(sizeof(npf_nat_t), coherency_unit,
+	nat_cache = pool_cache_init(sizeof(npf_nat_t), 0,
 	    0, 0, "npfnatpl", NULL, IPL_NET, NULL, NULL, NULL);
 	KASSERT(nat_cache != NULL);
 }
@@ -231,15 +231,11 @@ npf_nat_newpolicy(npf_t *npf, const nvlist_t *nat, npf_ruleset_t *rset)
 	 * Alternatively, there may be a translation table ID.
 	 */
 	if (nvlist_exists_number(nat, "nat-table-id")) {
-		npf_tableset_t *ts = npf_config_tableset(npf);
-		np->n_tid = nvlist_get_number(nat, "nat-table-id");
-
 		if (np->n_flags & NPF_NAT_STATIC) {
 			goto err;
 		}
-		if (!npf_tableset_getbyid(ts, np->n_tid)) {
-			goto err;
-		}
+		np->n_tid = nvlist_get_number(nat, "nat-table-id");
+		np->n_tmask = NPF_NO_NETMASK;
 		np->n_flags |= NPF_NAT_USETABLE;
 	} else {
 		addr = dnvlist_get_binary(nat, "nat-ip", &len, NULL, 0);
@@ -301,11 +297,16 @@ err:
 int
 npf_nat_policyexport(const npf_natpolicy_t *np, nvlist_t *nat)
 {
+	nvlist_add_number(nat, "nat-policy", np->n_id);
 	nvlist_add_number(nat, "type", np->n_type);
 	nvlist_add_number(nat, "flags", np->n_flags);
 
-	nvlist_add_binary(nat, "nat-ip", &np->n_taddr, np->n_alen);
-	nvlist_add_number(nat, "nat-mask", np->n_tmask);
+	if (np->n_flags & NPF_NAT_USETABLE) {
+		nvlist_add_number(nat, "nat-table-id", np->n_tid);
+	} else {
+		nvlist_add_binary(nat, "nat-ip", &np->n_taddr, np->n_alen);
+		nvlist_add_number(nat, "nat-mask", np->n_tmask);
+	}
 	nvlist_add_number(nat, "nat-port", np->n_tport);
 	nvlist_add_number(nat, "nat-algo", np->n_algo);
 
@@ -314,7 +315,6 @@ npf_nat_policyexport(const npf_natpolicy_t *np, nvlist_t *nat)
 		nvlist_add_number(nat, "npt66-adj", np->n_npt66_adj);
 		break;
 	}
-	nvlist_add_number(nat, "nat-policy", np->n_id);
 	return 0;
 }
 
@@ -726,10 +726,6 @@ npf_nat_algo(npf_cache_t *npc, const npf_natpolicy_t *np, bool forw)
 
 	KASSERT(np->n_flags & NPF_NAT_STATIC);
 
-	if (np->n_algo == NPF_ALGO_NPT66) {
-		return npf_npt66_rwr(npc, which, &np->n_taddr,
-		    np->n_tmask, np->n_npt66_adj);
-	}
 	switch (np->n_algo) {
 	case NPF_ALGO_NETMAP:
 		/*
@@ -742,6 +738,9 @@ npf_nat_algo(npf_cache_t *npc, const npf_natpolicy_t *np, bool forw)
 		npf_addr_bitor(orig_addr, np->n_tmask, npc->npc_alen, &addr);
 		taddr = &addr;
 		break;
+	case NPF_ALGO_NPT66:
+		return npf_npt66_rwr(npc, which, &np->n_taddr,
+		    np->n_tmask, np->n_npt66_adj);
 	default:
 		taddr = &np->n_taddr;
 		break;

@@ -832,6 +832,12 @@ npf_nat_getflags(nl_nat_t *nt)
 	return dnvlist_get_number(nt->rule_dict, "flags", 0);
 }
 
+unsigned
+npf_nat_getalgo(nl_nat_t *nt)
+{
+	return dnvlist_get_number(nt->rule_dict, "nat-algo", 0);
+}
+
 void
 npf_nat_getmap(nl_nat_t *nt, npf_addr_t *addr, size_t *alen, in_port_t *port)
 {

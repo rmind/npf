@@ -118,7 +118,7 @@ static pool_cache_t		tblent_cache	__read_mostly;
 void
 npf_tableset_sysinit(void)
 {
-	tblent_cache = pool_cache_init(sizeof(npf_tblent_t), coherency_unit,
+	tblent_cache = pool_cache_init(sizeof(npf_tblent_t), 0,
 	    0, 0, "npftblpl", NULL, IPL_NONE, NULL, NULL, NULL);
 }
 
@@ -330,7 +330,6 @@ table_ifaddr_flush(npf_table_t *t)
 	}
 	for (unsigned i = 0; i < t->t_nitems; i++) {
 		npf_tblent_t *ent = t->t_elements[i];
-		LIST_REMOVE(ent, te_listent);
 		pool_cache_put(tblent_cache, ent);
 	}
 	kmem_free(t->t_elements, t->t_allocated * sizeof(npf_tblent_t *));
@@ -353,7 +352,8 @@ npf_table_create(const char *name, u_int tid, int type,
 
 	switch (type) {
 	case NPF_TABLE_LPM:
-		if ((t->t_lpm = lpm_create()) == NULL) {
+		t->t_lpm = lpm_create();
+		if (t->t_lpm == NULL) {
 			goto out;
 		}
 		LIST_INIT(&t->t_list);
@@ -447,6 +447,7 @@ npf_table_check(npf_tableset_t *ts, const char *name, uint64_t tid, uint64_t typ
 	case NPF_TABLE_LPM:
 	case NPF_TABLE_IPSET:
 	case NPF_TABLE_CONST:
+	case NPF_TABLE_IFADDR:
 		break;
 	default:
 		return EINVAL;
@@ -553,8 +554,11 @@ npf_table_insert(npf_table_t *t, const int alen,
 			for (unsigned i = 0; i < t->t_nitems; i++) {
 				elements[i] = t->t_elements[i];
 			}
-			kmem_free(t->t_elements,
-			    t->t_allocated * sizeof(npf_tblent_t *));
+			if (t->t_allocated) {
+				KASSERT(t->t_elements != NULL);
+				kmem_free(t->t_elements,
+				    t->t_allocated * sizeof(npf_tblent_t *));
+			}
 			t->t_elements = elements;
 			t->t_allocated = toalloc;
 		}
@@ -615,6 +619,8 @@ npf_table_remove(npf_table_t *t, const int alen,
 		ent = NULL;
 	}
 	mutex_exit(&t->t_lock);
+
+	// FIXME: thmap_gc
 
 	if (ent) {
 		pool_cache_put(tblent_cache, ent);

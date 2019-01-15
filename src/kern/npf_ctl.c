@@ -408,7 +408,7 @@ npf_mk_rules(npf_t *npf, nvlist_t *npf_dict, nvlist_t *errdict,
 
 static int __noinline
 npf_mk_natlist(npf_t *npf, nvlist_t *npf_dict, nvlist_t *errdict,
-    npf_ruleset_t **ntsetp)
+    npf_tableset_t *tblset, npf_ruleset_t **ntsetp)
 {
 	const nvlist_t * const *nat_rules;
 	npf_ruleset_t *ntset;
@@ -447,6 +447,17 @@ npf_mk_natlist(npf_t *npf, nvlist_t *npf_dict, nvlist_t *errdict,
 		/* If rule is named, it is a group with NAT policies. */
 		if (dnvlist_get_string(nat, "name", NULL)) {
 			continue;
+		}
+
+		/* Check the table ID. */
+		if (nvlist_exists_number(nat, "nat-table-id")) {
+			unsigned tid = nvlist_get_number(nat, "nat-table-id");
+
+			if (!npf_tableset_getbyid(tblset, tid)) {
+				NPF_ERR_DEBUG(errdict);
+				error = EINVAL;
+				break;
+			}
 		}
 
 		/* Allocate a new NAT policy and assign to the rule. */
@@ -524,15 +535,15 @@ npfctl_load_nvlist(npf_t *npf, nvlist_t *npf_dict, nvlist_t *errdict)
 	if (error) {
 		goto fail;
 	}
-	error = npf_mk_natlist(npf, npf_dict, errdict, &ntset);
-	if (error) {
-		goto fail;
-	}
 	error = npf_mk_tables(npf, npf_dict, errdict, &tblset);
 	if (error) {
 		goto fail;
 	}
 	error = npf_mk_rprocs(npf, npf_dict, errdict, &rpset);
+	if (error) {
+		goto fail;
+	}
+	error = npf_mk_natlist(npf, npf_dict, errdict, tblset, &ntset);
 	if (error) {
 		goto fail;
 	}
@@ -561,11 +572,11 @@ fail:
 	 * Note: the rulesets must be destroyed first, in order to drop
 	 * any references to the tableset.
 	 */
-	if (ntset) {
-		npf_ruleset_destroy(ntset);
-	}
 	if (rlset) {
 		npf_ruleset_destroy(rlset);
+	}
+	if (ntset) {
+		npf_ruleset_destroy(ntset);
 	}
 	if (rpset) {
 		npf_rprocset_destroy(rpset);

@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2011-2017 The NetBSD Foundation, Inc.
+ * Copyright (c) 2011-2018 The NetBSD Foundation, Inc.
  * All rights reserved.
  *
  * This material is based upon work partially supported by The
@@ -172,6 +172,25 @@ npfctl_table_getid(const char *name)
 	return tid;
 }
 
+const char *
+npfctl_table_getname(unsigned tid)
+{
+	const char *name = NULL;
+	nl_table_t *tl;
+
+	/* XXX dynamic ruleset */
+	if (!npf_conf) {
+		return NULL;
+	}
+	/* XXX: Iterating all as we need to rewind for the next call. */
+	while ((tl = npf_table_iterate(npf_conf)) != NULL) {
+		if (npf_table_getid(tl) == tid) {
+			name = npf_table_getname(tl);
+		}
+	}
+	return name;
+}
+
 static in_port_t
 npfctl_get_singleport(const npfvar_t *vp)
 {
@@ -196,6 +215,19 @@ npfctl_get_singlefam(const npfvar_t *vp)
 		yyerror("multiple addresses are not valid");
 	}
 	return npfvar_get_data(vp, NPFVAR_FAM, 0);
+}
+
+static unsigned
+npfctl_get_singletable(const npfvar_t *vp)
+{
+	unsigned *tid;
+
+	if (npfvar_get_count(vp) > 1) {
+		yyerror("multiple tables are not valid");
+	}
+	tid = npfvar_get_data(vp, NPFVAR_TABLE, 0);
+	assert(tid != NULL);
+	return *tid;
 }
 
 static bool
@@ -593,9 +625,11 @@ npfctl_build_nat(int type, const char *ifname, const addr_port_t *ap,
     const opt_proto_t *op, const filt_opts_t *fopts, u_int flags)
 {
 	const opt_proto_t def_op = { .op_proto = -1, .op_opts = NULL };
-	fam_addr_mask_t *am = npfctl_get_singlefam(ap->ap_netaddr);
+	fam_addr_mask_t *am;
+	sa_family_t family;
 	in_port_t port;
 	nl_nat_t *nat;
+	unsigned tid;
 
 	if (ap->ap_portrange) {
 		/*
@@ -604,8 +638,7 @@ npfctl_build_nat(int type, const char *ifname, const addr_port_t *ap,
 		 * translation on, but disable the port map.
 		 */
 		port = npfctl_get_singleport(ap->ap_portrange);
-		flags &= ~NPF_NAT_PORTMAP;
-		flags |= NPF_NAT_PORTS;
+		flags = (flags & ~NPF_NAT_PORTMAP) | NPF_NAT_PORTS;
 	} else {
 		port = 0;
 	}
@@ -614,9 +647,26 @@ npfctl_build_nat(int type, const char *ifname, const addr_port_t *ap,
 	}
 
 	nat = npf_nat_create(type, flags, ifname);
-	npf_nat_setaddr(nat, am->fam_family, &am->fam_addr, am->fam_mask);
+
+	switch (npfvar_get_type(ap->ap_netaddr, 0)) {
+	case NPFVAR_FAM:
+		/* Translation address. */
+		am = npfctl_get_singlefam(ap->ap_netaddr);
+		family = am->fam_family;
+		npf_nat_setaddr(nat, family, &am->fam_addr, am->fam_mask);
+		break;
+	case NPFVAR_TABLE:
+		/* Translation table. */
+		family = AF_UNSPEC;
+		tid = npfctl_get_singletable(ap->ap_netaddr);
+		npf_nat_settable(nat, tid);
+		break;
+	default:
+		yyerror("map must have a valid translation address");
+		abort();
+	}
 	npf_nat_setport(nat, port);
-	npfctl_build_code(nat, am->fam_family, op, fopts);
+	npfctl_build_code(nat, family, op, fopts);
 	return nat;
 }
 
@@ -669,20 +719,17 @@ npfctl_build_natseg(int sd, int type, unsigned mflags, const char *ifname,
 	/*
 	 * Validate the mappings and their configuration.
 	 */
-
-	if ((type & NPF_NATIN) != 0) {
-		if (!ap1->ap_netaddr)
-			yyerror("inbound network segment is not specified");
-		am1 = npfctl_get_singlefam(ap1->ap_netaddr);
+	if ((type & NPF_NATIN) != 0 && ap1->ap_netaddr == NULL) {
+		yyerror("inbound network segment is not specified");
 	}
-	if ((type & NPF_NATOUT) != 0) {
-		if (!ap2->ap_netaddr)
-			yyerror("outbound network segment is not specified");
-		am2 = npfctl_get_singlefam(ap2->ap_netaddr);
+	if ((type & NPF_NATOUT) != 0 && ap2->ap_netaddr == NULL) {
+		yyerror("outbound network segment is not specified");
 	}
 
 	switch (algo) {
 	case NPF_ALGO_NPT66:
+		am1 = npfctl_get_singlefam(ap1->ap_netaddr);
+		am2 = npfctl_get_singlefam(ap2->ap_netaddr);
 		if (am1 == NULL || am2 == NULL) {
 			yyerror("1:1 mapping of two segments must be "
 			    "used for NPTv6");
@@ -707,6 +754,9 @@ npfctl_build_natseg(int sd, int type, unsigned mflags, const char *ifname,
 		}
 		break;
 	default:
+		// FIXME
+		am1 = npfctl_get_singlefam(ap1->ap_netaddr);
+		am2 = npfctl_get_singlefam(ap2->ap_netaddr);
 		if ((am1 && am1->fam_mask != NPF_NO_NETMASK) ||
 		    (am2 && am2->fam_mask != NPF_NO_NETMASK)) {
 			yyerror("net-to-net translation must have an "
@@ -825,6 +875,10 @@ npfctl_build_table(const char *tname, u_int type, const char *fname)
 	}
 }
 
+/*
+ * npfctl_ifnet_table: get a variable with ifaddr-table; auto-create
+ * the table on first reference.
+ */
 npfvar_t *
 npfctl_ifnet_table(const char *ifname)
 {

@@ -135,6 +135,7 @@ nl_nat_t *	npf_nat_iterate(nl_config_t *);
 int		npf_nat_gettype(nl_nat_t *);
 unsigned	npf_nat_getflags(nl_nat_t *);
 void		npf_nat_getmap(nl_nat_t *, npf_addr_t *, size_t *, in_port_t *);
+unsigned	npf_nat_getalgo(nl_nat_t *);
 
 nl_rproc_t *	npf_rproc_iterate(nl_config_t *);
 const char *	npf_rproc_getname(nl_rproc_t *);
