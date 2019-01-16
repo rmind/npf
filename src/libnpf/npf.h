@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2011-2014 The NetBSD Foundation, Inc.
+ * Copyright (c) 2011-2018 The NetBSD Foundation, Inc.
  * All rights reserved.
  *
  * This material is based upon work partially supported by The
@@ -77,7 +77,7 @@ int		npf_ruleset_remove(int, const char *, uint64_t);
 int		npf_ruleset_remkey(int, const char *, const void *, size_t);
 int		npf_ruleset_flush(int, const char *);
 
-nl_ext_t *	npf_ext_construct(const char *name);
+nl_ext_t *	npf_ext_construct(const char *);
 void		npf_ext_param_u32(nl_ext_t *, const char *, uint32_t);
 void		npf_ext_param_bool(nl_ext_t *, const char *, bool);
 void		npf_ext_param_string(nl_ext_t *, const char *, const char *);

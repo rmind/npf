@@ -47,7 +47,7 @@ __KERNEL_RCSID(0, "$NetBSD: npf_conndb.c,v 1.4 2018/09/29 14:41:36 rmind Exp $")
 #include "npf_conn.h"
 #include "npf_impl.h"
 
-#define	NPF_GC_STEP		512
+#define	NPF_GC_STEP		256
 
 struct npf_conndb {
 	thmap_t *		cd_map;

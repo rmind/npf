@@ -176,9 +176,9 @@ print_table(npf_conf_info_t *ctx, const uint32_t *words)
 			size_t preflen = sizeof(NPF_IFNET_TABLE_PREF) - 1;
 
 			if (!strncmp(tname, NPF_IFNET_TABLE_PREF, preflen)) {
-			        easprintf(&p, "ifaddrs(%s)", tname + preflen);
+				easprintf(&p, "ifaddrs(%s)", tname + preflen);
 			} else {
-			        easprintf(&p, "<%s>", tname);
+				easprintf(&p, "<%s>", tname);
 			}
 		}
 	}

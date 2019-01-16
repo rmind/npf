@@ -48,10 +48,6 @@ static const uint8_t ip6_list[][16] = {
 	}
 };
 
-
-#define	check_ok(x)	\
-    ((x) ? true : (printf("fail at line %d\n", __LINE__), false))
-
 #define	CHECK_TRUE(x)	\
     if (!(x)) { printf("FAIL: %s line %d\n", __func__, __LINE__); return 0; }
 

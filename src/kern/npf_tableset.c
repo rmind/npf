@@ -490,7 +490,7 @@ int
 npf_table_insert(npf_table_t *t, const int alen,
     const npf_addr_t *addr, const npf_netmask_t mask)
 {
-	const u_int aidx = NPF_ADDRLEN2IDX(alen);
+	const unsigned aidx = NPF_ADDRLEN2IDX(alen);
 	npf_tblent_t *ent;
 	int error;
 
@@ -585,7 +585,7 @@ int
 npf_table_remove(npf_table_t *t, const int alen,
     const npf_addr_t *addr, const npf_netmask_t mask)
 {
-	const u_int aidx = NPF_ADDRLEN2IDX(alen);
+	const unsigned aidx = NPF_ADDRLEN2IDX(alen);
 	npf_tblent_t *ent = NULL;
 	int error = ENOENT;
 
@@ -637,7 +637,7 @@ npf_table_remove(npf_table_t *t, const int alen,
 int
 npf_table_lookup(npf_table_t *t, const int alen, const npf_addr_t *addr)
 {
-	const u_int aidx = NPF_ADDRLEN2IDX(alen);
+	const unsigned aidx = NPF_ADDRLEN2IDX(alen);
 	const void *data;
 	size_t dlen;
 	bool found;
@@ -689,6 +689,7 @@ npf_table_lookup(npf_table_t *t, const int alen, const npf_addr_t *addr)
 npf_addr_t *
 npf_table_getsome(npf_table_t *t, const int alen, unsigned idx)
 {
+	//const unsigned aidx = NPF_ADDRLEN2IDX(alen);
 	npf_tblent_t *elm;
 
 	KASSERT(t->t_type == NPF_TABLE_IFADDR);
