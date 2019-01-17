@@ -139,9 +139,9 @@ run_gc_tests(void)
 	CHECK_TRUE(ok);
 
 	/* 2 expired => GC => 0 in conndb. */
-	ok = run_conn_gc(0, 2, 1);
+	ok = run_conn_gc(0, 2, 0);
 	CHECK_TRUE(ok);
-#if 0 // FIXME
+
 	/* 128 expired => GC => 0 in conndb. */
 	ok = run_conn_gc(0, 128, 0);
 	CHECK_TRUE(ok);
@@ -149,7 +149,7 @@ run_gc_tests(void)
 	/* 512 expired => GC => 256 in conndb. */
 	ok = run_conn_gc(0, 512, 256);
 	CHECK_TRUE(ok);
-#endif
+
 	return true;
 }
 

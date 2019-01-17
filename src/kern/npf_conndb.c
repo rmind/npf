@@ -252,6 +252,8 @@ npf_conndb_gc_incr(npf_conndb_t *cd, const time_t now)
 			}
 			if (con == cd->cd_marker) {
 				cd->cd_marker = next;
+				con = next;
+				continue;
 			}
 		}
 		con = next;
