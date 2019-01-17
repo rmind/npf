@@ -80,10 +80,11 @@ npf_nvlist_copyin(npf_t *npf, void *data, nvlist_t **nvl)
 {
 	int error = 0;
 
-	if (npf->mbufops != NULL)
-		*nvl = (nvlist_t *)data;
-	else
+	if (npf->mbufops == NULL) {
 		error = nvlist_copyin(data, nvl, NPF_IOCTL_DATA_LIMIT);
+	} else {
+		*nvl = (nvlist_t *)data;
+	}
 	return error;
 }
 
@@ -92,8 +93,9 @@ npf_nvlist_copyout(npf_t *npf, void *data, nvlist_t *nvl)
 {
 	int error = 0;
 
-	if (npf->mbufops == NULL)
+	if (npf->mbufops == NULL) {
 		error = nvlist_copyout(data, nvl);
+	}
 	nvlist_destroy(nvl);
 	return error;
 }

@@ -211,10 +211,19 @@ npfctl_get_singleport(const npfvar_t *vp)
 static fam_addr_mask_t *
 npfctl_get_singlefam(const npfvar_t *vp)
 {
-	if (npfvar_get_count(vp) > 1) {
-		yyerror("multiple addresses are not valid");
+	fam_addr_mask_t *am;
+
+	if (npfvar_get_type(vp, 0) != NPFVAR_FAM) {
+		yyerror("map segment must be an address or network");
 	}
-	return npfvar_get_data(vp, NPFVAR_FAM, 0);
+	if (npfvar_get_count(vp) > 1) {
+		yyerror("map segment cannot have multiple static addresses");
+	}
+	am = npfvar_get_data(vp, NPFVAR_FAM, 0);
+	if (am == NULL) {
+		yyerror("invalid map segment");
+	}
+	return am;
 }
 
 static unsigned
@@ -682,10 +691,20 @@ npfctl_build_natseg(int sd, int type, unsigned mflags, const char *ifname,
 	nl_nat_t *nt1 = NULL, *nt2 = NULL;
 	filt_opts_t imfopts;
 	uint16_t adj = 0;
-	u_int flags;
+	unsigned flags;
 	bool binat;
 
 	assert(ifname != NULL);
+
+	/*
+	 * Validate that mapping has the translation address(es) set.
+	 */
+	if ((type & NPF_NATIN) != 0 && ap1->ap_netaddr == NULL) {
+		yyerror("inbound network segment is not specified");
+	}
+	if ((type & NPF_NATOUT) != 0 && ap2->ap_netaddr == NULL) {
+		yyerror("outbound network segment is not specified");
+	}
 
 	/*
 	 * Bi-directional NAT is a combination of inbound NAT and outbound
@@ -696,14 +715,56 @@ npfctl_build_natseg(int sd, int type, unsigned mflags, const char *ifname,
 	switch (sd) {
 	case NPFCTL_NAT_DYNAMIC:
 		/*
-		 * Dynamic NAT: traditional NAPT is expected.  Unless it
-		 * is bi-directional NAT, perform port mapping.
+		 * Dynamic NAT: stateful translation -- traditional NAPT
+		 * is expected.  Unless it is bi-directional NAT, perform
+		 * the port mapping.
 		 */
 		flags = !binat ? (NPF_NAT_PORTS | NPF_NAT_PORTMAP) : 0;
+
+		switch (algo) {
+		case NPF_ALGO_IPHASH:
+		case NPF_ALGO_RR:
+		case NPF_ALGO_NONE:
+			break;
+		default:
+			yyerror("invalid algorithm specified for dynamic NAT");
+		}
 		break;
 	case NPFCTL_NAT_STATIC:
-		/* Static NAT: mechanic translation. */
+		/*
+		 * Static NAT: stateless translation.
+		 */
 		flags = NPF_NAT_STATIC;
+
+		/* Note: translation address/network cannot be a table. */
+		am1 = npfctl_get_singlefam(ap1->ap_netaddr);
+		am2 = npfctl_get_singlefam(ap2->ap_netaddr);
+
+		/* Validate the algorithm. */
+		switch (algo) {
+		case NPF_ALGO_NPT66:
+			if (am1->fam_mask != am2->fam_mask) {
+				yyerror("asymmetric NPTv6 is not supported");
+			}
+			adj = npfctl_npt66_calcadj(am1->fam_mask,
+			    &am1->fam_addr, &am2->fam_addr);
+			break;
+		case NPF_ALGO_NETMAP:
+			if ((am1 && am1->fam_mask != NPF_NO_NETMASK) ||
+			    (am2 && am2->fam_mask != NPF_NO_NETMASK)) {
+				yyerror("static net-to-net translation "
+				    "must have an algorithm specified");
+			}
+		case NPF_ALGO_NONE:
+			if (am1->fam_mask != NPF_NO_NETMASK ||
+			    am2->fam_mask != NPF_NO_NETMASK) {
+				yyerror("static net-to-net translation "
+				    "must have an algorithm specified");
+			}
+			break;
+		default:
+			yyerror("invalid algorithm specified for static NAT");
+		}
 		break;
 	default:
 		abort();
@@ -714,55 +775,6 @@ npfctl_build_natseg(int sd, int type, unsigned mflags, const char *ifname,
 	 */
 	if (mflags & NPF_NAT_PORTS) {
 		flags &= ~(NPF_NAT_PORTS | NPF_NAT_PORTMAP);
-	}
-
-	/*
-	 * Validate the mappings and their configuration.
-	 */
-	if ((type & NPF_NATIN) != 0 && ap1->ap_netaddr == NULL) {
-		yyerror("inbound network segment is not specified");
-	}
-	if ((type & NPF_NATOUT) != 0 && ap2->ap_netaddr == NULL) {
-		yyerror("outbound network segment is not specified");
-	}
-
-	switch (algo) {
-	case NPF_ALGO_NPT66:
-		am1 = npfctl_get_singlefam(ap1->ap_netaddr);
-		am2 = npfctl_get_singlefam(ap2->ap_netaddr);
-		if (am1 == NULL || am2 == NULL) {
-			yyerror("1:1 mapping of two segments must be "
-			    "used for NPTv6");
-		}
-		if (am1->fam_mask != am2->fam_mask) {
-			yyerror("asymmetric NPTv6 is not supported");
-		}
-		adj = npfctl_npt66_calcadj(am1->fam_mask,
-		    &am1->fam_addr, &am2->fam_addr);
-		break;
-	case NPF_ALGO_IPHASH:
-	case NPF_ALGO_RR:
-		if (sd != NPFCTL_NAT_DYNAMIC) {
-			yyerror("specified algorithm is applicable for "
-			    "dynamic NAT only");
-		}
-		break;
-	case NPF_ALGO_NETMAP:
-		if (sd != NPFCTL_NAT_STATIC) {
-			yyerror("specified algorithm is applicable for "
-			    "static NAT only");
-		}
-		break;
-	default:
-		// FIXME
-		am1 = npfctl_get_singlefam(ap1->ap_netaddr);
-		am2 = npfctl_get_singlefam(ap2->ap_netaddr);
-		if ((am1 && am1->fam_mask != NPF_NO_NETMASK) ||
-		    (am2 && am2->fam_mask != NPF_NO_NETMASK)) {
-			yyerror("net-to-net translation must have an "
-			    "algorithm specified");
-		}
-		break;
 	}
 
 	/*

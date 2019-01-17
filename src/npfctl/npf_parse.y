@@ -88,6 +88,9 @@ yyerror(const char *fmt, ...)
 
 %}
 
+%expect 0
+/* %expect-rr 0 */
+
 %token			ALG
 %token			ALGO
 %token			ALL

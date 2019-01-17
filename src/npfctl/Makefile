@@ -68,7 +68,7 @@ all: $(OBJS)
 	$(CC) $^ -o $(BIN) $(LDFLAGS)
 
 npf_parse.c:
-	$(YACC) -d -o npf_parse.c npf_parse.y
+	$(YACC) -v -d -o npf_parse.c npf_parse.y
 
 npf_scan.o:
 	$(LEX) -o npf_scan.c npf_scan.l

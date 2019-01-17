@@ -235,6 +235,7 @@ bool		npf_autounload_p(void);
 
 #define	NPF_NAT_PRIVMASK		0x0f000000
 
+#define	NPF_ALGO_NONE			0
 #define	NPF_ALGO_NETMAP			1
 #define	NPF_ALGO_IPHASH			2
 #define	NPF_ALGO_RR			3
