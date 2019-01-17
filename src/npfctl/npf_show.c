@@ -432,7 +432,7 @@ npfctl_print_nat(npf_conf_info_t *ctx, nl_nat_t *nt)
 {
 	nl_rule_t *rl = (nl_nat_t *)nt;
 	const char *ifname, *algo, *seg1, *seg2, *arrow;
-	npf_addr_t addr;
+	const npf_addr_t *addr;
 	in_port_t port;
 	size_t alen;
 	u_int flags;
@@ -442,10 +442,20 @@ npfctl_print_nat(npf_conf_info_t *ctx, nl_nat_t *nt)
 	ifname = npf_rule_getinterface(rl);
 	assert(ifname != NULL);
 
-	/* Get the translation address (and port, if used). */
-	npf_nat_getmap(nt, &addr, &alen, &port);
-	seg = npfctl_print_addrmask(alen, "%a", &addr, NPF_NO_NETMASK);
-	if (port) {
+	/* Get the translation address or table (and port, if used). */
+	addr = npf_nat_getaddr(nt, &alen);
+	if (addr) {
+		seg = npfctl_print_addrmask(alen, "%a", addr, NPF_NO_NETMASK);
+	} else {
+		const unsigned tid = npf_nat_gettable(nt);
+		const char *tname;
+		bool ifaddr;
+
+		tname = npfctl_table_getname(tid, &ifaddr);
+		easprintf(&seg, ifaddr ? "ifaddrs(%s)" : "<%s>", tname);
+	}
+
+	if ((port = npf_nat_getport(nt)) != 0) {
 		char *p;
 		easprintf(&p, "%s port %u", seg, ntohs(port));
 		free(seg), seg = p;

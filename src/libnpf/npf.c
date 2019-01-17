@@ -838,12 +838,30 @@ npf_nat_getalgo(nl_nat_t *nt)
 	return dnvlist_get_number(nt->rule_dict, "nat-algo", 0);
 }
 
-void
-npf_nat_getmap(nl_nat_t *nt, npf_addr_t *addr, size_t *alen, in_port_t *port)
+const npf_addr_t *
+npf_nat_getaddr(nl_nat_t *nt, size_t *alen)
 {
-	const void *data = nvlist_get_binary(nt->rule_dict, "nat-ip", alen);
-	memcpy(addr, data, *alen);
-	*port = (uint16_t)dnvlist_get_number(nt->rule_dict, "nat-port", 0);
+	const void *data;
+
+	if (nvlist_exists(nt->rule_dict, "nat-ip")) {
+		data = nvlist_get_binary(nt->rule_dict, "nat-ip", alen);
+	} else {
+		data = NULL;
+		*alen = 0;
+	}
+	return data;
+}
+
+in_port_t
+npf_nat_getport(nl_nat_t *nt)
+{
+	return (uint16_t)dnvlist_get_number(nt->rule_dict, "nat-port", 0);
+}
+
+unsigned
+npf_nat_gettable(nl_nat_t *nt)
+{
+	return dnvlist_get_number(nt->rule_dict, "nat-table-id", 0);
 }
 
 /*

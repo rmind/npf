@@ -173,7 +173,7 @@ npfctl_table_getid(const char *name)
 }
 
 const char *
-npfctl_table_getname(unsigned tid)
+npfctl_table_getname(unsigned tid, bool *ifaddr)
 {
 	const char *name = NULL;
 	nl_table_t *tl;
@@ -187,6 +187,16 @@ npfctl_table_getname(unsigned tid)
 		if (npf_table_getid(tl) == tid) {
 			name = npf_table_getname(tl);
 		}
+	}
+	if (!name) {
+		return NULL;
+	}
+	if (strncmp(name, NPF_IFNET_TABLE_PREF,
+	    sizeof(NPF_IFNET_TABLE_PREF) - 1) == 0) {
+		name += sizeof(NPF_IFNET_TABLE_PREF) - 1;
+		*ifaddr = true;
+	} else {
+		*ifaddr = false;
 	}
 	return name;
 }
@@ -750,11 +760,11 @@ npfctl_build_natseg(int sd, int type, unsigned mflags, const char *ifname,
 			    &am1->fam_addr, &am2->fam_addr);
 			break;
 		case NPF_ALGO_NETMAP:
-			if ((am1 && am1->fam_mask != NPF_NO_NETMASK) ||
-			    (am2 && am2->fam_mask != NPF_NO_NETMASK)) {
-				yyerror("static net-to-net translation "
-				    "must have an algorithm specified");
+			if (am1->fam_mask != am2->fam_mask) {
+				yyerror("net-to-net mapping using the "
+				    "NETMAP algorithm must be 1:1");
 			}
+			break;
 		case NPF_ALGO_NONE:
 			if (am1->fam_mask != NPF_NO_NETMASK ||
 			    am2->fam_mask != NPF_NO_NETMASK) {
