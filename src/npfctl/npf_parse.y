@@ -88,8 +88,10 @@ yyerror(const char *fmt, ...)
 
 %}
 
+/*
 %expect 0
-/* %expect-rr 0 */
+%expect-rr 0
+*/
 
 %token			ALG
 %token			ALGO
@@ -175,19 +177,19 @@ yyerror(const char *fmt, ...)
 %token	<str>		TABLE_ID
 %token	<str>		VAR_ID
 
-%type	<str>		addr, some_name, table_store, dynamic_ifaddrs
-%type	<str>		proc_param_val, opt_apply, ifname, on_ifname, ifref
-%type	<num>		port, opt_final, number, afamily, opt_family
-%type	<num>		block_or_pass, rule_dir, group_dir, block_opts
-%type	<num>		maybe_not, opt_stateful, icmp_type, table_type
-%type	<num>		map_sd, map_algo, map_flags, map_type
-%type	<var>		static_ifaddrs, addr_or_ifaddr
-%type	<var>		port_range, icmp_type_and_code
-%type	<var>		filt_addr, addr_and_mask, tcp_flags, tcp_flags_and_mask
-%type	<var>		procs, proc_call, proc_param_list, proc_param
-%type	<var>		element, list_elems, list, value
+%type	<str>		addr some_name table_store dynamic_ifaddrs
+%type	<str>		proc_param_val opt_apply ifname on_ifname ifref
+%type	<num>		port opt_final number afamily opt_family
+%type	<num>		block_or_pass rule_dir group_dir block_opts
+%type	<num>		maybe_not opt_stateful icmp_type table_type
+%type	<num>		map_sd map_algo map_flags map_type
+%type	<var>		static_ifaddrs addr_or_ifaddr
+%type	<var>		port_range icmp_type_and_code
+%type	<var>		filt_addr addr_and_mask tcp_flags tcp_flags_and_mask
+%type	<var>		procs proc_call proc_param_list proc_param
+%type	<var>		element list_elems list value
 %type	<addrport>	mapseg
-%type	<filtopts>	filt_opts, all_or_filt_opts
+%type	<filtopts>	filt_opts all_or_filt_opts
 %type	<optproto>	proto opt_proto
 %type	<rulegroup>	group_opts
 %type	<tf>		onoff
