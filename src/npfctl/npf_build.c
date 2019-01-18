@@ -173,17 +173,13 @@ npfctl_table_getid(const char *name)
 }
 
 const char *
-npfctl_table_getname(unsigned tid, bool *ifaddr)
+npfctl_table_getname(nl_config_t *ncf, unsigned tid, bool *ifaddr)
 {
 	const char *name = NULL;
 	nl_table_t *tl;
 
-	/* XXX dynamic ruleset */
-	if (!npf_conf) {
-		return NULL;
-	}
 	/* XXX: Iterating all as we need to rewind for the next call. */
-	while ((tl = npf_table_iterate(npf_conf)) != NULL) {
+	while ((tl = npf_table_iterate(ncf)) != NULL) {
 		if (npf_table_getid(tl) == tid) {
 			name = npf_table_getname(tl);
 		}

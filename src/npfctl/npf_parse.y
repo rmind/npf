@@ -875,7 +875,8 @@ ifname
 			break;
 		case NPFVAR_TABLE:
 			tid = npfvar_get_data(vp, type, 0);
-			name = npfctl_table_getname(*tid, &ifaddr);
+			name = npfctl_table_getname(npfctl_config_ref(),
+			    *tid, &ifaddr);
 			if (!ifaddr) {
 				yyerror("variable '%s' references a table "
 				    "%s instead of an interface", $1, name);

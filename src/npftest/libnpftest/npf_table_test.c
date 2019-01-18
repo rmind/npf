@@ -6,7 +6,7 @@
 
 #ifdef _KERNEL
 #include <sys/types.h>
-#include <sys/malloc.h>
+#include <sys/kmem.h>
 #endif
 
 #ifdef __linux__
@@ -241,7 +241,7 @@ test_nocopy(npf_tableset_t *tblset)
 		npf_table_t *t;
 		int error;
 
-		addr = calloc(1, sizeof(npf_addr_t));
+		addr = kmem_zalloc(sizeof(npf_addr_t), KM_SLEEP);
 		assert(addr != NULL);
 		addr->word32[0] = inet_addr("172.16.90.10");
 
@@ -258,7 +258,7 @@ test_nocopy(npf_tableset_t *tblset)
 		CHECK_TRUE(error == 0);
 
 		CHECK_TRUE(*(volatile unsigned char *)addr == 0xa5);
-		free(addr);
+		kmem_free(addr, sizeof(npf_addr_t));
 	}
 	return true;
 }

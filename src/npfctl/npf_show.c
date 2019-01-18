@@ -100,7 +100,7 @@ print_indent(npf_conf_info_t *ctx, unsigned level)
 	ctx->level = level;
 
 	while (level--) {
-		fprintf(ctx->fp, "  ");
+		fprintf(ctx->fp, "\t");
 	}
 }
 
@@ -179,25 +179,14 @@ print_number(npf_conf_info_t *ctx __unused, const uint32_t *words)
 static char *
 print_table(npf_conf_info_t *ctx, const uint32_t *words)
 {
-	unsigned tid = words[0];
-	nl_table_t *tl;
-	char *p = NULL;
+	const unsigned tid = words[0];
+	const char *tname;
+	char *s = NULL;
+	bool ifaddr;
 
-	/* XXX: Iterating all as we need to rewind for the next call. */
-	while ((tl = npf_table_iterate(ctx->conf)) != NULL) {
-		if (!p && npf_table_getid(tl) == tid) {
-			const char *tname = npf_table_getname(tl);
-			const size_t preflen = NPF_IFNET_TABLE_PREFLEN;
-
-			if (!strncmp(tname, NPF_IFNET_TABLE_PREF, preflen)) {
-				easprintf(&p, "ifaddrs(%s)", tname + preflen);
-			} else {
-				easprintf(&p, "<%s>", tname);
-			}
-		}
-	}
-	assert(p != NULL);
-	return p;
+	tname = npfctl_table_getname(ctx->conf, tid, &ifaddr);
+	easprintf(&s, ifaddr ? "ifaddrs(%s)" : "<%s>", tname);
+	return s;
 }
 
 static char *
@@ -469,7 +458,7 @@ npfctl_print_nat(npf_conf_info_t *ctx, nl_nat_t *nt)
 		const char *tname;
 		bool ifaddr;
 
-		tname = npfctl_table_getname(tid, &ifaddr);
+		tname = npfctl_table_getname(ctx->conf, tid, &ifaddr);
 		easprintf(&seg, ifaddr ? "ifaddrs(%s)" : "<%s>", tname);
 	}
 

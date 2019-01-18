@@ -626,9 +626,10 @@ npf_table_remove(npf_table_t *t, const int alen,
 	}
 	mutex_exit(&t->t_lock);
 
-	// FIXME: thmap_gc
-
 	if (ent) {
+#ifdef FIXME
+		npf_config_sync(npf);
+#endif
 		pool_cache_put(tblent_cache, ent);
 	}
 	return error;

@@ -118,7 +118,7 @@ char *		npfctl_print_addrmask(int, const char *, const npf_addr_t *,
 		    npf_netmask_t);
 void		npfctl_note_interface(const char *);
 unsigned	npfctl_table_getid(const char *);
-const char *	npfctl_table_getname(unsigned, bool *);
+const char *	npfctl_table_getname(nl_config_t *, unsigned, bool *);
 int		npfctl_protono(const char *);
 in_port_t	npfctl_portno(const char *);
 uint8_t		npfctl_icmpcode(int, uint8_t, const char *);
