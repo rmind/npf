@@ -463,21 +463,20 @@ npf_table_check(npf_tableset_t *ts, const char *name, uint64_t tid, uint64_t typ
 }
 
 static int
-table_cidr_check(const u_int aidx, const npf_addr_t *addr,
-    const npf_netmask_t mask)
+table_cidr_check(int alen, const npf_addr_t *addr, npf_netmask_t mask)
 {
-	if (aidx > 1) {
-		return EINVAL;
-	}
-	if (mask > NPF_MAX_NETMASK && mask != NPF_NO_NETMASK) {
-		return EINVAL;
-	}
-
-	/*
-	 * For IPv4 (aidx = 0) - 32 and for IPv6 (aidx = 1) - 128.
-	 * If it is a host - shall use NPF_NO_NETMASK.
-	 */
-	if (mask > (aidx ? 128 : 32) && mask != NPF_NO_NETMASK) {
+	switch (alen) {
+	case sizeof(struct in_addr):
+		if (__predict_false(mask > 32 && mask != NPF_NO_NETMASK)) {
+			return EINVAL;
+		}
+		break;
+	case sizeof(struct in6_addr):
+		if (__predict_false(mask > 128 && mask != NPF_NO_NETMASK)) {
+			return EINVAL;
+		}
+		break;
+	default:
 		return EINVAL;
 	}
 	return 0;
@@ -490,11 +489,10 @@ int
 npf_table_insert(npf_table_t *t, const int alen,
     const npf_addr_t *addr, const npf_netmask_t mask)
 {
-	const unsigned aidx = NPF_ADDRLEN2IDX(alen);
 	npf_tblent_t *ent;
 	int error;
 
-	error = table_cidr_check(aidx, addr, mask);
+	error = table_cidr_check(alen, addr, mask);
 	if (error) {
 		return error;
 	}
@@ -511,12 +509,15 @@ npf_table_insert(npf_table_t *t, const int alen,
 	case NPF_TABLE_IPSET:
 		/*
 		 * Hashmap supports only IPs.
+		 *
+		 * Note: the key must be already persistent, since we
+		 * use THMAP_NOCOPY.
 		 */
 		if (mask != NPF_NO_NETMASK) {
 			error = EINVAL;
 			break;
 		}
-		if (thmap_put(t->t_map, addr, alen, ent) == ent) {
+		if (thmap_put(t->t_map, &ent->te_addr, alen, ent) == ent) {
 			LIST_INSERT_HEAD(&t->t_list, ent, te_listent);
 			t->t_nitems++;
 		} else {
@@ -585,11 +586,10 @@ int
 npf_table_remove(npf_table_t *t, const int alen,
     const npf_addr_t *addr, const npf_netmask_t mask)
 {
-	const unsigned aidx = NPF_ADDRLEN2IDX(alen);
 	npf_tblent_t *ent = NULL;
-	int error = ENOENT;
+	int error;
 
-	error = table_cidr_check(aidx, addr, mask);
+	error = table_cidr_check(alen, addr, mask);
 	if (error) {
 		return error;
 	}
@@ -601,6 +601,8 @@ npf_table_remove(npf_table_t *t, const int alen,
 		if (__predict_true(ent != NULL)) {
 			LIST_REMOVE(ent, te_listent);
 			t->t_nitems--;
+		} else {
+			error = ENOENT;
 		}
 		break;
 	case NPF_TABLE_LPM:
@@ -610,6 +612,8 @@ npf_table_remove(npf_table_t *t, const int alen,
 			lpm_remove(t->t_lpm, &ent->te_addr,
 			    ent->te_alen, ent->te_preflen);
 			t->t_nitems--;
+		} else {
+			error = ENOENT;
 		}
 		break;
 	case NPF_TABLE_CONST:
@@ -637,13 +641,14 @@ npf_table_remove(npf_table_t *t, const int alen,
 int
 npf_table_lookup(npf_table_t *t, const int alen, const npf_addr_t *addr)
 {
-	const unsigned aidx = NPF_ADDRLEN2IDX(alen);
 	const void *data;
 	size_t dlen;
 	bool found;
+	int error;
 
-	if (__predict_false(aidx > 1)) {
-		return EINVAL;
+	error = table_cidr_check(alen, addr, NPF_NO_NETMASK);
+	if (error) {
+		return error;
 	}
 
 	switch (t->t_type) {

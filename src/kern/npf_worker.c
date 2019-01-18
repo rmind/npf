@@ -62,7 +62,12 @@ static unsigned			npf_worker_count	__read_mostly;
 int
 npf_worker_sysinit(unsigned nworkers)
 {
-	npf_workers = kmem_zalloc(sizeof(npf_worker_t) * nworkers, KM_SLEEP);
+	if (nworkers) {
+		const size_t len = sizeof(npf_worker_t) * nworkers;
+		npf_workers = kmem_zalloc(len, KM_SLEEP);
+	} else {
+		npf_workers = NULL;
+	}
 	npf_worker_count = nworkers;
 
 	for (unsigned i = 0; i < nworkers; i++) {
@@ -100,7 +105,10 @@ npf_worker_sysfini(void)
 		cv_destroy(&wrk->worker_cv);
 		mutex_destroy(&wrk->worker_lock);
 	}
-	kmem_free(npf_workers, sizeof(npf_worker_t) * npf_worker_count);
+	if (npf_workers) {
+		const size_t len = sizeof(npf_worker_t) * npf_worker_count;
+		kmem_free(npf_workers, len);
+	}
 }
 
 void

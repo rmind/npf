@@ -161,7 +161,11 @@ npf_conn_test(bool verbose)
 	bool ok;
 
 	lverbose = verbose;
+
+	npf_config_enter(npf);
 	npf_conn_tracking(npf, true);
+	npf_config_exit(npf);
+
 	ok = run_gc_tests();
 
 	/* We *MUST* restore the valid conndb. */

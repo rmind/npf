@@ -839,15 +839,17 @@ npf_nat_getalgo(nl_nat_t *nt)
 }
 
 const npf_addr_t *
-npf_nat_getaddr(nl_nat_t *nt, size_t *alen)
+npf_nat_getaddr(nl_nat_t *nt, size_t *alen, npf_netmask_t *mask)
 {
 	const void *data;
 
 	if (nvlist_exists(nt->rule_dict, "nat-ip")) {
 		data = nvlist_get_binary(nt->rule_dict, "nat-ip", alen);
+		*mask = nvlist_get_number(nt->rule_dict, "nat-mask");
 	} else {
 		data = NULL;
 		*alen = 0;
+		*mask = NPF_NO_NETMASK;
 	}
 	return data;
 }

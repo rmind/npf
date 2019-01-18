@@ -61,11 +61,11 @@ typedef struct {
 	long		fpos;
 	u_int		flags;
 	uint32_t	curmark;
+	unsigned	level;
 } npf_conf_info_t;
 
 static npf_conf_info_t	stdout_ctx;
 
-static void	print_indent(npf_conf_info_t *, u_int);
 static void	print_linesep(npf_conf_info_t *);
 
 void
@@ -74,6 +74,7 @@ npfctl_show_init(void)
 	stdout_ctx.fp = stdout;
 	stdout_ctx.fpos = 0;
 	stdout_ctx.flags = 0;
+	stdout_ctx.level = 0;
 }
 
 /*
@@ -81,13 +82,26 @@ npfctl_show_init(void)
  */
 
 static void
-print_indent(npf_conf_info_t *ctx, u_int level)
+print_indent(npf_conf_info_t *ctx, unsigned level)
 {
-	if (level == 0) { /* XXX */
+	if (level < ctx->level) {
+		/*
+		 * Level decrease -- end of the group.
+		 * Print the group closing curly bracket.
+		 */
+		fputs("}\n", ctx->fp);
+	}
+	if (level == 0) {
+		/*
+		 * Group level -- separate groups by a trailing new line.
+		 */
 		print_linesep(ctx);
 	}
-	while (level--)
-		fprintf(ctx->fp, "\t");
+	ctx->level = level;
+
+	while (level--) {
+		fprintf(ctx->fp, "  ");
+	}
 }
 
 static void
@@ -173,7 +187,7 @@ print_table(npf_conf_info_t *ctx, const uint32_t *words)
 	while ((tl = npf_table_iterate(ctx->conf)) != NULL) {
 		if (!p && npf_table_getid(tl) == tid) {
 			const char *tname = npf_table_getname(tl);
-			size_t preflen = sizeof(NPF_IFNET_TABLE_PREF) - 1;
+			const size_t preflen = NPF_IFNET_TABLE_PREFLEN;
 
 			if (!strncmp(tname, NPF_IFNET_TABLE_PREF, preflen)) {
 				easprintf(&p, "ifaddrs(%s)", tname + preflen);
@@ -408,9 +422,13 @@ npfctl_print_rule(npf_conf_info_t *ctx, nl_rule_t *rl)
 	if ((ifname = npf_rule_getinterface(rl)) != NULL) {
 		fprintf(ctx->fp, "on %s ", ifname);
 	}
-
+	if (attr == (NPF_RULE_GROUP | NPF_RULE_IN | NPF_RULE_OUT) && !ifname) {
+		/* The default group is a special case. */
+		fprintf(ctx->fp, "default ");
+	}
 	if ((attr & NPF_DYNAMIC_GROUP) == NPF_RULE_GROUP) {
 		/* Group; done. */
+		fprintf(ctx->fp, "{ ");
 		goto out;
 	}
 
@@ -421,7 +439,6 @@ npfctl_print_rule(npf_conf_info_t *ctx, nl_rule_t *rl)
 	if ((rproc = npf_rule_getproc(rl)) != NULL) {
 		fprintf(ctx->fp, "apply \"%s\" ", rproc);
 	}
-
 out:
 	npfctl_print_id(ctx, rl);
 	fputs("\n", ctx->fp);
@@ -433,6 +450,7 @@ npfctl_print_nat(npf_conf_info_t *ctx, nl_nat_t *nt)
 	nl_rule_t *rl = (nl_nat_t *)nt;
 	const char *ifname, *algo, *seg1, *seg2, *arrow;
 	const npf_addr_t *addr;
+	npf_netmask_t mask;
 	in_port_t port;
 	size_t alen;
 	u_int flags;
@@ -443,9 +461,9 @@ npfctl_print_nat(npf_conf_info_t *ctx, nl_nat_t *nt)
 	assert(ifname != NULL);
 
 	/* Get the translation address or table (and port, if used). */
-	addr = npf_nat_getaddr(nt, &alen);
+	addr = npf_nat_getaddr(nt, &alen, &mask);
 	if (addr) {
-		seg = npfctl_print_addrmask(alen, "%a", addr, NPF_NO_NETMASK);
+		seg = npfctl_print_addrmask(alen, "%a", addr, mask);
 	} else {
 		const unsigned tid = npf_nat_gettable(nt);
 		const char *tname;
@@ -557,7 +575,7 @@ npfctl_config_show(int fd)
 		nl_rproc_t *rp;
 		nl_nat_t *nt;
 		nl_table_t *tl;
-		u_int level;
+		unsigned level;
 
 		while ((tl = npf_table_iterate(ncf)) != NULL) {
 			npfctl_print_table(ctx, tl);
@@ -579,7 +597,7 @@ npfctl_config_show(int fd)
 			print_indent(ctx, level);
 			npfctl_print_rule(ctx, rl);
 		}
-		print_linesep(ctx);
+		print_indent(ctx, 0);
 	}
 	npf_config_destroy(ncf);
 	return 0;
@@ -591,7 +609,7 @@ npfctl_ruleset_show(int fd, const char *ruleset_name)
 	npf_conf_info_t *ctx = &stdout_ctx;
 	nl_config_t *ncf;
 	nl_rule_t *rl;
-	u_int level;
+	unsigned level;
 	int error;
 
 	ncf = npf_config_create();

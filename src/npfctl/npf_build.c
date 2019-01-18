@@ -191,9 +191,8 @@ npfctl_table_getname(unsigned tid, bool *ifaddr)
 	if (!name) {
 		return NULL;
 	}
-	if (strncmp(name, NPF_IFNET_TABLE_PREF,
-	    sizeof(NPF_IFNET_TABLE_PREF) - 1) == 0) {
-		name += sizeof(NPF_IFNET_TABLE_PREF) - 1;
+	if (!strncmp(name, NPF_IFNET_TABLE_PREF, NPF_IFNET_TABLE_PREFLEN)) {
+		name += NPF_IFNET_TABLE_PREFLEN;
 		*ifaddr = true;
 	} else {
 		*ifaddr = false;

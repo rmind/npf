@@ -106,13 +106,13 @@ fill_with_ip4(npf_tableset_t *tblset)
 		error = npf_table_insert(t, alen, addr, nm);
 		CHECK_TRUE(error == 0);
 		error = npf_table_insert(t, alen, addr, nm);
-		CHECK_TRUE(error != 0);
+		CHECK_TRUE(error != 0); // duplicate
 
 		t = npf_tableset_getbyname(tblset, LPM_NAME);
 		error = npf_table_insert(t, alen, addr, nm);
 		CHECK_TRUE(error == 0);
 		error = npf_table_insert(t, alen, addr, nm);
-		CHECK_TRUE(error != 0);
+		CHECK_TRUE(error != 0); // duplicate
 	}
 	return true;
 }
@@ -169,9 +169,15 @@ clear_ip4(npf_tableset_t *tblset)
 		error = npf_table_remove(t, alen, addr, nm);
 		CHECK_TRUE(error == 0);
 
+		error = npf_table_remove(t, alen, addr, nm);
+		CHECK_TRUE(error != 0);
+
 		t = npf_tableset_getbyname(tblset, LPM_NAME);
 		error = npf_table_remove(t, alen, addr, nm);
 		CHECK_TRUE(error == 0);
+
+		error = npf_table_remove(t, alen, addr, nm);
+		CHECK_TRUE(error != 0);
 	}
 	return true;
 }
@@ -202,7 +208,15 @@ test_basic(npf_tableset_t *tblset)
 	error = npf_tableset_insert(tblset, t);
 	CHECK_TRUE(error == 0);
 
-	/* Attempt to match non-existing entries - should fail. */
+	/* Table for interface addresses. */
+	t = npf_table_create(IFADDR_NAME, IFADDR_TID, NPF_TABLE_IFADDR, NULL, 0);
+	CHECK_TRUE(t != NULL);
+	error = npf_tableset_insert(tblset, t);
+	CHECK_TRUE(error == 0);
+
+	/*
+	 * Attempt to match some non-existing entries - should fail.
+	 */
 	addr->word32[0] = inet_addr(ip_list[0]);
 
 	t = npf_tableset_getbyname(tblset, IPSET_NAME);
@@ -213,6 +227,39 @@ test_basic(npf_tableset_t *tblset)
 	error = npf_table_lookup(t, alen, addr);
 	CHECK_TRUE(error != 0);
 
+	return true;
+}
+
+static bool
+test_nocopy(npf_tableset_t *tblset)
+{
+	const int alen = sizeof(struct in_addr);
+	const char *tables[] = { IPSET_NAME, LPM_NAME, IFADDR_NAME };
+	npf_addr_t *addr, lookup_addr;
+
+	for (unsigned i = 0; i < __arraycount(tables); i++) {
+		npf_table_t *t;
+		int error;
+
+		addr = calloc(1, sizeof(npf_addr_t));
+		assert(addr != NULL);
+		addr->word32[0] = inet_addr("172.16.90.10");
+
+		t = npf_tableset_getbyname(tblset, tables[i]);
+		(void)npf_table_flush(t);
+
+		error = npf_table_insert(t, alen, addr, NPF_NO_NETMASK);
+		CHECK_TRUE(error == 0);
+
+		memcpy(&lookup_addr, addr, alen);
+		memset(addr, 0xa5, alen); // explicit memset
+
+		error = npf_table_lookup(t, alen, &lookup_addr);
+		CHECK_TRUE(error == 0);
+
+		CHECK_TRUE(*(volatile unsigned char *)addr == 0xa5);
+		free(addr);
+	}
 	return true;
 }
 
@@ -356,15 +403,9 @@ static bool
 test_ifaddr_table(npf_tableset_t *tblset)
 {
 	npf_addr_t addr_storage, *addr = &addr_storage;
-	npf_table_t *t;
-	int error;
+	npf_table_t *t = npf_tableset_getbyname(tblset, IFADDR_NAME);
+	//int error;
 	bool ok;
-
-	/* Table ID 4, for interface addresses. */
-	t = npf_table_create(IFADDR_NAME, IFADDR_TID, NPF_TABLE_IFADDR, NULL, 0);
-	CHECK_TRUE(t != NULL);
-	error = npf_tableset_insert(tblset, t);
-	CHECK_TRUE(error == 0);
 
 	/* Two IPv4 addresses. */
 	ok = ip4list_insert_lookup(t, 0);
@@ -439,6 +480,9 @@ npf_table_test(bool verbose, void *blob, size_t size)
 	 * Remove the above IPv4 addresses -- they must have been untouched.
 	 */
 	ok = clear_ip4(tblset);
+	CHECK_TRUE(ok);
+
+	ok = test_nocopy(tblset);
 	CHECK_TRUE(ok);
 
 	npf_tableset_destroy(tblset);

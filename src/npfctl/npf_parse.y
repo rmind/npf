@@ -89,9 +89,10 @@ yyerror(const char *fmt, ...)
 %}
 
 /*
+ * No conflicts allowed.  Keep it this way.
+ */
 %expect 0
 %expect-rr 0
-*/
 
 %token			ALG
 %token			ALGO
@@ -695,7 +696,6 @@ filt_opts
 filt_addr
 	: list			{ $$ = $1; }
 	| addr_or_ifaddr	{ $$ = $1; }
-	| TABLE_ID		{ $$ = npfctl_parse_table_id($1); }
 	| ANY			{ $$ = NULL; }
 	;
 

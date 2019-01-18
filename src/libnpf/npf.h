@@ -134,7 +134,7 @@ int		npf_table_gettype(nl_table_t *);
 nl_nat_t *	npf_nat_iterate(nl_config_t *);
 int		npf_nat_gettype(nl_nat_t *);
 unsigned	npf_nat_getflags(nl_nat_t *);
-const npf_addr_t *npf_nat_getaddr(nl_nat_t *, size_t *);
+const npf_addr_t *npf_nat_getaddr(nl_nat_t *, size_t *, npf_netmask_t *);
 in_port_t	npf_nat_getport(nl_nat_t *);
 unsigned	npf_nat_gettable(nl_nat_t *);
 unsigned	npf_nat_getalgo(nl_nat_t *);
