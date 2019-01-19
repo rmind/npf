@@ -389,7 +389,7 @@ map_type
 	;
 
 mapseg
-	: addr_or_ifaddr port_range
+	: filt_addr port_range
 	{
 		$$.ap_netaddr = $1;
 		$$.ap_portrange = $2;
@@ -398,9 +398,9 @@ mapseg
 
 map
 	: MAP ifref map_sd map_algo map_flags mapseg map_type mapseg
-	  PASS opt_proto all_or_filt_opts
+	  PASS opt_family opt_proto all_or_filt_opts
 	{
-		npfctl_build_natseg($3, $7, $5, $2, &$6, &$8, &$10, &$11, $4);
+		npfctl_build_natseg($3, $7, $5, $2, &$6, &$8, &$11, &$12, $4);
 	}
 	| MAP ifref map_sd map_algo map_flags mapseg map_type mapseg
 	{

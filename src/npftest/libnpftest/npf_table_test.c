@@ -443,8 +443,10 @@ test_ipset_gc(npf_tableset_t *tblset)
 	npf_table_t *t = npf_tableset_getbyname(tblset, IPSET_NAME);
 	npf_t *npf = npf_getkernctx();
 
+	npf_config_enter(npf);
 	npf_table_gc(npf, t);
 	npf_table_flush(t);
+	npf_config_exit(npf);
 }
 
 bool
