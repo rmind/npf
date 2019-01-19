@@ -37,7 +37,7 @@
 #include <sys/param.h>
 #include <sys/types.h>
 
-#define	NPF_VERSION		20
+#define	NPF_VERSION		21
 
 #if defined(_NPF_STANDALONE)
 #include "npf_stand.h"

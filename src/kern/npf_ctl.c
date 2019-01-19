@@ -833,6 +833,7 @@ npfctl_table(npf_t *npf, void *data)
 		error = EINVAL;
 		break;
 	}
+	npf_table_gc(npf, t);
 	npf_config_exit(npf);
 
 	return error;

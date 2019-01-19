@@ -437,6 +437,16 @@ test_ifaddr_table(npf_tableset_t *tblset)
 	return true;
 }
 
+static void
+test_ipset_gc(npf_tableset_t *tblset)
+{
+	npf_table_t *t = npf_tableset_getbyname(tblset, IPSET_NAME);
+	npf_t *npf = npf_getkernctx();
+
+	npf_table_gc(npf, t);
+	npf_table_flush(t);
+}
+
 bool
 npf_table_test(bool verbose, void *blob, size_t size)
 {
@@ -484,6 +494,8 @@ npf_table_test(bool verbose, void *blob, size_t size)
 
 	ok = test_nocopy(tblset);
 	CHECK_TRUE(ok);
+
+	test_ipset_gc(tblset);
 
 	npf_tableset_destroy(tblset);
 	return true;

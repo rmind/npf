@@ -349,6 +349,7 @@ int		npf_table_lookup(npf_table_t *, const int, const npf_addr_t *);
 npf_addr_t *	npf_table_getsome(npf_table_t *, const int, unsigned);
 int		npf_table_list(npf_table_t *, void *, size_t);
 int		npf_table_flush(npf_table_t *);
+void		npf_table_gc(npf_t *, npf_table_t *);
 
 /* Ruleset interface. */
 npf_ruleset_t *	npf_ruleset_create(size_t);

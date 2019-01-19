@@ -73,7 +73,10 @@ struct npf_table {
 	 * There are separate trees for IPv4 and IPv6.
 	 */
 	union {
-		thmap_t *		t_map;
+		struct {
+			thmap_t *	t_map;
+			LIST_HEAD(, npf_tblent) t_gc;
+		};
 		lpm_t *			t_lpm;
 		struct {
 			void *		t_blob;
@@ -415,6 +418,7 @@ npf_table_destroy(npf_table_t *t)
 	switch (t->t_type) {
 	case NPF_TABLE_IPSET:
 		table_ipset_flush(t);
+		npf_table_gc(NULL, t);
 		thmap_destroy(t->t_map);
 		break;
 	case NPF_TABLE_LPM:
@@ -622,6 +626,8 @@ npf_table_remove(npf_table_t *t, const int alen,
 		ent = thmap_del(t->t_map, addr, alen);
 		if (__predict_true(ent != NULL)) {
 			LIST_REMOVE(ent, te_listent);
+			LIST_INSERT_HEAD(&t->t_gc, ent, te_listent);
+			ent = NULL; // to be G/C'ed
 			t->t_nitems--;
 		} else {
 			error = ENOENT;
@@ -649,9 +655,6 @@ npf_table_remove(npf_table_t *t, const int alen,
 	mutex_exit(&t->t_lock);
 
 	if (ent) {
-#ifdef FIXME
-		npf_config_sync(npf);
-#endif
 		pool_cache_put(tblent_cache, ent);
 	}
 	return error;
@@ -843,4 +846,27 @@ npf_table_flush(npf_table_t *t)
 	}
 	mutex_exit(&t->t_lock);
 	return error;
+}
+
+void
+npf_table_gc(npf_t *npf, npf_table_t *t)
+{
+	npf_tblent_t *ent;
+	void *ref;
+
+	if (t->t_type != NPF_TABLE_IPSET || LIST_EMPTY(&t->t_gc)) {
+		return;
+	}
+
+	ref = thmap_stage_gc(t->t_map);
+	if (npf) {
+		npf_config_locked_p(npf);
+		npf_config_sync(npf);
+	}
+	thmap_gc(t->t_map, ref);
+
+	while ((ent = LIST_FIRST(&t->t_gc)) != NULL) {
+		LIST_REMOVE(ent, te_listent);
+		pool_cache_put(tblent_cache, ent);
+	}
 }
