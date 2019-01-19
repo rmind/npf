@@ -1,4 +1,4 @@
-/*	$NetBSD: npftest.c,v 1.22 2018/09/29 14:41:36 rmind Exp $	*/
+/*	$NetBSD: npftest.c,v 1.23 2019/01/19 21:19:32 rmind Exp $	*/
 
 /*
  * NPF testing framework.
@@ -309,19 +309,19 @@ main(int argc, char **argv)
 			fail |= result("state", ok);
 			tname_matched = true;
 		}
+
+		if (!testname || strcmp("conn", testname) == 0) {
+			srandom(1);
+			ok = rumpns_npf_conn_test(verbose);
+			fail |= result("conn", ok);
+			tname_matched = true;
+		}
 	}
 
 	if (test && config) {
 		if (!testname || strcmp("rule", testname) == 0) {
 			ok = rumpns_npf_rule_test(verbose);
 			fail |= result("rule", ok);
-			tname_matched = true;
-		}
-
-		if (!testname || strcmp("conn", testname) == 0) {
-			srandom(1);
-			ok = rumpns_npf_conn_test(verbose);
-			fail |= result("conn", ok);
 			tname_matched = true;
 		}
 

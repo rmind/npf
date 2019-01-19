@@ -28,7 +28,7 @@
  */
 
 #include <sys/cdefs.h>
-__RCSID("$NetBSD: npfctl.c,v 1.56 2018/09/29 14:41:36 rmind Exp $");
+__RCSID("$NetBSD: npfctl.c,v 1.57 2019/01/19 21:19:32 rmind Exp $");
 
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -347,7 +347,7 @@ again:
 	case EEXIST:
 		errx(EXIT_FAILURE, "entry already exists or is conflicting");
 	case ENOENT:
-		errx(EXIT_FAILURE, "no matching entry was not found");
+		errx(EXIT_FAILURE, "not found");
 	case EINVAL:
 		errx(EXIT_FAILURE, "invalid address, mask or table ID");
 	case ENOMEM:
@@ -378,7 +378,7 @@ again:
 	} else {
 		printf("%s: %s\n", getprogname(),
 		    nct.nct_cmd == NPF_CMD_TABLE_LOOKUP ?
-		    "matching entry found" : "success");
+		    "match" : "success");
 	}
 	exit(EXIT_SUCCESS);
 }

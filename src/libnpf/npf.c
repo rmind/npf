@@ -28,7 +28,7 @@
  */
 
 #include <sys/cdefs.h>
-__KERNEL_RCSID(0, "$NetBSD: npf.c,v 1.44 2018/09/29 14:41:36 rmind Exp $");
+__KERNEL_RCSID(0, "$NetBSD: npf.c,v 1.45 2019/01/19 21:19:31 rmind Exp $");
 
 #include <sys/types.h>
 #include <sys/mman.h>
@@ -832,12 +832,38 @@ npf_nat_getflags(nl_nat_t *nt)
 	return dnvlist_get_number(nt->rule_dict, "flags", 0);
 }
 
-void
-npf_nat_getmap(nl_nat_t *nt, npf_addr_t *addr, size_t *alen, in_port_t *port)
+unsigned
+npf_nat_getalgo(nl_nat_t *nt)
 {
-	const void *data = nvlist_get_binary(nt->rule_dict, "nat-ip", alen);
-	memcpy(addr, data, *alen);
-	*port = (uint16_t)dnvlist_get_number(nt->rule_dict, "nat-port", 0);
+	return dnvlist_get_number(nt->rule_dict, "nat-algo", 0);
+}
+
+const npf_addr_t *
+npf_nat_getaddr(nl_nat_t *nt, size_t *alen, npf_netmask_t *mask)
+{
+	const void *data;
+
+	if (nvlist_exists(nt->rule_dict, "nat-ip")) {
+		data = nvlist_get_binary(nt->rule_dict, "nat-ip", alen);
+		*mask = nvlist_get_number(nt->rule_dict, "nat-mask");
+	} else {
+		data = NULL;
+		*alen = 0;
+		*mask = NPF_NO_NETMASK;
+	}
+	return data;
+}
+
+in_port_t
+npf_nat_getport(nl_nat_t *nt)
+{
+	return (uint16_t)dnvlist_get_number(nt->rule_dict, "nat-port", 0);
+}
+
+unsigned
+npf_nat_gettable(nl_nat_t *nt)
+{
+	return dnvlist_get_number(nt->rule_dict, "nat-table-id", 0);
 }
 
 /*

@@ -36,7 +36,7 @@
 
 #ifdef _KERNEL
 #include <sys/cdefs.h>
-__KERNEL_RCSID(0, "$NetBSD: npf_mbuf.c,v 1.21 2018/09/29 14:41:36 rmind Exp $");
+__KERNEL_RCSID(0, "$NetBSD: npf_mbuf.c,v 1.22 2018/11/15 10:23:56 maxv Exp $");
 
 #include <sys/param.h>
 #include <sys/mbuf.h>

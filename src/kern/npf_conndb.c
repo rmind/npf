@@ -33,7 +33,7 @@
 
 #ifdef _KERNEL
 #include <sys/cdefs.h>
-__KERNEL_RCSID(0, "$NetBSD: npf_conndb.c,v 1.4 2018/09/29 14:41:36 rmind Exp $");
+__KERNEL_RCSID(0, "$NetBSD: npf_conndb.c,v 1.5 2019/01/19 21:19:31 rmind Exp $");
 
 #include <sys/param.h>
 #include <sys/types.h>
@@ -47,7 +47,7 @@ __KERNEL_RCSID(0, "$NetBSD: npf_conndb.c,v 1.4 2018/09/29 14:41:36 rmind Exp $")
 #include "npf_conn.h"
 #include "npf_impl.h"
 
-#define	NPF_GC_STEP		512
+#define	NPF_GC_STEP		256
 
 struct npf_conndb {
 	thmap_t *		cd_map;
@@ -252,6 +252,8 @@ npf_conndb_gc_incr(npf_conndb_t *cd, const time_t now)
 			}
 			if (con == cd->cd_marker) {
 				cd->cd_marker = next;
+				con = next;
+				continue;
 			}
 		}
 		con = next;

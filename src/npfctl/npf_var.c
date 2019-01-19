@@ -28,7 +28,7 @@
  */
 
 #include <sys/cdefs.h>
-__RCSID("$NetBSD: npf_var.c,v 1.11 2018/09/29 14:41:36 rmind Exp $");
+__RCSID("$NetBSD: npf_var.c,v 1.12 2019/01/19 21:19:32 rmind Exp $");
 
 #include <stdlib.h>
 #include <string.h>
