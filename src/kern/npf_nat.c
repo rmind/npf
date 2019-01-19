@@ -587,6 +587,7 @@ static npf_nat_t *
 npf_nat_create(npf_cache_t *npc, npf_natpolicy_t *np, npf_conn_t *con)
 {
 	const int proto = npc->npc_proto;
+	const unsigned alen = npc->npc_alen;
 	npf_addr_t *taddr;
 	npf_nat_t *nt;
 
@@ -607,11 +608,11 @@ npf_nat_create(npf_cache_t *npc, npf_natpolicy_t *np, npf_conn_t *con)
 			break;
 		case NPF_ALGO_IPHASH:
 		default:
-			idx = npf_addr_mix(npc->npc_alen,
+			idx = npf_addr_mix(alen,
 			    npc->npc_ips[NPF_SRC], npc->npc_ips[NPF_DST]);
 			break;
 		}
-		taddr = npf_table_getsome(t, idx, npc->npc_alen);
+		taddr = npf_table_getsome(t, alen, idx);
 		if (taddr == NULL) {
 			return NULL;
 		}
@@ -631,16 +632,16 @@ npf_nat_create(npf_cache_t *npc, npf_natpolicy_t *np, npf_conn_t *con)
 	nt->nt_alg = NULL;
 
 	/* Set the translation address. */
-	memcpy(&nt->nt_taddr, taddr, npc->npc_alen);
+	memcpy(&nt->nt_taddr, taddr, alen);
 
 	/* Save the original address which may be rewritten. */
 	if (np->n_type == NPF_NATOUT) {
 		/* Outbound NAT: source (think internal) address. */
-		memcpy(&nt->nt_oaddr, npc->npc_ips[NPF_SRC], npc->npc_alen);
+		memcpy(&nt->nt_oaddr, npc->npc_ips[NPF_SRC], alen);
 	} else {
 		/* Inbound NAT: destination (think external) address. */
 		KASSERT(np->n_type == NPF_NATIN);
-		memcpy(&nt->nt_oaddr, npc->npc_ips[NPF_DST], npc->npc_alen);
+		memcpy(&nt->nt_oaddr, npc->npc_ips[NPF_DST], alen);
 	}
 
 	/*
