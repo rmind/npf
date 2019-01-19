@@ -64,6 +64,9 @@ typedef struct npf_tblent {
 	npf_addr_t		te_addr;
 } npf_tblent_t;
 
+#define	NPF_ADDRLEN2IDX(alen)	((alen) >> 4)
+#define	NPF_ADDR_SLOTS		(2)
+
 struct npf_table {
 	/*
 	 * The storage type can be: a) hashmap b) LPM c) cdb.
@@ -78,8 +81,9 @@ struct npf_table {
 			struct cdbr *	t_cdb;
 		};
 		struct {
-			npf_tblent_t **	t_elements;
-			unsigned	t_allocated;
+			npf_tblent_t **	t_elements[NPF_ADDR_SLOTS];
+			unsigned	t_allocated[NPF_ADDR_SLOTS];
+			unsigned	t_used[NPF_ADDR_SLOTS];
 		};
 	} /* C11 */;
 	LIST_HEAD(, npf_tblent)		t_list;
@@ -99,14 +103,12 @@ struct npf_table {
 };
 
 struct npf_tableset {
-	u_int			ts_nitems;
+	unsigned		ts_nitems;
 	npf_table_t *		ts_map[];
 };
 
 #define	NPF_TABLESET_SIZE(n)	\
     (offsetof(npf_tableset_t, ts_map[n]) * sizeof(npf_table_t *))
-
-#define	NPF_ADDRLEN2IDX(alen)	((alen) >> 4)
 
 #define	NPF_IFADDR_STEP		4
 
@@ -324,18 +326,25 @@ table_tree_flush(npf_table_t *t)
 static void
 table_ifaddr_flush(npf_table_t *t)
 {
-	if (!t->t_allocated) {
-		KASSERT(t->t_elements == NULL);
-		return;
+	npf_tblent_t *ent;
+
+	for (unsigned i = 0; i < NPF_ADDR_SLOTS; i++) {
+		size_t len;
+
+		if (!t->t_allocated[i]) {
+			KASSERT(t->t_elements[i] == NULL);
+			continue;
+		}
+		len = t->t_allocated[i] * sizeof(npf_tblent_t *);
+		kmem_free(t->t_elements[i], len);
+		t->t_elements[i] = NULL;
+		t->t_allocated[i] = 0;
+		t->t_used[i] = 0;
 	}
-	for (unsigned i = 0; i < t->t_nitems; i++) {
-		npf_tblent_t *ent = t->t_elements[i];
+	while ((ent = LIST_FIRST(&t->t_list)) != NULL) {
 		LIST_REMOVE(ent, te_listent);
 		pool_cache_put(tblent_cache, ent);
 	}
-	kmem_free(t->t_elements, t->t_allocated * sizeof(npf_tblent_t *));
-	t->t_elements = NULL;
-	t->t_allocated = 0;
 	t->t_nitems = 0;
 }
 
@@ -482,6 +491,40 @@ table_cidr_check(int alen, const npf_addr_t *addr, npf_netmask_t mask)
 	return 0;
 }
 
+static void
+table_ifaddr_insert(npf_table_t *t, const int alen, npf_tblent_t *ent)
+{
+	const unsigned aidx = NPF_ADDRLEN2IDX(alen);
+	const unsigned allocated = t->t_allocated[aidx];
+	const unsigned used = t->t_used[aidx];
+
+	/*
+	 * No need to check for duplicates.
+	 */
+	if (allocated <= used) {
+		npf_tblent_t **old_elements = t->t_elements[aidx];
+		npf_tblent_t **elements;
+		size_t toalloc, newsize;
+
+		toalloc = roundup2(allocated + 1, NPF_IFADDR_STEP);
+		newsize = toalloc * sizeof(npf_tblent_t *);
+
+		elements = kmem_zalloc(newsize, KM_SLEEP);
+		for (unsigned i = 0; i < used; i++) {
+			elements[i] = old_elements[i];
+		}
+		if (allocated) {
+			const size_t len = allocated * sizeof(npf_tblent_t *);
+			KASSERT(old_elements != NULL);
+			kmem_free(old_elements, len);
+		}
+		t->t_elements[aidx] = elements;
+		t->t_allocated[aidx] = toalloc;
+	}
+	t->t_elements[aidx][used] = ent;
+	t->t_used[aidx]++;
+}
+
 /*
  * npf_table_insert: add an IP CIDR entry into the table.
  */
@@ -543,29 +586,8 @@ npf_table_insert(npf_table_t *t, const int alen,
 		error = EINVAL;
 		break;
 	case NPF_TABLE_IFADDR:
-		/*
-		 * No need to check for duplicates.
-		 */
-		if (t->t_allocated <= t->t_nitems) {
-			npf_tblent_t **elements;
-			size_t toalloc, newsize;
-
-			toalloc = roundup2(t->t_allocated + 1, NPF_IFADDR_STEP);
-			newsize = toalloc * sizeof(npf_tblent_t *);
-			elements = kmem_zalloc(newsize, KM_SLEEP);
-			for (unsigned i = 0; i < t->t_nitems; i++) {
-				elements[i] = t->t_elements[i];
-			}
-			if (t->t_allocated) {
-				KASSERT(t->t_elements != NULL);
-				kmem_free(t->t_elements,
-				    t->t_allocated * sizeof(npf_tblent_t *));
-			}
-			t->t_elements = elements;
-			t->t_allocated = toalloc;
-		}
+		table_ifaddr_insert(t, alen, ent);
 		LIST_INSERT_HEAD(&t->t_list, ent, te_listent);
-		t->t_elements[t->t_nitems] = ent;
 		t->t_nitems++;
 		break;
 	default:
@@ -663,27 +685,28 @@ npf_table_lookup(npf_table_t *t, const int alen, const npf_addr_t *addr)
 		break;
 	case NPF_TABLE_CONST:
 		if (cdbr_find(t->t_cdb, addr, alen, &data, &dlen) == 0) {
-			found = dlen == (u_int)alen &&
+			found = dlen == (unsigned)alen &&
 			    memcmp(addr, data, dlen) == 0;
 		} else {
 			found = false;
 		}
 		break;
-	case NPF_TABLE_IFADDR:
-		found = false;
-		for (unsigned i = 0; i < t->t_nitems; i++) {
-			const npf_tblent_t *elm = t->t_elements[i];
+	case NPF_TABLE_IFADDR: {
+		const unsigned aidx = NPF_ADDRLEN2IDX(alen);
 
-			if (elm->te_alen != alen) {
-				continue;
+		found = false;
+		for (unsigned i = 0; i < t->t_used[aidx]; i++) {
+			const npf_tblent_t *elm = t->t_elements[aidx][i];
+
+			KASSERT(elm->te_alen == alen);
+
+			if (memcmp(&elm->te_addr, addr, alen) == 0) {
+				found = true;
+				break;
 			}
-			if (memcmp(&elm->te_addr, addr, alen)) {
-				continue;
-			}
-			found = true;
-			break;
 		}
 		break;
+	}
 	default:
 		KASSERT(false);
 		found = false;
@@ -695,18 +718,22 @@ npf_table_lookup(npf_table_t *t, const int alen, const npf_addr_t *addr)
 npf_addr_t *
 npf_table_getsome(npf_table_t *t, const int alen, unsigned idx)
 {
-	//const unsigned aidx = NPF_ADDRLEN2IDX(alen);
+	const unsigned aidx = NPF_ADDRLEN2IDX(alen);
 	npf_tblent_t *elm;
+	unsigned nitems;
 
 	KASSERT(t->t_type == NPF_TABLE_IFADDR);
+	KASSERT(aidx < NPF_ADDR_SLOTS);
+
+	nitems = t->t_used[aidx];
+	if (nitems == 0) {
+		return NULL;
+	}
 
 	/*
 	 * No need to acquire the lock, since the table is immutable.
 	 */
-	if (t->t_nitems == 0) {
-		return NULL;
-	}
-	elm = t->t_elements[idx % t->t_nitems];
+	elm = t->t_elements[aidx][idx % nitems];
 	return &elm->te_addr;
 }
 

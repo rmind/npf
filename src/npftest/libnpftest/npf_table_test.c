@@ -404,7 +404,7 @@ test_ifaddr_table(npf_tableset_t *tblset)
 {
 	npf_addr_t addr_storage, *addr = &addr_storage;
 	npf_table_t *t = npf_tableset_getbyname(tblset, IFADDR_NAME);
-	//int error;
+	int error;
 	bool ok;
 
 	/* Two IPv4 addresses. */
@@ -413,12 +413,12 @@ test_ifaddr_table(npf_tableset_t *tblset)
 
 	ok = ip4list_insert_lookup(t, 1);
 	CHECK_TRUE(ok);
-#if 0
+
 	/* And one IPv6 address. */
 	memcpy(addr, ip6_list[0], sizeof(ip6_list[0]));
 	error = npf_table_insert(t, sizeof(struct in6_addr), addr, NPF_NO_NETMASK);
 	CHECK_TRUE(error == 0);
-#endif
+
 	/*
 	 * Get IPv4 addresses.
 	 */
