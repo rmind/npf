@@ -39,7 +39,7 @@
 
 #ifdef _KERNEL
 #include <sys/cdefs.h>
-__KERNEL_RCSID(0, "$NetBSD: npf_tableset.c,v 1.28 2018/09/29 14:41:36 rmind Exp $");
+__KERNEL_RCSID(0, "$NetBSD: npf_tableset.c,v 1.29 2019/01/19 21:19:32 rmind Exp $");
 
 #include <sys/param.h>
 #include <sys/types.h>

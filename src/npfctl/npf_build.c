@@ -32,7 +32,7 @@
  */
 
 #include <sys/cdefs.h>
-__RCSID("$NetBSD: npf_build.c,v 1.46 2018/09/29 14:41:36 rmind Exp $");
+__RCSID("$NetBSD: npf_build.c,v 1.47 2019/01/19 21:19:32 rmind Exp $");
 
 #include <sys/types.h>
 #define	__FAVOR_BSD

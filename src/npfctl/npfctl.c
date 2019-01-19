@@ -28,7 +28,7 @@
  */
 
 #include <sys/cdefs.h>
-__RCSID("$NetBSD: npfctl.c,v 1.56 2018/09/29 14:41:36 rmind Exp $");
+__RCSID("$NetBSD: npfctl.c,v 1.57 2019/01/19 21:19:32 rmind Exp $");
 
 #include <sys/stat.h>
 #include <sys/types.h>

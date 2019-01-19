@@ -34,7 +34,7 @@
  */
 
 #include <sys/cdefs.h>
-__RCSID("$NetBSD: npf_show.c,v 1.26 2018/09/29 14:41:36 rmind Exp $");
+__RCSID("$NetBSD: npf_show.c,v 1.27 2019/01/19 21:19:32 rmind Exp $");
 
 #include <sys/socket.h>
 #define	__FAVOR_BSD

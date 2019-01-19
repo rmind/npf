@@ -1,4 +1,4 @@
-/*	$NetBSD: npftest.c,v 1.22 2018/09/29 14:41:36 rmind Exp $	*/
+/*	$NetBSD: npftest.c,v 1.23 2019/01/19 21:19:32 rmind Exp $	*/
 
 /*
  * NPF testing framework.

@@ -36,7 +36,7 @@
 
 #ifdef _KERNEL
 #include <sys/cdefs.h>
-__KERNEL_RCSID(0, "$NetBSD: npf_ctl.c,v 1.52 2018/10/29 15:37:06 christos Exp $");
+__KERNEL_RCSID(0, "$NetBSD: npf_ctl.c,v 1.53 2019/01/19 21:19:31 rmind Exp $");
 
 #include <sys/param.h>
 #include <sys/conf.h>
