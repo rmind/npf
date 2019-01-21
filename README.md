@@ -42,6 +42,7 @@ Source in the [docs](docs) directory.
 ## Dependencies
 
 - libnv: `git clone https://github.com/rmind/nvlist`
+- thmap: `git clone https://github.com/rmind/thmap`
 - libqsbr: `git clone https://github.com/rmind/libqsbr`
 - liblpm: `git clone https://github.com/rmind/liblpm`
 - bpfjit: `git clone https://github.com/rmind/bpfjit`
