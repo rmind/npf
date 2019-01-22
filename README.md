@@ -69,3 +69,7 @@ To build the libnpf library (link using the `-lnpf` and `-lnpfkern`
 flags) packages:
 * RPM (tested on RHEL/CentOS 7): `cd pkg && make rpm`
 * DEB (tested on Debian 9): `cd pkg && make deb`
+
+## Customers
+
+<a href="https://en.outscale.com/"><img src="https://fr.outscale.com/wp-content/uploads/2018/07/Logo_Outscale_Bleu_RGB.png" alt="Outscale" width="150" align="middle"></a> <a href="https://www.netbsd.org/"><img src="https://www.netbsd.org/images/NetBSD.png" alt="Outscale" width="150" align="middle"></a>
