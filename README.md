@@ -70,6 +70,13 @@ flags) packages:
 * RPM (tested on RHEL/CentOS 7): `cd pkg && make rpm`
 * DEB (tested on Debian 9): `cd pkg && make deb`
 
-## Customers
+## Who is using NPF?
 
-<a href="https://en.outscale.com/"><img src="https://fr.outscale.com/wp-content/uploads/2018/07/Logo_Outscale_Bleu_RGB.png" alt="Outscale" width="150" align="middle"></a> <a href="https://www.netbsd.org/"><img src="https://www.netbsd.org/images/NetBSD.png" alt="Outscale" width="150" align="middle"></a>
+<table>
+  <tr>
+    <td><a href="https://en.outscale.com"><img src="https://fr.outscale.com/wp-content/uploads/2018/07/Logo_Outscale_Bleu_RGB.png" alt="Outscale" width="150" align="middle"></a></td>
+    <td><a href="https://innofield.com"><img src="https://innofield.com/wp-content/uploads/2014/07/innofield_logo_sticky.gif" alt="innofield AG" width="150" align="middle"></a></td>
+    <td><a href="https://www.netbsd.org"><img src="https://www.netbsd.org/images/NetBSD.png" alt="Outscale" width="150" align="middle"></a></td>
+    <td><a href="http://therouter.net"><img src="http://therouter.net/images/r.png" alt="TheRouter" width="150" align="middle"></a></td>
+  </tr>
+</table>
