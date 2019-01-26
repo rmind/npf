@@ -173,12 +173,29 @@ npf_stats_collect(void *mem, void *arg, struct cpu_info *ci)
 	}
 }
 
+static void
+npf_stats_clear_cb(void *mem, void *arg, struct cpu_info *ci)
+{
+	uint64_t *percpu_stats = mem;
+
+	for (unsigned i = 0; i < NPF_STATS_COUNT; i++) {
+		percpu_stats[i] = 0; // atomic
+	}
+}
+
 /*
  * npf_stats: export collected statistics.
  */
+
 __dso_public void
 npf_stats(npf_t *npf, uint64_t *buf)
 {
 	memset(buf, 0, NPF_STATS_SIZE);
 	percpu_foreach(npf->stats_percpu, npf_stats_collect, buf);
+}
+
+__dso_public void
+npf_stats_clear(npf_t *npf)
+{
+	percpu_foreach(npf->stats_percpu, npf_stats_clear_cb, NULL);
 }
