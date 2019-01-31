@@ -179,11 +179,12 @@ struct npf {
 	/*
 	 * Connection tracking state: disabled (off) or enabled (on).
 	 * Connection tracking database, connection cache and the lock.
+	 * There are two caches (pools): for IPv4 and IPv6.
 	 */
 	volatile int		conn_tracking;
 	kmutex_t		conn_lock;
 	npf_conndb_t *		conn_db;
-	pool_cache_t		conn_cache;
+	pool_cache_t		conn_cache[2];
 
 	/* ALGs. */
 	npf_algset_t *		algset;

@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2010-2018 The NetBSD Foundation, Inc.
+ * Copyright (c) 2010-2019 The NetBSD Foundation, Inc.
  * All rights reserved.
  *
  * This material is based upon work partially supported by The
@@ -29,6 +29,19 @@
 
 /*
  * NPF connection storage.
+ *
+ * Warning (not applicable for the userspace npfkern):
+ *
+ *	The thmap data is partially lock-free data structure that uses its
+ *	own spin-locks on the writer side (insert/delete operations).
+ *
+ *	The relevant interrupt priority level (IPL) must be set and the
+ *	kernel preemption disabled across the critical paths to prevent
+ *	deadlocks and priority inversion problems.  These are essentially
+ *	the same guarantees as a spinning mutex(9) would provide.
+ *
+ *	This is achieved with SPL routines splsoftnet() and splx() around
+ *	the thmap_del() and thmap_put() calls.
  */
 
 #ifdef _KERNEL
@@ -67,6 +80,13 @@ struct npf_conndb {
 	npf_conn_t *		cd_marker;
 };
 
+/*
+ * Pointer tag for connection keys which represent the "forwards" entry.
+ */
+#define	CONNDB_FORW_BIT		0x1UL
+#define	CONNDB_ISFORW_P(p)	(((uintptr_t)(p) & CONNDB_FORW_BIT) != 0)
+#define	CONNDB_GET_PTR(p)	((void *)((uintptr_t)(p) & ~CONNDB_FORW_BIT))
+
 npf_conndb_t *
 npf_conndb_create(void)
 {
@@ -99,25 +119,30 @@ npf_conndb_destroy(npf_conndb_t *cd)
 npf_conn_t *
 npf_conndb_lookup(npf_conndb_t *cd, const npf_connkey_t *ck, bool *forw)
 {
-	const unsigned keylen = NPF_CONN_KEYLEN(ck);
-	npf_connkey_t *foundkey;
+	const unsigned keylen = NPF_CONNKEY_LEN(ck);
 	npf_conn_t *con;
+	void *keyval;
 
 	/*
 	 * Lookup the connection key in the key-value map.
 	 */
-	foundkey = thmap_get(cd->cd_map, ck->ck_key, keylen);
-	if (!foundkey) {
+	keyval = thmap_get(cd->cd_map, ck->ck_key, keylen);
+	if (!keyval) {
 		return NULL;
 	}
-	con = foundkey->ck_backptr;
+
+	/*
+	 * Determine whether this is the "forwards" or "backwards" key
+	 * and clear the pointer tag.
+	 */
+	*forw = CONNDB_ISFORW_P(keyval);
+	con = CONNDB_GET_PTR(keyval);
 	KASSERT(con != NULL);
 
 	/*
 	 * Acquire a reference and return the connection.
 	 */
 	atomic_inc_uint(&con->c_refcnt);
-	*forw = (foundkey == &con->c_forw_entry);
 	return con;
 }
 
@@ -127,10 +152,26 @@ npf_conndb_lookup(npf_conndb_t *cd, const npf_connkey_t *ck, bool *forw)
  * => Returns true on success and false on failure.
  */
 bool
-npf_conndb_insert(npf_conndb_t *cd, npf_connkey_t *ck)
+npf_conndb_insert(npf_conndb_t *cd, const npf_connkey_t *ck,
+    npf_conn_t *con, bool forw)
 {
-	const unsigned keylen = NPF_CONN_KEYLEN(ck);
-	return thmap_put(cd->cd_map, ck->ck_key, keylen, ck) == ck;
+	const unsigned keylen = NPF_CONNKEY_LEN(ck);
+	const uintptr_t conptr = (const uintptr_t)(const void *)con;
+	void *keyval;
+	bool ok;
+	int s;
+
+	/*
+	 * Tag the connection pointer if this is the "forwards" key.
+	 */
+	KASSERT((conptr & CONNDB_FORW_BIT) == 0);
+	keyval = (void *)(conptr | (CONNDB_FORW_BIT * !!forw));
+
+	s = splsoftnet();
+	ok = thmap_put(cd->cd_map, ck->ck_key, keylen, keyval) == keyval;
+	splx(s);
+
+	return ok;
 }
 
 /*
@@ -140,15 +181,20 @@ npf_conndb_insert(npf_conndb_t *cd, npf_connkey_t *ck)
 npf_conn_t *
 npf_conndb_remove(npf_conndb_t *cd, npf_connkey_t *ck)
 {
-	const unsigned keylen = NPF_CONN_KEYLEN(ck);
-	npf_connkey_t *foundkey;
+	const unsigned keylen = NPF_CONNKEY_LEN(ck);
 	npf_conn_t *con;
+	void *keyval;
+	int s;
 
-	foundkey = thmap_del(cd->cd_map, ck->ck_key, keylen);
-	if (!foundkey) {
+	s = splsoftnet();
+	keyval = thmap_del(cd->cd_map, ck->ck_key, keylen);
+	splx(s);
+
+	if (!keyval) {
 		return NULL;
 	}
-	con = foundkey->ck_backptr;
+
+	con = CONNDB_GET_PTR(keyval);
 	KASSERT(con != NULL);
 	return con;
 }

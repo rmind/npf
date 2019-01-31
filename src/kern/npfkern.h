@@ -78,7 +78,7 @@ void	npf_stats(npf_t *, uint64_t *);
 void	npf_stats_clear(npf_t *);
 
 /*
- * ALGs
+ * ALGs.
  */
 
 int	npf_alg_icmp_init(npf_t *);
