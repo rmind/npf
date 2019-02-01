@@ -862,12 +862,12 @@ npf_conn_import(npf_t *npf, npf_conndb_t *cd, const nvlist_t *cdict,
 	 */
 	fw = npf_conn_getforwkey(con);
 	conkey = dnvlist_get_nvlist(cdict, "forw-key", NULL);
-	if (conkey == NULL || !npf_connkey_import(conkey, fw, true)) {
+	if (conkey == NULL || !npf_connkey_import(conkey, fw)) {
 		goto err;
 	}
 	bk = npf_conn_getbackkey(con, NPF_CONNKEY_ALEN(fw));
 	conkey = dnvlist_get_nvlist(cdict, "back-key", NULL);
-	if (conkey == NULL || !npf_connkey_import(conkey, bk, false)) {
+	if (conkey == NULL || !npf_connkey_import(conkey, bk)) {
 		goto err;
 	}
 
@@ -904,7 +904,7 @@ npf_conn_find(npf_t *npf, const nvlist_t *idict, nvlist_t **odict)
 
 	kdict = dnvlist_get_nvlist(idict, "key", NULL);
 	dir = dnvlist_get_number(idict, "direction", 0);
-	if (!kdict || !npf_connkey_import(kdict, &key, dir)) {
+	if (!kdict || !npf_connkey_import(kdict, &key)) {
 		return EINVAL;
 	}
 	con = npf_conndb_lookup(npf->conn_db, &key, &forw);

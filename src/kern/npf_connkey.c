@@ -71,23 +71,30 @@ connkey_setkey(npf_connkey_t *key, uint16_t proto, const void *ipv,
     const uint16_t *id, unsigned alen, bool forw)
 {
 	const npf_addr_t * const *ips = ipv;
-	uint32_t * const k = key->ck_key;
+	uint32_t *k = key->ck_key;
+	unsigned isrc, idst;
+
+	if (__predict_true(forw)) {
+		isrc = NPF_SRC, idst = NPF_DST;
+	} else {
+		isrc = NPF_DST, idst = NPF_SRC;
+	}
 
 	/*
 	 * See the key layout explanation above.
 	 */
 
 	k[0] = ((uint32_t)proto << 16) | (alen & 0xffff);
-	k[1] = ((uint32_t)id[NPF_SRC] << 16) | id[NPF_DST];
+	k[1] = ((uint32_t)id[isrc] << 16) | id[idst];
 
 	if (__predict_true(alen == sizeof(in_addr_t))) {
-		k[2] = ips[NPF_SRC]->word32[0];
-		k[3] = ips[NPF_DST]->word32[0];
+		k[2] = ips[isrc]->word32[0];
+		k[3] = ips[idst]->word32[0];
 		return 4 * sizeof(uint32_t);
 	} else {
 		const unsigned nwords = alen >> 2;
-		memcpy(&k[2], ips[NPF_SRC], alen);
-		memcpy(&k[2 + nwords], ips[NPF_DST], alen);
+		memcpy(&k[2], ips[isrc], alen);
+		memcpy(&k[2 + nwords], ips[idst], alen);
 		return (2 + (nwords * 2)) * sizeof(uint32_t);
 	}
 }
@@ -152,41 +159,34 @@ npf_conn_conkey(const npf_cache_t *npc, npf_connkey_t *key, const bool forw)
 	const unsigned alen = npc->npc_alen;
 	const struct tcphdr *th;
 	const struct udphdr *uh;
-	unsigned isrc, idst;
 	uint16_t id[2];
-
-	if (__predict_true(forw)) {
-		isrc = NPF_SRC, idst = NPF_DST;
-	} else {
-		isrc = NPF_DST, idst = NPF_SRC;
-	}
 
 	switch (proto) {
 	case IPPROTO_TCP:
 		KASSERT(npf_iscached(npc, NPC_TCP));
 		th = npc->npc_l4.tcp;
-		id[isrc] = th->th_sport;
-		id[idst] = th->th_dport;
+		id[NPF_SRC] = th->th_sport;
+		id[NPF_DST] = th->th_dport;
 		break;
 	case IPPROTO_UDP:
 		KASSERT(npf_iscached(npc, NPC_UDP));
 		uh = npc->npc_l4.udp;
-		id[isrc] = uh->uh_sport;
-		id[idst] = uh->uh_dport;
+		id[NPF_SRC] = uh->uh_sport;
+		id[NPF_DST] = uh->uh_dport;
 		break;
 	case IPPROTO_ICMP:
 		if (npf_iscached(npc, NPC_ICMP_ID)) {
 			const struct icmp *ic = npc->npc_l4.icmp;
-			id[isrc] = ic->icmp_id;
-			id[idst] = ic->icmp_id;
+			id[NPF_SRC] = ic->icmp_id;
+			id[NPF_DST] = ic->icmp_id;
 			break;
 		}
 		return 0;
 	case IPPROTO_ICMPV6:
 		if (npf_iscached(npc, NPC_ICMP_ID)) {
 			const struct icmp6_hdr *ic6 = npc->npc_l4.icmp6;
-			id[isrc] = ic6->icmp6_id;
-			id[idst] = ic6->icmp6_id;
+			id[NPF_SRC] = ic6->icmp6_id;
+			id[NPF_DST] = ic6->icmp6_id;
 			break;
 		}
 		return 0;
@@ -241,7 +241,7 @@ npf_connkey_export(const npf_connkey_t *key)
 }
 
 unsigned
-npf_connkey_import(const nvlist_t *kdict, npf_connkey_t *key, bool forw)
+npf_connkey_import(const nvlist_t *kdict, npf_connkey_t *key)
 {
 	npf_addr_t const * ips[2];
 	uint16_t proto, id[2];
@@ -255,5 +255,5 @@ npf_connkey_import(const nvlist_t *kdict, npf_connkey_t *key, bool forw)
 	if (alen1 == 0 || alen1 > sizeof(npf_addr_t) || alen1 != alen2) {
 		return 0;
 	}
-	return connkey_setkey(key, proto, ips, id, alen1, forw);
+	return connkey_setkey(key, proto, ips, id, alen1, true);
 }

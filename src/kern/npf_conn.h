@@ -101,9 +101,10 @@ struct npf_conn {
 #define	NPF_CONNKEY_MAXWORDS	(NPF_CONNKEY_V6WORDS)
 
 #define	NPF_CONNKEY_ALEN(key)	((key)->ck_key[0] & 0xffff)
-#define	NPF_CONNKEY_LEN(key)	(8 + (2 * NPF_CONNKEY_ALEN(key)))
+#define	NPF_CONNKEY_LEN(key)	(8 + (NPF_CONNKEY_ALEN(key) * 2))
 
 struct npf_connkey {
+	/* Warning: ck_key has a variable length -- see above. */
 	uint32_t		ck_key[NPF_CONNKEY_MAXWORDS];
 };
 
@@ -113,7 +114,7 @@ npf_connkey_t *	npf_conn_getbackkey(npf_conn_t *, unsigned);
 void		npf_conn_adjkey(npf_connkey_t *, const npf_addr_t *,
 		    const uint16_t, const int);
 
-unsigned	npf_connkey_import(const nvlist_t *, npf_connkey_t *, bool);
+unsigned	npf_connkey_import(const nvlist_t *, npf_connkey_t *);
 nvlist_t *	npf_connkey_export(const npf_connkey_t *);
 
 #endif

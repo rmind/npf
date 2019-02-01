@@ -83,7 +83,7 @@ struct npf_conndb {
 /*
  * Pointer tag for connection keys which represent the "forwards" entry.
  */
-#define	CONNDB_FORW_BIT		0x1UL
+#define	CONNDB_FORW_BIT		((uintptr_t)0x1)
 #define	CONNDB_ISFORW_P(p)	(((uintptr_t)(p) & CONNDB_FORW_BIT) != 0)
 #define	CONNDB_GET_PTR(p)	((void *)((uintptr_t)(p) & ~CONNDB_FORW_BIT))
 
@@ -121,13 +121,13 @@ npf_conndb_lookup(npf_conndb_t *cd, const npf_connkey_t *ck, bool *forw)
 {
 	const unsigned keylen = NPF_CONNKEY_LEN(ck);
 	npf_conn_t *con;
-	void *keyval;
+	void *val;
 
 	/*
 	 * Lookup the connection key in the key-value map.
 	 */
-	keyval = thmap_get(cd->cd_map, ck->ck_key, keylen);
-	if (!keyval) {
+	val = thmap_get(cd->cd_map, ck->ck_key, keylen);
+	if (!val) {
 		return NULL;
 	}
 
@@ -135,8 +135,8 @@ npf_conndb_lookup(npf_conndb_t *cd, const npf_connkey_t *ck, bool *forw)
 	 * Determine whether this is the "forwards" or "backwards" key
 	 * and clear the pointer tag.
 	 */
-	*forw = CONNDB_ISFORW_P(keyval);
-	con = CONNDB_GET_PTR(keyval);
+	*forw = CONNDB_ISFORW_P(val);
+	con = CONNDB_GET_PTR(val);
 	KASSERT(con != NULL);
 
 	/*
@@ -156,19 +156,18 @@ npf_conndb_insert(npf_conndb_t *cd, const npf_connkey_t *ck,
     npf_conn_t *con, bool forw)
 {
 	const unsigned keylen = NPF_CONNKEY_LEN(ck);
-	const uintptr_t conptr = (const uintptr_t)(const void *)con;
-	void *keyval;
+	const uintptr_t tag = (CONNDB_FORW_BIT * !!forw);
+	void *val;
 	bool ok;
-	int s;
 
 	/*
 	 * Tag the connection pointer if this is the "forwards" key.
 	 */
-	KASSERT((conptr & CONNDB_FORW_BIT) == 0);
-	keyval = (void *)(conptr | (CONNDB_FORW_BIT * !!forw));
+	KASSERT(!CONNDB_ISFORW_P(con));
+	val = (void *)((uintptr_t)(void *)con | tag);
 
-	s = splsoftnet();
-	ok = thmap_put(cd->cd_map, ck->ck_key, keylen, keyval) == keyval;
+	int s = splsoftnet();
+	ok = thmap_put(cd->cd_map, ck->ck_key, keylen, val) == val;
 	splx(s);
 
 	return ok;
@@ -182,21 +181,13 @@ npf_conn_t *
 npf_conndb_remove(npf_conndb_t *cd, npf_connkey_t *ck)
 {
 	const unsigned keylen = NPF_CONNKEY_LEN(ck);
-	npf_conn_t *con;
-	void *keyval;
-	int s;
+	void *val;
 
-	s = splsoftnet();
-	keyval = thmap_del(cd->cd_map, ck->ck_key, keylen);
+	int s = splsoftnet();
+	val = thmap_del(cd->cd_map, ck->ck_key, keylen);
 	splx(s);
 
-	if (!keyval) {
-		return NULL;
-	}
-
-	con = CONNDB_GET_PTR(keyval);
-	KASSERT(con != NULL);
-	return con;
+	return CONNDB_GET_PTR(val);
 }
 
 /*
