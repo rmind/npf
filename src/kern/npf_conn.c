@@ -903,7 +903,6 @@ npf_conn_find(npf_t *npf, const nvlist_t *idict, nvlist_t **odict)
 	bool forw;
 
 	kdict = dnvlist_get_nvlist(idict, "key", NULL);
-	dir = dnvlist_get_number(idict, "direction", 0);
 	if (!kdict || !npf_connkey_import(kdict, &key)) {
 		return EINVAL;
 	}
@@ -911,6 +910,7 @@ npf_conn_find(npf_t *npf, const nvlist_t *idict, nvlist_t **odict)
 	if (con == NULL) {
 		return ESRCH;
 	}
+	dir = dnvlist_get_number(idict, "direction", 0);
 	if (!npf_conn_ok(con, dir, true)) {
 		atomic_dec_uint(&con->c_refcnt);
 		return ESRCH;
@@ -926,29 +926,16 @@ void
 npf_conn_print(npf_conn_t *con)
 {
 	const npf_connkey_t *fw = npf_conn_getforwkey(con);
-	const unsigned alen = NPF_CONNKEY_ALEN(fw);
-	const npf_connkey_t *bk = npf_conn_getbackkey(con, alen);
-	const uint32_t *fkey = fw->ck_key;
-	const uint32_t *bkey = bk->ck_key;
+	const npf_connkey_t *bk = npf_conn_getbackkey(con, NPF_CONNKEY_ALEN(fw));
 	const unsigned proto = con->c_proto;
 	struct timespec tspnow;
-	const void *src, *dst;
-	int etime;
 
 	getnanouptime(&tspnow);
-	etime = npf_state_etime(&con->c_state, proto);
-
 	printf("%p:\n\tproto %d flags 0x%x tsdiff %ld etime %d\n", con,
-	    proto, con->c_flags, (long)(tspnow.tv_sec - con->c_atime), etime);
-
-	src = &fkey[2], dst = &fkey[2 + (alen >> 2)];
-	printf("\tforw %s:%d", npf_addr_dump(src, alen), ntohs(fkey[1] >> 16));
-	printf("-> %s:%d\n", npf_addr_dump(dst, alen), ntohs(fkey[1] & 0xffff));
-
-	src = &bkey[2], dst = &bkey[2 + (alen >> 2)];
-	printf("\tback %s:%d", npf_addr_dump(src, alen), ntohs(bkey[1] >> 16));
-	printf("-> %s:%d\n", npf_addr_dump(dst, alen), ntohs(bkey[1] & 0xffff));
-
+	    proto, con->c_flags, (long)(tspnow.tv_sec - con->c_atime),
+	    npf_state_etime(&con->c_state, proto));
+	npf_connkey_print(fw);
+	npf_connkey_print(bk);
 	npf_state_dump(&con->c_state);
 	if (con->c_nat) {
 		npf_nat_dump(con->c_nat);

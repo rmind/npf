@@ -116,6 +116,7 @@ void		npf_conn_adjkey(npf_connkey_t *, const npf_addr_t *,
 
 unsigned	npf_connkey_import(const nvlist_t *, npf_connkey_t *);
 nvlist_t *	npf_connkey_export(const npf_connkey_t *);
+void		npf_connkey_print(const npf_connkey_t *);
 
 #endif
 

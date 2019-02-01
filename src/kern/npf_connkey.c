@@ -226,15 +226,15 @@ npf_conn_getbackkey(npf_conn_t *conn, unsigned alen)
 nvlist_t *
 npf_connkey_export(const npf_connkey_t *key)
 {
-	uint16_t id[2], alen, proto;
+	uint16_t ids[2], alen, proto;
 	npf_addr_t ips[2];
 	nvlist_t *kdict;
 
 	kdict = nvlist_create(0);
-	connkey_getkey(key, &proto, ips, id, &alen);
+	connkey_getkey(key, &proto, ips, ids, &alen);
 	nvlist_add_number(kdict, "proto", proto);
-	nvlist_add_number(kdict, "sport", id[NPF_SRC]);
-	nvlist_add_number(kdict, "dport", id[NPF_DST]);
+	nvlist_add_number(kdict, "sport", ids[NPF_SRC]);
+	nvlist_add_number(kdict, "dport", ids[NPF_DST]);
 	nvlist_add_binary(kdict, "saddr", &ips[NPF_SRC], alen);
 	nvlist_add_binary(kdict, "daddr", &ips[NPF_DST], alen);
 	return kdict;
@@ -244,16 +244,31 @@ unsigned
 npf_connkey_import(const nvlist_t *kdict, npf_connkey_t *key)
 {
 	npf_addr_t const * ips[2];
-	uint16_t proto, id[2];
+	uint16_t proto, ids[2];
 	size_t alen1, alen2;
 
 	proto = dnvlist_get_number(kdict, "proto", 0);
-	id[NPF_SRC] = dnvlist_get_number(kdict, "sport", 0);
-	id[NPF_DST] = dnvlist_get_number(kdict, "dport", 0);
+	ids[NPF_SRC] = dnvlist_get_number(kdict, "sport", 0);
+	ids[NPF_DST] = dnvlist_get_number(kdict, "dport", 0);
 	ips[NPF_SRC] = dnvlist_get_binary(kdict, "saddr", &alen1, NULL, 0);
 	ips[NPF_DST] = dnvlist_get_binary(kdict, "daddr", &alen2, NULL, 0);
 	if (alen1 == 0 || alen1 > sizeof(npf_addr_t) || alen1 != alen2) {
 		return 0;
 	}
-	return connkey_setkey(key, proto, ips, id, alen1, true);
+	return connkey_setkey(key, proto, ips, ids, alen1, true);
 }
+
+#if defined(DDB) || defined(_NPF_TESTING)
+
+void
+npf_connkey_print(const npf_connkey_t *key)
+{
+	uint16_t proto, ids[2], alen;
+	npf_addr_t ips[2];
+
+	connkey_getkey(key, &proto, ips, ids, &alen);
+	printf("\tforw %s:%d", npf_addr_dump(&ips[0], alen), ids[0]);
+	printf("-> %s:%d\n", npf_addr_dump(&ips[1], alen), ids[1]);
+}
+
+#endif
