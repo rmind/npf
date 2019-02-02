@@ -29,11 +29,13 @@ CFLAGS+=	-Wsuggest-attribute=noreturn #-Wjump-misses-init
 
 ifeq ($(DEBUG),1)
 CFLAGS+=	-Og -DDEBUG -fno-omit-frame-pointer
+CFLAGS+=	-fsanitize=address
+LDFLAGS+=	-fsanitize=address
 else
 CFLAGS+=	-DNDEBUG
 endif
 
-LDFLAGS=	-lpthread -lnv -lpcap -lcdb -lnpfkern-dbg
+LDFLAGS+=	-lpthread -lnv -lpcap -lcdb -lnpfkern-dbg
 
 OBJS=		npftest.o npfstream.o
 

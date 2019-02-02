@@ -271,9 +271,21 @@ npfkern_copy(void *dst, const void *src, size_t len)
 	memcpy(dst, src, len);
 	return 0;
 }
-#define	copyout(k, u, l)		npfkern_copy(u, k, l)
-#define	copyin(u, k, l)			npfkern_copy(k, u, l)
-#define	copyinstr(u, k, l, d)		(0 & (int)(uintptr_t)strncpy(k, u, l))
+
+#ifdef __linux__
+static inline size_t
+strlcpy(char *dst, const char *src, size_t len)
+{
+	(void)stpncpy(dst, src, len);
+	dst[len - 1] = '\0';
+	return strlen(src);
+}
+#endif
+
+#define	copyout(k, u, l)		npfkern_copy((u), (k), (l))
+#define	copyin(u, k, l)			npfkern_copy((k), (u), (l))
+#define	copyinstr(u, k, l, d)		\
+    ((strlcpy((k), (u), (l)) < (l)) ? 0 : ENAMETOOLONG)
 
 /*
  * Random number generator.
@@ -414,15 +426,5 @@ struct cpu_info { unsigned id; };
 #define	_IOR(g,n,t)		0
 #define	_IOW(g,n,t)		0
 #define	_IOWR(g,n,t)		0
-
-#ifdef __linux__
-static inline size_t
-strlcpy(char *dst, const char *src, size_t len)
-{
-	(void)stpncpy(dst, src, len);
-	dst[len - 1] = '\0';
-	return strlen(src);
-}
-#endif
 
 #endif
