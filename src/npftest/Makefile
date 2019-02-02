@@ -27,13 +27,12 @@ CFLAGS+=	-Wsuggest-attribute=noreturn #-Wjump-misses-init
 #CFLAGS+=	-Wduplicated-cond -Wmisleading-indentation -Wnull-dereference
 #CFLAGS+=	-Wduplicated-branches -Wrestrict
 
-ifeq ($(DEBUG),1)
+#
+# Always debug mode, as this is the test utility.
+#
 CFLAGS+=	-Og -DDEBUG -fno-omit-frame-pointer
 CFLAGS+=	-fsanitize=address
 LDFLAGS+=	-fsanitize=address
-else
-CFLAGS+=	-DNDEBUG
-endif
 
 LDFLAGS+=	-lpthread -lnv -lpcap -lcdb -lnpfkern-dbg
 
