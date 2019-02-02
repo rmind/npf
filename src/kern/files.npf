@@ -22,6 +22,7 @@ file	net/npf/npf_tableset.c			npf
 file	net/npf/npf_if.c			npf
 file	net/npf/npf_inet.c			npf
 file	net/npf/npf_conn.c			npf
+file	net/npf/npf_connkey.c			npf
 file	net/npf/npf_conndb.c			npf
 file	net/npf/npf_state.c			npf
 file	net/npf/npf_state_tcp.c			npf

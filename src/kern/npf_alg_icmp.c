@@ -453,8 +453,8 @@ err:
  * and module interface.
  */
 
-static int
-npf_alg_icmp_init(void)
+int
+npf_alg_icmp_init(npf_t *npf)
 {
 	static const npfa_funcs_t icmp = {
 		.match		= npfa_icmp_match,
@@ -465,21 +465,24 @@ npf_alg_icmp_init(void)
 	return alg_icmp ? 0 : ENOMEM;
 }
 
-static int
-npf_alg_icmp_fini(void)
+int
+npf_alg_icmp_fini(npf_t *npf)
 {
 	KASSERT(alg_icmp != NULL);
-	return npf_alg_unregister(npf_getkernctx(), alg_icmp);
+	return npf_alg_unregister(npf, alg_icmp);
 }
 
+#ifdef _KERNEL
 static int
 npf_alg_icmp_modcmd(modcmd_t cmd, void *arg)
 {
+	npf_t *npf = npf_getkernctx();
+
 	switch (cmd) {
 	case MODULE_CMD_INIT:
-		return npf_alg_icmp_init();
+		return npf_alg_icmp_init(npf);
 	case MODULE_CMD_FINI:
-		return npf_alg_icmp_fini();
+		return npf_alg_icmp_fini(npf);
 	case MODULE_CMD_AUTOUNLOAD:
 		return EBUSY;
 	default:
@@ -487,3 +490,4 @@ npf_alg_icmp_modcmd(modcmd_t cmd, void *arg)
 	}
 	return 0;
 }
+#endif

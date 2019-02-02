@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2009-2018 The NetBSD Foundation, Inc.
+ * Copyright (c) 2009-2019 The NetBSD Foundation, Inc.
  * All rights reserved.
  *
  * This material is based upon work partially supported by The
@@ -35,6 +35,13 @@
  *	The tableset is an array of tables.  After the creation, the array
  *	is immutable.  The caller is responsible to synchronise the access
  *	to the tableset.
+ *
+ * Warning (not applicable for the userspace npfkern):
+ *
+ *	The thmap_put()/thmap_del() are not called from the interrupt
+ *	context and are protected by a mutex(9), therefore they do not
+ *	SPL wrappers -- see the comment at the top of the npf_conndb.c
+ *	source file.
  */
 
 #ifdef _KERNEL
