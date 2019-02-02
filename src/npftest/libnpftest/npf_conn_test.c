@@ -68,6 +68,7 @@ enqueue_connection(unsigned i, bool expire)
 		npf_conn_expire(con);
 	}
 	npf_conn_release(con);
+	m_freem(m);
 	return true;
 }
 

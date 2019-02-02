@@ -118,10 +118,14 @@ npf_blockall_rule(void)
 {
 	npf_t *npf = npf_getkernctx();
 	nvlist_t *rule = nvlist_create(0);
+	npf_rule_t *rl;
 
 	nvlist_add_number(rule, "attr",
 	    NPF_RULE_IN | NPF_RULE_OUT | NPF_RULE_DYNAMIC);
-	return npf_rule_alloc(npf, rule);
+	rl = npf_rule_alloc(npf, rule);
+	nvlist_destroy(rule);
+
+	return rl;
 }
 
 bool
