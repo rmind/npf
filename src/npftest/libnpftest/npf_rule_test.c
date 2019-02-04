@@ -11,9 +11,6 @@
 #include "npf_impl.h"
 #include "npf_test.h"
 
-#define	CHECK_TRUE(x)	\
-    if (!(x)) { printf("FAIL: %s line %d\n", __func__, __LINE__); return 0; }
-
 #define	RESULT_PASS	0
 #define	RESULT_BLOCK	ENETUNREACH
 

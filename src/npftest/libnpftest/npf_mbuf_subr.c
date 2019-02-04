@@ -256,6 +256,65 @@ mbuf_icmp_append(struct mbuf *m, struct mbuf *m_orig)
 	m_freem(m_orig);
 }
 
+
+struct mbuf *
+mbuf_get_pkt(int proto, const char *src, const char *dst, int sport, int dport)
+{
+	struct mbuf *m;
+	struct ip *ip;
+	struct tcphdr *th;
+	struct udphdr *uh;
+	void *p;
+
+	m = mbuf_construct(proto);
+	p = mbuf_return_hdrs(m, false, &ip);
+	ip->ip_src.s_addr = inet_addr(src);
+	ip->ip_dst.s_addr = inet_addr(dst);
+	switch (proto) {
+	case IPPROTO_TCP:
+		th = p;
+		th->th_sport = htons(sport);
+		th->th_dport = htons(dport);
+		break;
+	case IPPROTO_UDP:
+		uh = p;
+		uh->uh_sport = htons(sport);
+		uh->uh_dport = htons(dport);
+		break;
+	default:
+		abort();
+	}
+	return m;
+}
+
+npf_cache_t *
+get_cached_pkt(struct mbuf *m)
+{
+	ifnet_t *dummy_ifp = npf_test_addif(IFNAME_TEST, false, false);
+	npf_cache_t *npc = kmem_zalloc(sizeof(npf_cache_t), KM_SLEEP);
+	nbuf_t *nbuf = kmem_zalloc(sizeof(nbuf_t), KM_SLEEP);
+	int ret;
+
+	npc->npc_info = 0;
+	npc->npc_ctx = npf_getkernctx();
+
+	nbuf_init(npc->npc_ctx, nbuf, m, dummy_ifp);
+	npc->npc_nbuf = nbuf;
+	ret = npf_cache_all(npc);
+	assert(ret); (void)ret;
+
+	return npc;
+}
+
+void
+put_cached_pkt(npf_cache_t *npc)
+{
+	struct mbuf *m = nbuf_head_mbuf(npc->npc_nbuf);
+	kmem_free(npc->npc_nbuf, sizeof(nbuf_t));
+	kmem_free(npc, sizeof(npf_cache_t));
+	m_freem(m);
+}
+
 const npf_mbufops_t npftest_mbufops = {
 	.alloc			= npfkern_m_get,
 	.free			= npfkern_m_freem,

@@ -79,6 +79,9 @@ struct mbuf {
 
 #endif
 
+#define	CHECK_TRUE(x)	\
+    if (!(x)) { printf("FAIL: %s line %d\n", __func__, __LINE__); return 0; }
+
 const npf_mbufops_t	npftest_mbufops;
 
 struct mbuf *	npfkern_m_get(int, int);
@@ -104,6 +107,10 @@ struct mbuf *	mbuf_construct6(int);
 void *		mbuf_return_hdrs(struct mbuf *, bool, struct ip **);
 void *		mbuf_return_hdrs6(struct mbuf *, struct ip6_hdr **);
 void		mbuf_icmp_append(struct mbuf *, struct mbuf *);
+
+struct mbuf *	mbuf_get_pkt(int, const char *, const char *, int, int);
+npf_cache_t *	get_cached_pkt(struct mbuf *);
+void		put_cached_pkt(npf_cache_t *);
 
 bool		npf_nbuf_test(bool);
 bool		npf_bpf_test(bool);
