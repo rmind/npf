@@ -212,34 +212,6 @@ checkresult(bool verbose, unsigned i, struct mbuf *m, ifnet_t *ifp, int error)
 	return true;
 }
 
-static struct mbuf *
-fill_packet(const struct test_case *t)
-{
-	struct mbuf *m;
-	void *ipsrc, *ipdst;
-	struct udphdr *uh;
-
-	if (t->af == AF_INET6) {
-		struct ip6_hdr *ip6;
-
-		m = mbuf_construct6(IPPROTO_UDP);
-		uh = mbuf_return_hdrs6(m, &ip6);
-		ipsrc = &ip6->ip6_src, ipdst = &ip6->ip6_dst;
-	} else {
-		struct ip *ip;
-
-		m = mbuf_construct(IPPROTO_UDP);
-		uh = mbuf_return_hdrs(m, false, &ip);
-		ipsrc = &ip->ip_src.s_addr, ipdst = &ip->ip_dst.s_addr;
-	}
-
-	npf_inet_pton(t->af, t->src, ipsrc);
-	npf_inet_pton(t->af, t->dst, ipdst);
-	uh->uh_sport = htons(t->sport);
-	uh->uh_dport = htons(t->dport);
-	return m;
-}
-
 bool
 npf_nat_test(bool verbose)
 {
@@ -248,7 +220,7 @@ npf_nat_test(bool verbose)
 	for (unsigned i = 0; i < __arraycount(test_cases); i++) {
 		const struct test_case *t = &test_cases[i];
 		ifnet_t *ifp = npf_test_getif(t->ifname);
-		struct mbuf *m = fill_packet(t);
+		struct mbuf *m;
 		int error;
 		bool ret;
 
@@ -256,6 +228,8 @@ npf_nat_test(bool verbose)
 			printf("Interface %s is not configured.\n", t->ifname);
 			return false;
 		}
+		m = mbuf_get_pkt(t->af, IPPROTO_UDP,
+		    t->src, t->dst, t->sport, t->dport);
 		error = npf_packet_handler(npf, &m, ifp, t->di);
 		ret = checkresult(verbose, i, m, ifp, error);
 		if (m) {

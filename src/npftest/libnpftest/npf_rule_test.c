@@ -65,7 +65,7 @@ run_raw_testcase(unsigned i)
 	npf_rule_t *rl;
 	int slock, error;
 
-	m = mbuf_get_pkt(IPPROTO_UDP, t->src, t->dst, 9000, 9000);
+	m = mbuf_get_pkt(AF_INET, IPPROTO_UDP, t->src, t->dst, 9000, 9000);
 	npc = get_cached_pkt(m, t->ifname);
 
 	slock = npf_config_read_enter();
@@ -91,7 +91,7 @@ run_handler_testcase(unsigned i)
 	struct mbuf *m;
 	int error;
 
-	m = mbuf_get_pkt(IPPROTO_UDP, t->src, t->dst, 9000, 9000);
+	m = mbuf_get_pkt(AF_INET, IPPROTO_UDP, t->src, t->dst, 9000, 9000);
 	error = npf_packet_handler(npf, &m, ifp, t->di);
 	if (m) {
 		m_freem(m);

@@ -12,7 +12,6 @@
 #include <sys/kmem.h>
 #include <sys/kthread.h>
 #endif
-#include <unistd.h>
 
 #include "npf_impl.h"
 #include "npf_test.h"
@@ -34,7 +33,7 @@ worker(void *arg)
 	struct mbuf *m;
 	uint64_t n = 0;
 
-	m = mbuf_get_pkt(IPPROTO_UDP,
+	m = mbuf_get_pkt(AF_INET, IPPROTO_UDP,
 	    PUB_IP1, stateful ? LOCAL_IP2 : LOCAL_IP3,
 	    80, 15000 + i);
 

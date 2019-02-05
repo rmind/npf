@@ -256,20 +256,35 @@ mbuf_icmp_append(struct mbuf *m, struct mbuf *m_orig)
 	m_freem(m_orig);
 }
 
-
 struct mbuf *
-mbuf_get_pkt(int proto, const char *src, const char *dst, int sport, int dport)
+mbuf_get_pkt(int af, int proto, const char *src, const char *dst,
+    int sport, int dport)
 {
 	struct mbuf *m;
 	struct ip *ip;
+	struct ip6_hdr *ip6;
 	struct tcphdr *th;
 	struct udphdr *uh;
-	void *p;
+	void *p, *ipsrc, *ipdst;
 
-	m = mbuf_construct(proto);
-	p = mbuf_return_hdrs(m, false, &ip);
-	ip->ip_src.s_addr = inet_addr(src);
-	ip->ip_dst.s_addr = inet_addr(dst);
+	switch (af) {
+	case AF_INET6:
+		m = mbuf_construct6(proto);
+		p = mbuf_return_hdrs6(m, &ip6);
+		ipsrc = &ip6->ip6_src;
+		ipdst = &ip6->ip6_dst;
+		break;
+	case AF_INET:
+	default:
+		m = mbuf_construct(proto);
+		p = mbuf_return_hdrs(m, false, &ip);
+		ipsrc = &ip->ip_src.s_addr;
+		ipdst = &ip->ip_dst.s_addr;
+	}
+
+	npf_inet_pton(af, src, ipsrc);
+	npf_inet_pton(af, dst, ipdst);
+
 	switch (proto) {
 	case IPPROTO_TCP:
 		th = p;

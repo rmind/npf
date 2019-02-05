@@ -36,7 +36,8 @@ get_packet(unsigned i)
 	struct mbuf *m;
 	struct ip *ip;
 
-	m = mbuf_get_pkt(IPPROTO_UDP, "10.0.0.1", "172.16.0.1", 9000, 9000);
+	m = mbuf_get_pkt(AF_INET, IPPROTO_UDP,
+	    "10.0.0.1", "172.16.0.1", 9000, 9000);
 	(void)mbuf_return_hdrs(m, false, &ip);
 	ip->ip_src.s_addr += i;
 	return m;

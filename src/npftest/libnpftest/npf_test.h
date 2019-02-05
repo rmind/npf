@@ -110,7 +110,7 @@ void *		mbuf_return_hdrs(struct mbuf *, bool, struct ip **);
 void *		mbuf_return_hdrs6(struct mbuf *, struct ip6_hdr **);
 void		mbuf_icmp_append(struct mbuf *, struct mbuf *);
 
-struct mbuf *	mbuf_get_pkt(int, const char *, const char *, int, int);
+struct mbuf *	mbuf_get_pkt(int, int, const char *, const char *, int, int);
 npf_cache_t *	get_cached_pkt(struct mbuf *, const char *);
 void		put_cached_pkt(npf_cache_t *);
 
