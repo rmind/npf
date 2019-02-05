@@ -150,14 +150,14 @@ static const struct test_case {
 };
 
 static bool
-nmatch_addr(int af, const char *saddr, const npf_addr_t *addr2)
+match_addr(int af, const char *saddr, const npf_addr_t *addr2)
 {
 	npf_addr_t addr1;
 	size_t len;
 
 	npf_inet_pton(af, saddr, &addr1);
-	len = af == AF_INET ? sizeof(struct in_addr) : sizeof(struct in6_addr); 
-	return memcmp(&addr1, addr2, len) != 0;
+	len = af == AF_INET ? sizeof(struct in_addr) : sizeof(struct in6_addr);
+	return memcmp(&addr1, addr2, len) == 0;
 }
 
 static bool
@@ -204,13 +204,12 @@ checkresult(bool verbose, unsigned i, struct mbuf *m, ifnet_t *ifp, int error)
 	in_addr_t sport = forw ? t->tport : t->sport;
 	in_addr_t dport = forw ? t->dport : t->tport;
 
-	bool defect = false;
-	defect |= nmatch_addr(af, saddr, npc.npc_ips[NPF_SRC]);
-	defect |= sport != ntohs(uh->uh_sport);
-	defect |= nmatch_addr(af, daddr, npc.npc_ips[NPF_DST]);
-	defect |= dport != ntohs(uh->uh_dport);
+	CHECK_TRUE(match_addr(af, saddr, npc.npc_ips[NPF_SRC]));
+	CHECK_TRUE(sport == ntohs(uh->uh_sport));
+	CHECK_TRUE(match_addr(af, daddr, npc.npc_ips[NPF_DST]));
+	CHECK_TRUE(dport == ntohs(uh->uh_dport));
 
-	return !defect;
+	return true;
 }
 
 static struct mbuf *
@@ -262,9 +261,7 @@ npf_nat_test(bool verbose)
 		if (m) {
 			m_freem(m);
 		}
-		if (!ret) {
-			return false;
-		}
+		CHECK_TRUE(ret);
 	}
 	return true;
 }

@@ -24,6 +24,8 @@
 #include <net/ethertypes.h>
 #endif
 
+#define	IFNAME_DUMMY	"npftest999"
+
 /* Test interfaces and IP addresses. */
 #define	IFNAME_EXT	"npftest0"
 #define	IFNAME_INT	"npftest1"
@@ -109,7 +111,7 @@ void *		mbuf_return_hdrs6(struct mbuf *, struct ip6_hdr **);
 void		mbuf_icmp_append(struct mbuf *, struct mbuf *);
 
 struct mbuf *	mbuf_get_pkt(int, const char *, const char *, int, int);
-npf_cache_t *	get_cached_pkt(struct mbuf *);
+npf_cache_t *	get_cached_pkt(struct mbuf *, const char *);
 void		put_cached_pkt(npf_cache_t *);
 
 bool		npf_nbuf_test(bool);

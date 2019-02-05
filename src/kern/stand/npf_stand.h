@@ -61,7 +61,7 @@
 #include <dnv.h>
 #include <nv.h>
 
-#include <qsbr/qsbr.h>
+#include <qsbr/ebr.h>
 #include <thmap.h>
 #include <lpm.h>
 #include <cdbr.h>
@@ -134,27 +134,30 @@ npfkern_pthread_cond_timedwait(pthread_cond_t *t, pthread_mutex_t *l,
 #define	cv_destroy(c)		pthread_cond_destroy(c)
 
 /*
- * Passive serialization based on QSBR.
+ * Passive serialization based on EBR.
  */
-typedef qsbr_t *		pserialize_t;
+typedef ebr_t *			pserialize_t;
 
 static inline void
-npfkern_qsbr_wait(qsbr_t *qsbr)
+npfkern_ebr_wait(ebr_t *ebr)
 {
 	const struct timespec dtime = { 0, 1 * 1000 * 1000 }; /* 1 ms */
-	qsbr_epoch_t target = qsbr_barrier(qsbr);
+	unsigned epoch, count = SPINLOCK_BACKOFF_MIN;
 
-	while (!qsbr_sync(qsbr, target)) {
-		(void)nanosleep(&dtime, NULL);
+	while (!ebr_sync(ebr, &epoch)) {
+		if (count < SPINLOCK_BACKOFF_MAX) {
+			SPINLOCK_BACKOFF(count);
+		} else {
+			(void)nanosleep(&dtime, NULL);
+		}
 	}
 }
 
-#define	pserialize_create()	qsbr_create()
-#define	pserialize_destroy(p)	qsbr_destroy(p)
-#define	pserialize_register(p)	qsbr_register(p)
-#define	pserialize_unregister(p) qsbr_unregister(p)
-#define	pserialize_checkpoint(p) qsbr_checkpoint(p)
-#define	pserialize_perform(p)	npfkern_qsbr_wait(p)
+#define	pserialize_create()	ebr_create()
+#define	pserialize_destroy(p)	ebr_destroy(p)
+#define	pserialize_register(p)	ebr_register(p)
+#define	pserialize_unregister(p) (void)(p)
+#define	pserialize_perform(p)	npfkern_ebr_wait(p)
 #define	pserialize_read_enter()	NPF_DIAG_MAGIC_VAL
 #ifdef NDEBUG
 #define	pserialize_read_exit(s)	(void)(s);
@@ -310,7 +313,10 @@ uint32_t	murmurhash2(const void *, size_t, uint32_t);
 static inline int
 npfkern_kpause(const char *wmesg, bool intr, int timo, kmutex_t *mtx)
 {
-	const struct timespec req = { .tv_sec = 0, .tv_nsec = timo * 1000000 };
+	const struct timespec req = {
+		.tv_sec = timo / 1000,
+		.tv_nsec = (timo % 1000) * 1000000
+	};
 	(void)wmesg; (void)intr; (void)mtx;
 	return nanosleep(&req, NULL);
 }

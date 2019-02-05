@@ -288,9 +288,9 @@ mbuf_get_pkt(int proto, const char *src, const char *dst, int sport, int dport)
 }
 
 npf_cache_t *
-get_cached_pkt(struct mbuf *m)
+get_cached_pkt(struct mbuf *m, const char *ifname)
 {
-	ifnet_t *dummy_ifp = npf_test_addif(IFNAME_TEST, false, false);
+	ifnet_t *ifp = npf_test_getif(ifname ? ifname : IFNAME_DUMMY);
 	npf_cache_t *npc = kmem_zalloc(sizeof(npf_cache_t), KM_SLEEP);
 	nbuf_t *nbuf = kmem_zalloc(sizeof(nbuf_t), KM_SLEEP);
 	int ret;
@@ -298,7 +298,7 @@ get_cached_pkt(struct mbuf *m)
 	npc->npc_info = 0;
 	npc->npc_ctx = npf_getkernctx();
 
-	nbuf_init(npc->npc_ctx, nbuf, m, dummy_ifp);
+	nbuf_init(npc->npc_ctx, nbuf, m, ifp);
 	npc->npc_nbuf = nbuf;
 	ret = npf_cache_all(npc);
 	assert(ret); (void)ret;
