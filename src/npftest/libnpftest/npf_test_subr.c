@@ -72,6 +72,8 @@ npf_test_init(int (*pton_func)(int, const char *, void *),
 	_pton_func = pton_func;
 	_ntop_func = ntop_func;
 	_random_func = rndfunc;
+
+	(void)npf_test_addif(IFNAME_DUMMY, false, false);
 }
 
 void

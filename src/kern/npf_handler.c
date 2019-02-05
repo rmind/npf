@@ -129,8 +129,6 @@ npf_packet_handler(npf_t *npf, struct mbuf **mp, ifnet_t *ifp, int di)
 	npf_match_info_t mi;
 	bool mff;
 
-	/* QSBR checkpoint. */
-	pserialize_checkpoint(npf->qsbr);
 	KASSERT(ifp != NULL);
 
 	/*

@@ -31,8 +31,9 @@ CFLAGS+=	-Wsuggest-attribute=noreturn #-Wjump-misses-init
 # the libnpf(3) library.  The debug version would, however, conflict.
 #
 ifeq ($(DEBUG),1)
-CFLAGS+=	-Og -DDEBUG -fno-omit-frame-pointer
-CFLAGS+=	-D_NPF_TESTING
+CFLAGS+=	-Og -DDEBUG -fno-omit-frame-pointer -D_NPF_TESTING
+CFLAGS+=	-fsanitize=address
+LDFLAGS+=	-fsanitize=address
 OBJDIR=		debug
 else
 CFLAGS+=	-fvisibility=hidden

@@ -67,6 +67,7 @@ parse_nbuf_chain(struct mbuf *m)
 		n += sizeof(uint32_t);
 	}
 	mbuf_consistency_check(&nbuf);
+	m_freem(nbuf_head_mbuf(&nbuf));
 	return s;
 }
 
@@ -197,11 +198,13 @@ npf_nbuf_test(bool verbose)
 	bufa = mbuf_getstring(m1);
 	bufb = parse_nbuf_chain(m1);
 	fail |= !validate_mbuf_data(verbose, bufa, bufb);
+	m_freem(m1);
 
 	m2 = mbuf_bytesize(MBUF_CHAIN_LEN);
 	bufa = mbuf_getstring(m2);
 	bufb = parse_nbuf_chain(m2);
 	fail |= !validate_mbuf_data(verbose, bufa, bufb);
+	m_freem(m2);
 
 	return !fail;
 }

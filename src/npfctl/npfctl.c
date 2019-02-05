@@ -651,6 +651,7 @@ npfctl_conn_list(int fd, int argc, char **argv)
 			break;
 		case 'h':
 			header = false;
+			break;
 		case 'i':
 			f.ifname = optarg;
 			break;
