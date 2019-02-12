@@ -379,6 +379,7 @@ npf_ifaddrhook(void *arg, u_long cmd, void *arg2)
 	case SIOCAIFADDR_IN6:
 	case SIOCDIFADDR_IN6:
 #endif
+		KASSERT(ifa != NULL);
 		break;
 	default:
 		return;

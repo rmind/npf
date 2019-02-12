@@ -56,7 +56,7 @@ OBJS=		$(shell grep ^file files.npf | cut -f2 | \
 		    grep -v if_npflog | grep -v lpm)
 
 OBJS+=		stand/bpf_filter.o
-OBJS+=		stand/murmurhash.o stand/misc.o
+OBJS+=		stand/murmurhash.o stand/tls_pth.o stand/misc.o
 
 #
 # Flags for the library target

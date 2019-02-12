@@ -67,6 +67,7 @@
 #include <cdbr.h>
 
 #include "cext.h"
+#include "tls.h"
 #include "bpf.h"
 
 /*
@@ -258,16 +259,6 @@ npfkern_kmem_free(void *ptr, size_t len)
 #define	kmalloc(size, type, flags)	calloc(1, (size))
 #define	kfree(ptr, type)		free(ptr)
 
-/*
- * FIXME/TODO: To be implemented using TLS ..
- */
-#define	percpu_t			void
-#define	percpu_alloc(s)			calloc(1, s)
-#define	percpu_free(p, s)		free(p)
-#define	percpu_getref(p)		p
-#define	percpu_putref(p)
-#define	percpu_foreach(p, f, b)		f(p, b, NULL)
-
 static inline int
 npfkern_copy(void *dst, const void *src, size_t len)
 {
@@ -289,6 +280,74 @@ strlcpy(char *dst, const char *src, size_t len)
 #define	copyin(u, k, l)			npfkern_copy((k), (u), (l))
 #define	copyinstr(u, k, l, d)		\
     ((strlcpy((k), (u), (l)) < (l)) ? 0 : ENAMETOOLONG)
+
+/*
+ * Per-CPU wrappers implemented using TLS.
+ */
+
+typedef struct percpu_tls {
+	LIST_ENTRY(percpu_tls)	entry;
+	bool			setup;
+	unsigned char		buf[];
+} percpu_tls_t;
+
+typedef struct {
+	tls_key_t *		key;
+	pthread_mutex_t		lock;
+	LIST_HEAD(, percpu_tls)	list;
+} percpu_t;
+
+struct cpu_info;
+typedef void (*percpu_callback_t)(void *, void *, struct cpu_info *);
+
+static inline percpu_t *
+npfkern_percpu_alloc(size_t size)
+{
+	percpu_t *pc = zalloc(sizeof(percpu_t));
+	pthread_mutex_init(&pc->lock, NULL);
+	pc->key = tls_create(size);
+	return pc;
+}
+
+static inline void
+npfkern_percpu_free(percpu_t *pc, size_t size)
+{
+	tls_destroy(pc->key);
+	pthread_mutex_destroy(&pc->lock);
+	free(pc); (void)size;
+}
+
+static inline void *
+npfkern_percpu_getref(percpu_t *pc)
+{
+	percpu_tls_t *t;
+
+	t = tls_get(pc->key);
+	if (__predict_false(!t->setup)) {
+		pthread_mutex_lock(&pc->lock);
+		LIST_INSERT_HEAD(&pc->list, t, entry);
+		pthread_mutex_unlock(&pc->lock);
+		t->setup = true;
+	}
+	return t->buf;
+}
+
+static inline void
+npfkern_percpu_foreach(percpu_t *pc, percpu_callback_t cb, void *arg)
+{
+	percpu_tls_t *t;
+
+	LIST_FOREACH(t, &pc->list, entry) {
+		cb(t->buf, arg, NULL);
+	}
+}
+
+#define	percpu_t			percpu_t
+#define	percpu_alloc(s)			npfkern_percpu_alloc(s)
+#define	percpu_free(p, s)		npfkern_percpu_free(p, s)
+#define	percpu_getref(p)		npfkern_percpu_getref(p)
+#define	percpu_putref(p)
+#define	percpu_foreach(p, f, a)		npfkern_percpu_foreach(p, f, a)
 
 /*
  * Random number generator.

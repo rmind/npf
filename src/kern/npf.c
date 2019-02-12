@@ -179,7 +179,7 @@ npf_stats_clear_cb(void *mem, void *arg, struct cpu_info *ci)
 	uint64_t *percpu_stats = mem;
 
 	for (unsigned i = 0; i < NPF_STATS_COUNT; i++) {
-		percpu_stats[i] = 0; // atomic
+		percpu_stats[i] = 0;
 	}
 }
 
