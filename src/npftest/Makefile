@@ -32,8 +32,9 @@ CFLAGS+=	-Wsuggest-attribute=noreturn #-Wjump-misses-init
 #
 CFLAGS+=	-Og -DDEBUG -fno-omit-frame-pointer
 CFLAGS+=	-fsanitize=address
-LDFLAGS+=	-fsanitize=address
+CFLAGS+=	-pthread
 
+LDFLAGS+=	-fsanitize=address
 LDFLAGS+=	-lpthread -lnv -lpcap -lcdb -lnpfkern-dbg
 
 OBJS=		npftest.o npfstream.o

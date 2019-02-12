@@ -41,6 +41,7 @@ CFLAGS+=	-DNDEBUG
 OBJDIR=		build
 endif
 
+CFLAGS+=	-pthread
 LDFLAGS+=	-lpthread -lnv -lqsbr -lthmap -llpm -lcdb -lbpfjit
 ifeq ($(SYSNAME),Linux)
 LDFLAGS+=	-ljemalloc
@@ -86,7 +87,7 @@ $(OBJDIR)/%.lo: %.c
 	libtool --mode=compile --tag CC $(CC) $(CFLAGS) -c -o $@ $<
 
 $(LIB).la: $(addprefix $(OBJDIR)/,$(shell echo $(OBJS) | sed 's/\.o/\.lo/g'))
-	libtool --mode=link --tag CC $(CC) $(LDFLAGS) -o $@ $^
+	libtool --mode=link --tag CC $(CC) -o $@ $^ $(LDFLAGS)
 
 install/%.la: %.la
 	mkdir -p $(ILIBDIR)

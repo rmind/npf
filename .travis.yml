@@ -1,5 +1,5 @@
 sudo: required
-dist: xenial
+dist: bionic
 
 language: c
 
@@ -10,8 +10,10 @@ compiler:
 install:
   # build essentials
   - sudo apt-get install -y build-essential fakeroot debhelper
-  - sudo apt-get install -y make libtool libjemalloc-dev libpcap-dev
-  - sudo apt-get install -y byacc flex liblua5.1-0-dev
+  - sudo apt-get install -y make libtool libtool-bin byacc flex
+  - sudo apt-get install -y libjemalloc-dev libpcap-dev
+  - sudo apt-get install -y liblua5.1-0-dev
+  - sudo update-alternatives --set yacc /usr/bin/byacc
   # libnv
   - git clone https://github.com/rmind/nvlist
   - (cd nvlist/pkg && make deb && sudo dpkg -i ../libnv*.deb)
