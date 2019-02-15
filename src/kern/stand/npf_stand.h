@@ -156,7 +156,7 @@ npfkern_ebr_wait(ebr_t *ebr)
 #define	pserialize_create()	ebr_create()
 #define	pserialize_destroy(p)	ebr_destroy(p)
 #define	pserialize_register(p)	ebr_register(p)
-#define	pserialize_unregister(p) (void)(p)
+#define	pserialize_unregister(p) ebr_unregister(p)
 #define	pserialize_perform(p)	npfkern_ebr_wait(p)
 #define	pserialize_read_enter()	NPF_DIAG_MAGIC_VAL
 #ifdef NDEBUG
