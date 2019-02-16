@@ -50,7 +50,7 @@ endif
 # Objects to compile
 #
 
-OBJS=		$(shell awk '/^file/ { print $2 }' files.npf | \
+OBJS=		$(shell awk '/^file/ { print $$2 }' files.npf | \
 		    sed 's:\(.*\)net/npf/\(.*\).c:\2.o:g' | \
 		    egrep -v '^(npf_os|npf_ext_|npf_ifaddr|if_npflog|lpm)')
 
