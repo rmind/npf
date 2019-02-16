@@ -50,10 +50,9 @@ endif
 # Objects to compile
 #
 
-OBJS=		$(shell grep ^file files.npf | cut -f2 | \
-		    sed 's/\(.*\)net\/npf\/\(.*\).c/\2.o/g' | \
-		    grep -v npf_os | grep -v npf_ext_ | grep -v npf_ifaddr | \
-		    grep -v if_npflog | grep -v lpm)
+OBJS=		$(shell awk '/^file/ { print $2 }' files.npf | \
+		    sed 's:\(.*\)net/npf/\(.*\).c:\2.o:g' | \
+		    egrep -v '^(npf_os|npf_ext_|npf_ifaddr|if_npflog|lpm)')
 
 OBJS+=		stand/bpf_filter.o
 OBJS+=		stand/murmurhash.o stand/tls_pth.o stand/misc.o

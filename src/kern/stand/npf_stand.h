@@ -337,16 +337,18 @@ npfkern_percpu_foreach(percpu_t *pc, percpu_callback_t cb, void *arg)
 {
 	percpu_tls_t *t;
 
+	pthread_mutex_lock(&pc->lock);
 	LIST_FOREACH(t, &pc->list, entry) {
 		cb(t->buf, arg, NULL);
 	}
+	pthread_mutex_unlock(&pc->lock);
 }
 
 #define	percpu_t			percpu_t
 #define	percpu_alloc(s)			npfkern_percpu_alloc(s)
 #define	percpu_free(p, s)		npfkern_percpu_free(p, s)
 #define	percpu_getref(p)		npfkern_percpu_getref(p)
-#define	percpu_putref(p)
+#define	percpu_putref(p)		assert(p)
 #define	percpu_foreach(p, f, a)		npfkern_percpu_foreach(p, f, a)
 
 /*
