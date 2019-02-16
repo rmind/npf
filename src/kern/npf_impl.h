@@ -280,8 +280,8 @@ int		npfctl_table(npf_t *, void *);
 void		npf_stats_inc(npf_t *, npf_stats_t);
 void		npf_stats_dec(npf_t *, npf_stats_t);
 
-void		npf_param_sysinit(npf_t *);
-void		npf_param_sysfini(npf_t *);
+void		npf_param_init(npf_t *);
+void		npf_param_fini(npf_t *);
 void		npf_param_register(npf_t *, npf_param_t *, unsigned);
 
 void		npf_ifmap_init(npf_t *, const npf_ifops_t *);
