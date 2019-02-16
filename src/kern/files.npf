@@ -16,6 +16,7 @@ file	net/npf/npf_ctl.c			npf
 file	net/npf/npf_handler.c			npf
 file	net/npf/npf_mbuf.c			npf
 file	net/npf/npf_bpf.c			npf
+file	net/npf/npf_params.c			npf
 file	net/npf/npf_ruleset.c			npf
 file	net/npf/npf_rproc.c			npf
 file	net/npf/npf_tableset.c			npf

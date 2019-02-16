@@ -251,7 +251,7 @@ npf_conndb_getnext(npf_conndb_t *cd, npf_conn_t *con)
  * npf_conndb_gc_incr: incremental G/C of the expired connections.
  */
 static void
-npf_conndb_gc_incr(npf_conndb_t *cd, const time_t now)
+npf_conndb_gc_incr(npf_t *npf, npf_conndb_t *cd, const time_t now)
 {
 	unsigned target = NPF_GC_STEP;
 	npf_conn_t *con;
@@ -277,7 +277,7 @@ npf_conndb_gc_incr(npf_conndb_t *cd, const time_t now)
 		/*
 		 * Can we G/C this connection?
 		 */
-		if (npf_conn_expired(con, now)) {
+		if (npf_conn_expired(npf, con, now)) {
 			/* Yes: move to the G/C list. */
 			LIST_REMOVE(con, c_entry);
 			LIST_INSERT_HEAD(&cd->cd_gclist, con, c_entry);
@@ -335,7 +335,7 @@ npf_conndb_gc(npf_t *npf, npf_conndb_t *cd, bool flush, bool sync)
 		cd->cd_marker = NULL;
 	} else {
 		/* Incremental G/C of the expired connections. */
-		npf_conndb_gc_incr(cd, tsnow.tv_sec);
+		npf_conndb_gc_incr(npf, cd, tsnow.tv_sec);
 	}
 	mutex_exit(&npf->conn_lock);
 

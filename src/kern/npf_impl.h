@@ -163,6 +163,19 @@ struct nbuf {
 };
 
 /*
+ * PARAMS.
+ */
+
+typedef struct npf_paraminfo npf_paraminfo_t;
+
+typedef struct {
+	const char *	name;
+	int64_t *	valp;
+	int64_t		min;
+	int64_t		max;
+} npf_param_t;
+
+/*
  * NPF INSTANCE (CONTEXT) STRUCTURE AND AUXILIARY OPERATIONS.
  */
 
@@ -175,6 +188,7 @@ struct npf {
 	/* BPF byte-code context. */
 	bpf_ctx_t *		bpfctx;
 	const npf_mbufops_t *	mbufops;
+	npf_paraminfo_t *	params;
 
 	/*
 	 * Connection tracking state: disabled (off) or enabled (on).
@@ -206,7 +220,6 @@ struct npf {
 	/* Statistics. */
 	percpu_t *		stats_percpu;
 };
-
 
 /*
  * NPF extensions and rule procedure interface.
@@ -266,6 +279,10 @@ int		npfctl_table(npf_t *, void *);
 
 void		npf_stats_inc(npf_t *, npf_stats_t);
 void		npf_stats_dec(npf_t *, npf_stats_t);
+
+void		npf_param_sysinit(npf_t *);
+void		npf_param_sysfini(npf_t *);
+void		npf_param_register(npf_t *, npf_param_t *, unsigned);
 
 void		npf_ifmap_init(npf_t *, const npf_ifops_t *);
 void		npf_ifmap_fini(npf_t *);
@@ -408,7 +425,7 @@ bool		npf_rproc_run(npf_cache_t *, npf_rproc_t *,
 /* State handling. */
 bool		npf_state_init(npf_cache_t *, npf_state_t *);
 bool		npf_state_inspect(npf_cache_t *, npf_state_t *, const bool);
-int		npf_state_etime(const npf_state_t *, const int);
+int		npf_state_etime(npf_t *, const npf_state_t *, const int);
 void		npf_state_destroy(npf_state_t *);
 
 bool		npf_state_tcp(npf_cache_t *, npf_state_t *, int);

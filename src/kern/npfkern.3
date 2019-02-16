@@ -55,8 +55,14 @@
 .Fn npf_ifmap_attach "npf_t *npf" "struct ifnet *ifp"
 .Ft void
 .Fn npf_ifmap_detach "npf_t *npf" "struct ifnet *ifp"
+.Ft int
+.Fn npf_param_get "npf_t *npf" "const char *name" "int64_t *val"
+.Ft int
+.Fn npf_param_set "npf_t *npf" "const char *name" "int64_t val"
 .Ft void
 .Fn npf_stats "npf_t *npf" "uint64_t *buf"
+.Ft void
+.Fn npf_stats_clear "npf_t *npf"
 .\" -----
 .Sh DESCRIPTION
 The
@@ -177,6 +183,19 @@ This indicates that the packets on this interface shall be processed.
 .It Fn npf_ifmap_detach "npf" "ifp"
 Detach the virtual network interface from the NPF instance.
 .\" ---
+.It Fn npf_param_get "npf" "name" "val"
+Get the parameter value of the given NPF instance.
+On success, the function returns zero and the parameter value stored in
+.Fa val .
+On failure, if the parameter does not exist, the function returns
+.Dv ENOENT .
+.\" ---
+.It Fn npf_param_set "npf" "name" "val"
+Set the parameter vale for the given NPF instance.
+Returns zero on success or
+.Dv ENOENT
+if the parameter does not exist.
+.\" ---
 .It Fn npf_stats "npf" "buf"
 Get the statistics of the NPF instance into the buffer specified by the
 .Fa buf
@@ -189,6 +208,9 @@ integers having at least
 number of elements (or
 .Dv NPF_STATS_SIZE
 in bytes).
+.\" ---
+.It Fn npf_stats_clear "npf"
+Clear (by resetting to zero) the statistics of the given NPF instance.
 .\" ---
 .El
 .\" -----

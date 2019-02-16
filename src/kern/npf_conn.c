@@ -677,9 +677,9 @@ npf_conn_getnat(npf_conn_t *con, const int di, bool *forw)
  * npf_conn_expired: criterion to check if connection is expired.
  */
 bool
-npf_conn_expired(const npf_conn_t *con, uint64_t tsnow)
+npf_conn_expired(npf_t *npf, const npf_conn_t *con, uint64_t tsnow)
 {
-	const int etime = npf_state_etime(&con->c_state, con->c_proto);
+	const int etime = npf_state_etime(npf, &con->c_state, con->c_proto);
 	int elapsed;
 
 	if (__predict_false(con->c_flags & CONN_EXPIRE)) {

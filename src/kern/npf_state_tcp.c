@@ -67,7 +67,7 @@ __KERNEL_RCSID(0, "$NetBSD: npf_state_tcp.c,v 1.19 2018/09/29 14:41:36 rmind Exp
 /*
  * TCP connection timeout table (in seconds).
  */
-static u_int npf_tcp_timeouts[] __read_mostly = {
+static unsigned npf_tcp_timeouts[] __read_mostly = {
 	/* Closed, timeout nearly immediately. */
 	[NPF_TCPS_CLOSED]	= 10,
 	/* Unsynchronised states. */

@@ -67,7 +67,7 @@ static const uint8_t npf_generic_fsm[NPF_ANY_CONN_NSTATES][2] = {
 	},
 };
 
-static u_int npf_generic_timeout[] __read_mostly = {
+static unsigned npf_generic_timeout[] __read_mostly = {
 	[NPF_ANY_CONN_CLOSED]		= 0,
 	[NPF_ANY_CONN_NEW]		= 30,
 	[NPF_ANY_CONN_ESTABLISHED]	= 60,
@@ -161,9 +161,9 @@ npf_state_inspect(npf_cache_t *npc, npf_state_t *nst, const bool forw)
  * npf_state_etime: return connection expiration time according to the state.
  */
 int
-npf_state_etime(const npf_state_t *nst, const int proto)
+npf_state_etime(npf_t *npf, const npf_state_t *nst, const int proto)
 {
-	const u_int state = nst->nst_state;
+	const unsigned state = nst->nst_state;
 	int timeout = 0;
 
 	switch (proto) {
