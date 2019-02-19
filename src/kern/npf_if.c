@@ -162,7 +162,7 @@ npf_ifmap_copyname(npf_t *npf, u_int id, char *buf, size_t len)
 {
 	if (id > 0 && id < npf->ifmap_cnt)
 		strlcpy(buf, npf->ifmap[id - 1].n_ifname,
-		    MIN(len, sizeof(npf->ifmap[id - 1].n_ifname)));
+		    MIN(len, sizeof(npf->ifmap[id - 1].n_ifname) + 1));
 	else
 		strlcpy(buf, "???", len);
 }
