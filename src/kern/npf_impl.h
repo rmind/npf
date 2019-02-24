@@ -170,10 +170,20 @@ typedef struct npf_paraminfo npf_paraminfo_t;
 
 typedef struct {
 	const char *	name;
-	int64_t *	valp;
-	int64_t		min;
-	int64_t		max;
+	int *		valp;
+	int		default_val;
+	/*
+	 * Minimum and maximum allowed values (inclusive).
+	 */
+	int		min;
+	int		max;
 } npf_param_t;
+
+enum {
+	NPF_PARAMS_GENERIC_STATE = 0,
+	NPF_PARAMS_TCP_STATE,
+	NPF_PARAMS_COUNT
+};
 
 /*
  * NPF INSTANCE (CONTEXT) STRUCTURE AND AUXILIARY OPERATIONS.
@@ -188,7 +198,10 @@ struct npf {
 	/* BPF byte-code context. */
 	bpf_ctx_t *		bpfctx;
 	const npf_mbufops_t *	mbufops;
-	npf_paraminfo_t *	params;
+
+	/* Parameters. */
+	npf_paraminfo_t *	paraminfo;
+	void *			params[NPF_PARAMS_COUNT];
 
 	/*
 	 * Connection tracking state: disabled (off) or enabled (on).
@@ -423,13 +436,18 @@ bool		npf_rproc_run(npf_cache_t *, npf_rproc_t *,
 		    const npf_match_info_t *, int *);
 
 /* State handling. */
+void		npf_state_sysinit(npf_t *);
+void		npf_state_sysfini(npf_t *);
+
 bool		npf_state_init(npf_cache_t *, npf_state_t *);
 bool		npf_state_inspect(npf_cache_t *, npf_state_t *, const bool);
 int		npf_state_etime(npf_t *, const npf_state_t *, const int);
 void		npf_state_destroy(npf_state_t *);
 
+void		npf_state_tcp_sysinit(npf_t *);
+void		npf_state_tcp_sysfini(npf_t *);
 bool		npf_state_tcp(npf_cache_t *, npf_state_t *, int);
-int		npf_state_tcp_timeout(const npf_state_t *);
+int		npf_state_tcp_timeout(npf_t *, const npf_state_t *);
 
 /* NAT. */
 void		npf_nat_sysinit(void);

@@ -933,7 +933,7 @@ npf_conn_print(npf_conn_t *con)
 	getnanouptime(&tspnow);
 	printf("%p:\n\tproto %d flags 0x%x tsdiff %ld etime %d\n", con,
 	    proto, con->c_flags, (long)(tspnow.tv_sec - con->c_atime),
-	    npf_state_etime(&con->c_state, proto));
+	    npf_state_etime(npf_getkernctx(), &con->c_state, proto));
 	npf_connkey_print(fw);
 	npf_connkey_print(bk);
 	npf_state_dump(&con->c_state);

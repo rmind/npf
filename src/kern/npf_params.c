@@ -38,77 +38,114 @@ __KERNEL_RCSID(0, "$NetBSD$");
 
 #include "npf_impl.h"
 
-typedef struct npf_regparams {
-	struct npf_regparams *	next;
-	npf_param_t *		params;
+typedef struct npf_paramreg {
+	struct npf_paramreg *	next;
 	unsigned		count;
-} npf_regparams_t;
+	npf_param_t		params[];
+} npf_paramreg_t;
 
 typedef struct npf_paraminfo {
-	npf_regparams_t *	list;
+	npf_paramreg_t *	list;
 	thmap_t *		map;
 } npf_paraminfo_t;
 
 void
 npf_param_init(npf_t *npf)
 {
-	npf_paraminfo_t *params;
+	npf_paraminfo_t *paraminfo;
 
-	params = kmem_zalloc(sizeof(npf_paraminfo_t), KM_SLEEP);
-	params->map = thmap_create(0, NULL, THMAP_NOCOPY);
-	npf->params = params;
+	paraminfo = kmem_zalloc(sizeof(npf_paraminfo_t), KM_SLEEP);
+	paraminfo->map = thmap_create(0, NULL, THMAP_NOCOPY);
+	npf->paraminfo = paraminfo;
 }
 
 void
 npf_param_fini(npf_t *npf)
 {
-	npf_paraminfo_t *pinfo = npf->params;
-	npf_regparams_t *regparams = pinfo->list;
+	npf_paraminfo_t *pinfo = npf->paraminfo;
+	npf_paramreg_t *paramreg = pinfo->list;
 
-	while (regparams) {
-		npf_param_t *plist = regparams->params;
+	while (paramreg) {
+		npf_param_t *plist = paramreg->params;
+		npf_paramreg_t *next = paramreg->next;
+		size_t len;
 
-		for (unsigned i = 0; i < regparams->count; i++) {
+		/* Remove the parameters from the map. */
+		for (unsigned i = 0; i < paramreg->count; i++) {
 			npf_param_t *param = &plist[i];
 			const char *name = param->name;
-			const size_t namelen = strlen(name);
 			void *ret __diagused;
 
-			ret = thmap_del(pinfo->map, name, namelen);
+			ret = thmap_del(pinfo->map, name, strlen(name));
 			KASSERT(ret != NULL);
 		}
-		regparams = regparams->next;
+
+		/* Destroy this registry. */
+		len = offsetof(npf_paramreg_t, params[paramreg->count]);
+		kmem_free(paramreg, len);
+
+		/* Next .. */
+		paramreg = next;
 	}
 	thmap_destroy(pinfo->map);
 	kmem_free(pinfo, sizeof(npf_paraminfo_t));
 }
 
+/*
+ * npf_param_register: register an array of named parameters.
+ */
 void
 npf_param_register(npf_t *npf, npf_param_t *params, unsigned count)
 {
-	npf_paraminfo_t *pinfo = npf->params;
+	npf_paraminfo_t *pinfo = npf->paraminfo;
+	npf_paramreg_t *paramreg;
+	size_t len;
 
+	/*
+	 * Copy over the parameters.
+	 */
+	len = offsetof(npf_paramreg_t, params[count]);
+	paramreg = kmem_zalloc(len, KM_SLEEP);
+	memcpy(paramreg->params, params, sizeof(npf_param_t) * count);
+	paramreg->count = count;
+
+	/*
+	 * Map the parameter names to the variables.
+	 * Assign the default values.
+	 */
 	for (unsigned i = 0; i < count; i++) {
 		npf_param_t *param = &params[i];
 		const char *name = param->name;
-		const size_t namelen = strlen(name);
 		void *ret __diagused;
 
-		ret = thmap_put(pinfo->map, name, namelen, param);
+		ret = thmap_put(pinfo->map, name, strlen(name), param);
 		KASSERT(ret == NULL);
+
+		/* Assign the default value. */
+		KASSERT(param->default_val >= param->min);
+		KASSERT(param->default_val <= param->max);
+		*param->valp = param->default_val;
 	}
+
+	/* Insert the registry of params into the list. */
+	paramreg->next = pinfo->list;
+	pinfo->list = paramreg;
 }
+
+/*
+ * NPF param API.
+ */
 
 static npf_param_t *
 npf_param_lookup(npf_t *npf, const char *name)
 {
-	npf_paraminfo_t *pinfo = npf->params;
+	npf_paraminfo_t *pinfo = npf->paraminfo;
 	const size_t namelen = strlen(name);
 	return thmap_get(pinfo->map, name, namelen);
 }
 
 __dso_public int
-npf_param_get(npf_t *npf, const char *name, int64_t *val)
+npf_param_get(npf_t *npf, const char *name, int *val)
 {
 	npf_param_t *param;
 
@@ -120,12 +157,15 @@ npf_param_get(npf_t *npf, const char *name, int64_t *val)
 }
 
 __dso_public int
-npf_param_set(npf_t *npf, const char *name, int64_t val)
+npf_param_set(npf_t *npf, const char *name, int val)
 {
 	npf_param_t *param;
 
 	if ((param = npf_param_lookup(npf, name)) == NULL) {
 		return ENOENT;
+	}
+	if (val < param->min || val > param->max) {
+		return EINVAL;
 	}
 	*param->valp = val;
 	return 0;

@@ -77,6 +77,7 @@ npf_create(int flags, const npf_mbufops_t *mbufops, const npf_ifops_t *ifops)
 	npf->mbufops = mbufops;
 
 	npf_param_init(npf);
+	npf_state_sysinit(npf);
 	npf_ifmap_init(npf, ifops);
 	npf_conn_init(npf, flags);
 	npf_alg_init(npf);
@@ -101,6 +102,7 @@ npf_destroy(npf_t *npf)
 	npf_alg_fini(npf);
 	npf_conn_fini(npf);
 	npf_ifmap_fini(npf);
+	npf_state_sysfini(npf);
 	npf_param_fini(npf);
 
 	pserialize_destroy(npf->qsbr);
