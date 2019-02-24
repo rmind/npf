@@ -44,10 +44,10 @@ typedef struct npf_paramreg {
 	npf_param_t		params[];
 } npf_paramreg_t;
 
-typedef struct npf_paraminfo {
+struct npf_paraminfo {
 	npf_paramreg_t *	list;
 	thmap_t *		map;
-} npf_paraminfo_t;
+};
 
 void
 npf_param_init(npf_t *npf)
