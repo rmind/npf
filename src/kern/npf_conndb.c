@@ -60,8 +60,6 @@ __KERNEL_RCSID(0, "$NetBSD: npf_conndb.c,v 1.5 2019/01/19 21:19:31 rmind Exp $")
 #include "npf_conn.h"
 #include "npf_impl.h"
 
-#define	NPF_GC_STEP		256
-
 struct npf_conndb {
 	thmap_t *		cd_map;
 
@@ -282,7 +280,8 @@ npf_conndb_getnext(npf_conndb_t *cd, npf_conn_t *con)
 static void
 npf_conndb_gc_incr(npf_t *npf, npf_conndb_t *cd, const time_t now)
 {
-	unsigned target = NPF_GC_STEP;
+	const npf_conndb_params_t *params = npf->params[NPF_PARAMS_CONNDB];
+	unsigned target = params->gc_step;
 	npf_conn_t *con;
 
 	/*

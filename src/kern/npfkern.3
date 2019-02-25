@@ -183,10 +183,10 @@ This indicates that the packets on this interface shall be processed.
 .It Fn npf_ifmap_detach "npf" "ifp"
 Detach the virtual network interface from the NPF instance.
 .\" ---
-.It Fn npf_param_get "npf" "name" "val"
+.It Fn npf_param_get "npf" "name" "valp"
 Get the parameter value of the given NPF instance.
 On success, the function returns zero and the parameter value stored in
-.Fa val .
+.Fa valp .
 On failure, if the parameter does not exist, the function returns
 .Dv ENOENT .
 .\" ---

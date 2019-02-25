@@ -108,13 +108,14 @@ npf_param_register(npf_t *npf, npf_param_t *params, unsigned count)
 	paramreg = kmem_zalloc(len, KM_SLEEP);
 	memcpy(paramreg->params, params, sizeof(npf_param_t) * count);
 	paramreg->count = count;
+	params = NULL; // dead
 
 	/*
 	 * Map the parameter names to the variables.
 	 * Assign the default values.
 	 */
 	for (unsigned i = 0; i < count; i++) {
-		npf_param_t *param = &params[i];
+		npf_param_t *param = &paramreg->params[i];
 		const char *name = param->name;
 		void *ret __diagused;
 
