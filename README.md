@@ -77,6 +77,6 @@ flags) packages:
     <th width="150"><a href="https://en.outscale.com"><img src="https://fr.outscale.com/wp-content/uploads/2018/07/Logo_Outscale_Bleu_RGB.png" alt="Outscale" align="middle"></a></th>
     <th width="150"><a href="https://innofield.com"><img src="https://innofield.com/wp-content/uploads/2014/07/innofield_logo_sticky.gif" alt="innofield AG" align="middle" width="80%"></a></th>
     <th width="150"><a href="https://www.netbsd.org"><img src="https://www.netbsd.org/images/NetBSD.png" alt="NetBSD" align="middle" width="70%"></a></th>
-    <th width="150"><a href="http://therouter.net"><img src="http://therouter.net/images/r.png" alt="TheRouter" align="middle"></a></th>
+    <th width="150"><a href="http://therouter.net"><img src="https://raw.githubusercontent.com/alexk99/the_router/master/the_router_npf.png" alt="TheRouter" align="middle"></a></th>
   </tr>
 </table>
