@@ -106,16 +106,16 @@ npf_state_sysinit(npf_t *npf)
 			"state.generic.timeout.new",
 			&params->timeouts[NPF_ANY_CONN_NEW],
 			.default_val = 30,
-			.min = 1, .max = INT_MAX
+			.min = 0, .max = INT_MAX
 		},
 		{
 			"state.generic.timeout.established",
 			&params->timeouts[NPF_ANY_CONN_ESTABLISHED],
 			.default_val = 60,
-			.min = 1, .max = INT_MAX
+			.min = 0, .max = INT_MAX
 		},
 	};
-	npf_param_register(npf, param_map, __arraycount(&param_map));
+	npf_param_register(npf, param_map, __arraycount(param_map));
 	npf->params[NPF_PARAMS_GENERIC_STATE] = params;
 	npf_state_tcp_sysinit(npf);
 }

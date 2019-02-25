@@ -119,7 +119,7 @@ npf_param_register(npf_t *npf, npf_param_t *params, unsigned count)
 		void *ret __diagused;
 
 		ret = thmap_put(pinfo->map, name, strlen(name), param);
-		KASSERT(ret == NULL);
+		KASSERT(ret == param);
 
 		/* Assign the default value. */
 		KASSERT(param->default_val >= param->min);

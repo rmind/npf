@@ -570,13 +570,13 @@ npf_state_tcp_sysinit(npf_t *npf)
 			"state.tcp.timeout.last_ack",
 			&params->timeouts[NPF_TCPS_LAST_ACK],
 			.default_val = 30,
-			.min = 1, .max = INT_MAX
+			.min = 0, .max = INT_MAX
 		},
 		{
 			"state.tcp.timeout.time_wait",
 			&params->timeouts[NPF_TCPS_TIME_WAIT],
 			.default_val = 60 * 2 * 2,
-			.min = 1, .max = INT_MAX
+			.min = 0, .max = INT_MAX
 		},
 
 		/*
@@ -599,7 +599,7 @@ npf_state_tcp_sysinit(npf_t *npf)
 			.min = 0, .max = INT_MAX
 		},
 	};
-	npf_param_register(npf, param_map, __arraycount(&param_map));
+	npf_param_register(npf, param_map, __arraycount(param_map));
 	npf->params[NPF_PARAMS_TCP_STATE] = params;
 }
 
