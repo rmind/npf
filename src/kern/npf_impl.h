@@ -134,7 +134,7 @@ typedef struct {
 } npf_tcpstate_t;
 
 typedef struct {
-	u_int		nst_state;
+	unsigned 	nst_state;
 	npf_tcpstate_t	nst_tcpst[2];
 } npf_state_t;
 
@@ -180,7 +180,8 @@ typedef struct {
 } npf_param_t;
 
 enum {
-	NPF_PARAMS_GENERIC_STATE = 0,
+	NPF_PARAMS_CONNDB = 0,
+	NPF_PARAMS_GENERIC_STATE,
 	NPF_PARAMS_TCP_STATE,
 	NPF_PARAMS_COUNT
 };

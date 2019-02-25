@@ -165,11 +165,14 @@ npf_conn_init(npf_t *npf, int flags)
 	if ((flags & NPF_NO_GC) == 0) {
 		npf_worker_register(npf, npf_conn_worker);
 	}
+	npf_conndb_sysinit(npf);
 }
 
 void
 npf_conn_fini(npf_t *npf)
 {
+	npf_conndb_sysfini(npf);
+
 	/* Note: the caller should have flushed the connections. */
 	KASSERT(npf->conn_tracking == CONN_TRACKING_OFF);
 	npf_worker_unregister(npf, npf_conn_worker);

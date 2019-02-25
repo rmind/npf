@@ -80,12 +80,41 @@ struct npf_conndb {
 	npf_conn_t *		cd_marker;
 };
 
+typedef struct {
+	int		gc_step;
+	int		_reserved0;
+} npf_conndb_params_t;
+
 /*
  * Pointer tag for connection keys which represent the "forwards" entry.
  */
 #define	CONNDB_FORW_BIT		((uintptr_t)0x1)
 #define	CONNDB_ISFORW_P(p)	(((uintptr_t)(p) & CONNDB_FORW_BIT) != 0)
 #define	CONNDB_GET_PTR(p)	((void *)((uintptr_t)(p) & ~CONNDB_FORW_BIT))
+
+void
+npf_conndb_sysinit(npf_t *npf)
+{
+	const size_t len = sizeof(npf_conndb_params_t);
+	npf_conndb_params_t *params = kmem_zalloc(len, KM_SLEEP);
+	npf_param_t param_map[] = {
+		{
+			"gc.step",
+			&params->gc_step,
+			.default_val = 256,
+			.min = 1, .max = INT_MAX
+		}
+	};
+	npf_param_register(npf, param_map, __arraycount(param_map));
+	npf->params[NPF_PARAMS_CONNDB] = params;
+}
+
+void
+npf_conndb_sysfini(npf_t *npf)
+{
+	const size_t len = sizeof(npf_conndb_params_t);
+	kmem_free(npf->params[NPF_PARAMS_CONNDB], len);
+}
 
 npf_conndb_t *
 npf_conndb_create(void)

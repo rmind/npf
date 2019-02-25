@@ -152,6 +152,9 @@ void		npf_conn_print(npf_conn_t *);
 /*
  * Connection database (aka state table) interface.
  */
+void		npf_conndb_sysinit(npf_t *);
+void		npf_conndb_sysfini(npf_t *);
+
 npf_conndb_t *	npf_conndb_create(void);
 void		npf_conndb_destroy(npf_conndb_t *);
 
