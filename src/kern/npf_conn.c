@@ -165,11 +165,14 @@ npf_conn_init(npf_t *npf, int flags)
 	if ((flags & NPF_NO_GC) == 0) {
 		npf_worker_register(npf, npf_conn_worker);
 	}
+	npf_conndb_sysinit(npf);
 }
 
 void
 npf_conn_fini(npf_t *npf)
 {
+	npf_conndb_sysfini(npf);
+
 	/* Note: the caller should have flushed the connections. */
 	KASSERT(npf->conn_tracking == CONN_TRACKING_OFF);
 	npf_worker_unregister(npf, npf_conn_worker);
@@ -677,9 +680,9 @@ npf_conn_getnat(npf_conn_t *con, const int di, bool *forw)
  * npf_conn_expired: criterion to check if connection is expired.
  */
 bool
-npf_conn_expired(const npf_conn_t *con, uint64_t tsnow)
+npf_conn_expired(npf_t *npf, const npf_conn_t *con, uint64_t tsnow)
 {
-	const int etime = npf_state_etime(&con->c_state, con->c_proto);
+	const int etime = npf_state_etime(npf, &con->c_state, con->c_proto);
 	int elapsed;
 
 	if (__predict_false(con->c_flags & CONN_EXPIRE)) {
@@ -933,7 +936,7 @@ npf_conn_print(npf_conn_t *con)
 	getnanouptime(&tspnow);
 	printf("%p:\n\tproto %d flags 0x%x tsdiff %ld etime %d\n", con,
 	    proto, con->c_flags, (long)(tspnow.tv_sec - con->c_atime),
-	    npf_state_etime(&con->c_state, proto));
+	    npf_state_etime(npf_getkernctx(), &con->c_state, proto));
 	npf_connkey_print(fw);
 	npf_connkey_print(bk);
 	npf_state_dump(&con->c_state);

@@ -134,7 +134,7 @@ typedef struct {
 } npf_tcpstate_t;
 
 typedef struct {
-	u_int		nst_state;
+	unsigned 	nst_state;
 	npf_tcpstate_t	nst_tcpst[2];
 } npf_state_t;
 
@@ -163,6 +163,30 @@ struct nbuf {
 };
 
 /*
+ * PARAMS.
+ */
+
+typedef struct npf_paraminfo npf_paraminfo_t;
+
+typedef struct {
+	const char *	name;
+	int *		valp;
+	int		default_val;
+	/*
+	 * Minimum and maximum allowed values (inclusive).
+	 */
+	int		min;
+	int		max;
+} npf_param_t;
+
+enum {
+	NPF_PARAMS_CONNDB = 0,
+	NPF_PARAMS_GENERIC_STATE,
+	NPF_PARAMS_TCP_STATE,
+	NPF_PARAMS_COUNT
+};
+
+/*
  * NPF INSTANCE (CONTEXT) STRUCTURE AND AUXILIARY OPERATIONS.
  */
 
@@ -175,6 +199,10 @@ struct npf {
 	/* BPF byte-code context. */
 	bpf_ctx_t *		bpfctx;
 	const npf_mbufops_t *	mbufops;
+
+	/* Parameters. */
+	npf_paraminfo_t *	paraminfo;
+	void *			params[NPF_PARAMS_COUNT];
 
 	/*
 	 * Connection tracking state: disabled (off) or enabled (on).
@@ -206,7 +234,6 @@ struct npf {
 	/* Statistics. */
 	percpu_t *		stats_percpu;
 };
-
 
 /*
  * NPF extensions and rule procedure interface.
@@ -266,6 +293,10 @@ int		npfctl_table(npf_t *, void *);
 
 void		npf_stats_inc(npf_t *, npf_stats_t);
 void		npf_stats_dec(npf_t *, npf_stats_t);
+
+void		npf_param_init(npf_t *);
+void		npf_param_fini(npf_t *);
+void		npf_param_register(npf_t *, npf_param_t *, unsigned);
 
 void		npf_ifmap_init(npf_t *, const npf_ifops_t *);
 void		npf_ifmap_fini(npf_t *);
@@ -406,13 +437,18 @@ bool		npf_rproc_run(npf_cache_t *, npf_rproc_t *,
 		    const npf_match_info_t *, int *);
 
 /* State handling. */
+void		npf_state_sysinit(npf_t *);
+void		npf_state_sysfini(npf_t *);
+
 bool		npf_state_init(npf_cache_t *, npf_state_t *);
 bool		npf_state_inspect(npf_cache_t *, npf_state_t *, const bool);
-int		npf_state_etime(const npf_state_t *, const int);
+int		npf_state_etime(npf_t *, const npf_state_t *, const int);
 void		npf_state_destroy(npf_state_t *);
 
+void		npf_state_tcp_sysinit(npf_t *);
+void		npf_state_tcp_sysfini(npf_t *);
 bool		npf_state_tcp(npf_cache_t *, npf_state_t *, int);
-int		npf_state_tcp_timeout(const npf_state_t *);
+int		npf_state_tcp_timeout(npf_t *, const npf_state_t *);
 
 /* NAT. */
 void		npf_nat_sysinit(void);

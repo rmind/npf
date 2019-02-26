@@ -65,33 +65,17 @@ __KERNEL_RCSID(0, "$NetBSD: npf_state_tcp.c,v 1.19 2018/09/29 14:41:36 rmind Exp
 #define	NPF_TCP_NSTATES		12
 
 /*
- * TCP connection timeout table (in seconds).
+ * Parameters.
  */
-static u_int npf_tcp_timeouts[] __read_mostly = {
-	/* Closed, timeout nearly immediately. */
-	[NPF_TCPS_CLOSED]	= 10,
-	/* Unsynchronised states. */
-	[NPF_TCPS_SYN_SENT]	= 30,
-	[NPF_TCPS_SIMSYN_SENT]	= 30,
-	[NPF_TCPS_SYN_RECEIVED]	= 60,
-	/* Established: 24 hours. */
-	[NPF_TCPS_ESTABLISHED]	= 60 * 60 * 24,
-	/* FIN seen: 4 minutes (2 * MSL). */
-	[NPF_TCPS_FIN_SENT]	= 60 * 2 * 2,
-	[NPF_TCPS_FIN_RECEIVED]	= 60 * 2 * 2,
-	/* Half-closed cases: 6 hours. */
-	[NPF_TCPS_CLOSE_WAIT]	= 60 * 60 * 6,
-	[NPF_TCPS_FIN_WAIT]	= 60 * 60 * 6,
-	/* Full close cases: 30 sec and 2 * MSL. */
-	[NPF_TCPS_CLOSING]	= 30,
-	[NPF_TCPS_LAST_ACK]	= 30,
-	[NPF_TCPS_TIME_WAIT]	= 60 * 2 * 2,
-};
+typedef struct {
+	int		max_ack_win;
+	int		strict_order_rst;
+	int		timeouts[NPF_TCP_NSTATES];
+} npf_state_tcp_params_t;
 
-static bool npf_strict_order_rst __read_mostly = true;
-
-#define	NPF_TCP_MAXACKWIN	66000
-
+/*
+ * Helpers.
+ */
 #define	SEQ_LT(a,b)		((int)((a)-(b)) < 0)
 #define	SEQ_LEQ(a,b)		((int)((a)-(b)) <= 0)
 #define	SEQ_GT(a,b)		((int)((a)-(b)) > 0)
@@ -108,10 +92,10 @@ static bool npf_strict_order_rst __read_mostly = true;
 #define	TCPFC_FIN		4
 #define	TCPFC_COUNT		5
 
-static inline u_int
-npf_tcpfl2case(const u_int tcpfl)
+static inline unsigned
+npf_tcpfl2case(const unsigned tcpfl)
 {
-	u_int i, c;
+	unsigned i, c;
 
 	CTASSERT(TH_FIN == 0x01);
 	CTASSERT(TH_SYN == 0x02);
@@ -299,6 +283,7 @@ static const uint8_t npf_tcp_fsm[NPF_TCP_NSTATES][2][TCPFC_COUNT] = {
 static bool
 npf_tcp_inwindow(npf_cache_t *npc, npf_state_t *nst, const int di)
 {
+	const npf_state_tcp_params_t *params;
 	const struct tcphdr * const th = npc->npc_l4.tcp;
 	const int tcpfl = th->th_flags;
 	npf_tcpstate_t *fstate, *tstate;
@@ -306,6 +291,7 @@ npf_tcp_inwindow(npf_cache_t *npc, npf_state_t *nst, const int di)
 	tcp_seq seq, ack, end;
 	uint32_t win;
 
+	params = npc->npc_ctx->params[NPF_PARAMS_TCP_STATE];
 	KASSERT(npf_iscached(npc, NPC_TCP));
 	KASSERT(di == NPF_FLOW_FORW || di == NPF_FLOW_BACK);
 
@@ -402,7 +388,7 @@ npf_tcp_inwindow(npf_cache_t *npc, npf_state_t *nst, const int di)
 		}
 
 		/* Strict in-order sequence for RST packets (RFC 5961). */
-		if (npf_strict_order_rst && (fstate->nst_end - seq) > 1) {
+		if (params->strict_order_rst && (fstate->nst_end - seq) > 1) {
 			return false;
 		}
 	}
@@ -427,8 +413,8 @@ npf_tcp_inwindow(npf_cache_t *npc, npf_state_t *nst, const int di)
 	 * window up or down, since packets may be fragmented.
 	 */
 	ackskew = tstate->nst_end - ack;
-	if (ackskew < -NPF_TCP_MAXACKWIN ||
-	    ackskew > (NPF_TCP_MAXACKWIN << fstate->nst_wscale)) {
+	if (ackskew < -(int)params->max_ack_win ||
+	    ackskew > ((int)params->max_ack_win << fstate->nst_wscale)) {
 		npf_stats_inc(npc->npc_ctx, NPF_STAT_INVALID_STATE_TCP3);
 		return false;
 	}
@@ -465,8 +451,8 @@ bool
 npf_state_tcp(npf_cache_t *npc, npf_state_t *nst, int di)
 {
 	const struct tcphdr * const th = npc->npc_l4.tcp;
-	const u_int tcpfl = th->th_flags, state = nst->nst_state;
-	u_int nstate;
+	const unsigned tcpfl = th->th_flags, state = nst->nst_state;
+	unsigned nstate;
 
 	KASSERT(nst->nst_state < NPF_TCP_NSTATES);
 
@@ -494,10 +480,132 @@ npf_state_tcp(npf_cache_t *npc, npf_state_t *nst, int di)
 }
 
 int
-npf_state_tcp_timeout(const npf_state_t *nst)
+npf_state_tcp_timeout(npf_t *npf, const npf_state_t *nst)
 {
-	const u_int state = nst->nst_state;
+	const npf_state_tcp_params_t *params;
+	const unsigned state = nst->nst_state;
 
 	KASSERT(state < NPF_TCP_NSTATES);
-	return npf_tcp_timeouts[state];
+	params = npf->params[NPF_PARAMS_TCP_STATE];
+	return params->timeouts[state];
+}
+
+void
+npf_state_tcp_sysinit(npf_t *npf)
+{
+	const size_t len = sizeof(npf_state_tcp_params_t);
+	npf_state_tcp_params_t *params = kmem_zalloc(len, KM_SLEEP);
+	npf_param_t param_map[] = {
+		/*
+		 * TCP connection timeout table (in seconds).
+		 */
+
+		/* Closed, timeout nearly immediately. */
+		{
+			"state.tcp.timeout.closed",
+			&params->timeouts[NPF_TCPS_CLOSED],
+			.default_val = 10,
+			.min = 0, .max = INT_MAX
+		},
+		/* Unsynchronised states. */
+		{
+			"state.tcp.timeout.syn_sent",
+			&params->timeouts[NPF_TCPS_SYN_SENT],
+			.default_val = 30,
+			.min = 0, .max = INT_MAX
+		},
+		{
+			"state.tcp.timeout.simsyn_sent",
+			&params->timeouts[NPF_TCPS_SIMSYN_SENT],
+			.default_val = 30,
+			.min = 0, .max = INT_MAX
+		},
+		{
+			"state.tcp.timeout.syn_received",
+			&params->timeouts[NPF_TCPS_SYN_RECEIVED],
+			.default_val = 60,
+			.min = 0, .max = INT_MAX
+		},
+		/* Established: 24 hours. */
+		{
+			"state.tcp.timeout.established",
+			&params->timeouts[NPF_TCPS_ESTABLISHED],
+			.default_val = 60 * 60 * 24,
+			.min = 0, .max = INT_MAX
+		},
+		/* FIN seen: 4 minutes (2 * MSL). */
+		{
+			"state.tcp.timeout.fin_sent",
+			&params->timeouts[NPF_TCPS_FIN_SENT],
+			.default_val = 60 * 2 * 2,
+			.min = 0, .max = INT_MAX
+		},
+		{
+			"state.tcp.timeout.fin_received",
+			&params->timeouts[NPF_TCPS_FIN_RECEIVED],
+			.default_val = 60 * 2 * 2,
+			.min = 0, .max = INT_MAX
+		},
+		/* Half-closed cases: 6 hours. */
+		{
+			"state.tcp.timeout.close_wait",
+			&params->timeouts[NPF_TCPS_CLOSE_WAIT],
+			.default_val = 60 * 60 * 6,
+			.min = 0, .max = INT_MAX
+		},
+		{
+			"state.tcp.timeout.fin_wait",
+			&params->timeouts[NPF_TCPS_FIN_WAIT],
+			.default_val = 60 * 60 * 6,
+			.min = 0, .max = INT_MAX
+		},
+		/* Full close cases: 30 sec and 2 * MSL. */
+		{
+			"state.tcp.timeout.closing",
+			&params->timeouts[NPF_TCPS_CLOSING],
+			.default_val = 30,
+			.min = 0, .max = INT_MAX
+		},
+		{
+			"state.tcp.timeout.last_ack",
+			&params->timeouts[NPF_TCPS_LAST_ACK],
+			.default_val = 30,
+			.min = 0, .max = INT_MAX
+		},
+		{
+			"state.tcp.timeout.time_wait",
+			&params->timeouts[NPF_TCPS_TIME_WAIT],
+			.default_val = 60 * 2 * 2,
+			.min = 0, .max = INT_MAX
+		},
+
+		/*
+		 * Enforce strict order RST.
+		 */
+		{
+			"state.tcp.strict_order_rst",
+			&params->strict_order_rst,
+			.default_val = 1, // true
+			.min = 0, .max = 1
+		},
+
+		/*
+		 * TCP state tracking: maximum allowed ACK window.
+		 */
+		{
+			"state.tcp.max_ack_win",
+			&params->max_ack_win,
+			.default_val = 66000,
+			.min = 0, .max = INT_MAX
+		},
+	};
+	npf_param_register(npf, param_map, __arraycount(param_map));
+	npf->params[NPF_PARAMS_TCP_STATE] = params;
+}
+
+void
+npf_state_tcp_sysfini(npf_t *npf)
+{
+	const size_t len = sizeof(npf_state_tcp_params_t);
+	kmem_free(npf->params[NPF_PARAMS_TCP_STATE], len);
 }

@@ -1,5 +1,5 @@
 .\"
-.\" Copyright (c) 2015 Mindaugas Rasiukevicius <rmind at netbsd org>
+.\" Copyright (c) 2015-2019 Mindaugas Rasiukevicius <rmind at netbsd org>
 .\" All rights reserved.
 .\"
 .\" Redistribution and use in source and binary forms, with or without
@@ -23,7 +23,7 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.Dd August 31, 2015
+.Dd February 26, 2019
 .Dt libnpfkern 3
 .Os
 .Sh NAME
@@ -49,14 +49,22 @@
 .Fn npf_destroy "npf_t *npf"
 .Ft void
 .Fn npf_thread_register "npf_t *npf"
+.Ft void
+.Fn npf_thread_unregister "npf_t *npf"
 .Ft int
 .Fn npf_packet_handler "npf_t *npf" "struct mbuf **mp" "struct ifnet *ifp" "int di"
 .Ft void
 .Fn npf_ifmap_attach "npf_t *npf" "struct ifnet *ifp"
 .Ft void
 .Fn npf_ifmap_detach "npf_t *npf" "struct ifnet *ifp"
+.Ft int
+.Fn npf_param_get "npf_t *npf" "const char *name" "int64_t *val"
+.Ft int
+.Fn npf_param_set "npf_t *npf" "const char *name" "int64_t val"
 .Ft void
 .Fn npf_stats "npf_t *npf" "uint64_t *buf"
+.Ft void
+.Fn npf_stats_clear "npf_t *npf"
 .\" -----
 .Sh DESCRIPTION
 The
@@ -136,11 +144,18 @@ structure specified by the
 parameter.
 .\" ---
 .It Fn npf_thread_register "npf"
-Register a "processing context" i.e. threads which will perform the
+Register a "processing context" i.e. a thread which will perform the
 .Fn npf_packet_handler
 calls.
-All threads processing the packets (invoking the handler) must register.
-Failure to register may abort the program.
+All threads processing packets (invoking the handler) must register;
+all registered threads must also remove themselves from the register
+using before exit using the
+.Fa npf_thread_unregister
+routine.
+Failure to register may result in undefined behaviour.
+.\" ---
+.It Fn npf_thread_unregister "npf"
+Remove the thread from the register of threads which process the packets.
 .\" ---
 .It Fn npf_packet_handler "npf" "mp" "ifp" "di"
 Inspect the packet, matching and processing it against the configuration
@@ -177,6 +192,19 @@ This indicates that the packets on this interface shall be processed.
 .It Fn npf_ifmap_detach "npf" "ifp"
 Detach the virtual network interface from the NPF instance.
 .\" ---
+.It Fn npf_param_get "npf" "name" "valp"
+Get the parameter value of the given NPF instance.
+On success, the function returns zero and the parameter value stored in
+.Fa valp .
+On failure, if the parameter does not exist, the function returns
+.Dv ENOENT .
+.\" ---
+.It Fn npf_param_set "npf" "name" "val"
+Set the parameter vale for the given NPF instance.
+Returns zero on success or
+.Dv ENOENT
+if the parameter does not exist.
+.\" ---
 .It Fn npf_stats "npf" "buf"
 Get the statistics of the NPF instance into the buffer specified by the
 .Fa buf
@@ -189,6 +217,9 @@ integers having at least
 number of elements (or
 .Dv NPF_STATS_SIZE
 in bytes).
+.\" ---
+.It Fn npf_stats_clear "npf"
+Clear (by resetting to zero) the statistics of the given NPF instance.
 .\" ---
 .El
 .\" -----

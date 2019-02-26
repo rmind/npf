@@ -60,8 +60,6 @@ __KERNEL_RCSID(0, "$NetBSD: npf_conndb.c,v 1.5 2019/01/19 21:19:31 rmind Exp $")
 #include "npf_conn.h"
 #include "npf_impl.h"
 
-#define	NPF_GC_STEP		256
-
 struct npf_conndb {
 	thmap_t *		cd_map;
 
@@ -80,12 +78,41 @@ struct npf_conndb {
 	npf_conn_t *		cd_marker;
 };
 
+typedef struct {
+	int		gc_step;
+	int		_reserved0;
+} npf_conndb_params_t;
+
 /*
  * Pointer tag for connection keys which represent the "forwards" entry.
  */
 #define	CONNDB_FORW_BIT		((uintptr_t)0x1)
 #define	CONNDB_ISFORW_P(p)	(((uintptr_t)(p) & CONNDB_FORW_BIT) != 0)
 #define	CONNDB_GET_PTR(p)	((void *)((uintptr_t)(p) & ~CONNDB_FORW_BIT))
+
+void
+npf_conndb_sysinit(npf_t *npf)
+{
+	const size_t len = sizeof(npf_conndb_params_t);
+	npf_conndb_params_t *params = kmem_zalloc(len, KM_SLEEP);
+	npf_param_t param_map[] = {
+		{
+			"gc.step",
+			&params->gc_step,
+			.default_val = 256,
+			.min = 1, .max = INT_MAX
+		}
+	};
+	npf_param_register(npf, param_map, __arraycount(param_map));
+	npf->params[NPF_PARAMS_CONNDB] = params;
+}
+
+void
+npf_conndb_sysfini(npf_t *npf)
+{
+	const size_t len = sizeof(npf_conndb_params_t);
+	kmem_free(npf->params[NPF_PARAMS_CONNDB], len);
+}
 
 npf_conndb_t *
 npf_conndb_create(void)
@@ -251,9 +278,10 @@ npf_conndb_getnext(npf_conndb_t *cd, npf_conn_t *con)
  * npf_conndb_gc_incr: incremental G/C of the expired connections.
  */
 static void
-npf_conndb_gc_incr(npf_conndb_t *cd, const time_t now)
+npf_conndb_gc_incr(npf_t *npf, npf_conndb_t *cd, const time_t now)
 {
-	unsigned target = NPF_GC_STEP;
+	const npf_conndb_params_t *params = npf->params[NPF_PARAMS_CONNDB];
+	unsigned target = params->gc_step;
 	npf_conn_t *con;
 
 	/*
@@ -277,7 +305,7 @@ npf_conndb_gc_incr(npf_conndb_t *cd, const time_t now)
 		/*
 		 * Can we G/C this connection?
 		 */
-		if (npf_conn_expired(con, now)) {
+		if (npf_conn_expired(npf, con, now)) {
 			/* Yes: move to the G/C list. */
 			LIST_REMOVE(con, c_entry);
 			LIST_INSERT_HEAD(&cd->cd_gclist, con, c_entry);
@@ -335,7 +363,7 @@ npf_conndb_gc(npf_t *npf, npf_conndb_t *cd, bool flush, bool sync)
 		cd->cd_marker = NULL;
 	} else {
 		/* Incremental G/C of the expired connections. */
-		npf_conndb_gc_incr(cd, tsnow.tv_sec);
+		npf_conndb_gc_incr(npf, cd, tsnow.tv_sec);
 	}
 	mutex_exit(&npf->conn_lock);
 

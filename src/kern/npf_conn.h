@@ -141,7 +141,7 @@ void		npf_conn_setpass(npf_conn_t *, const npf_match_info_t *,
 int		npf_conn_setnat(const npf_cache_t *, npf_conn_t *,
 		    npf_nat_t *, u_int);
 npf_nat_t *	npf_conn_getnat(npf_conn_t *, const int, bool *);
-bool		npf_conn_expired(const npf_conn_t *, uint64_t);
+bool		npf_conn_expired(npf_t *, const npf_conn_t *, uint64_t);
 void		npf_conn_remove(npf_conndb_t *, npf_conn_t *);
 void		npf_conn_worker(npf_t *);
 int		npf_conn_import(npf_t *, npf_conndb_t *, const nvlist_t *,
@@ -152,6 +152,9 @@ void		npf_conn_print(npf_conn_t *);
 /*
  * Connection database (aka state table) interface.
  */
+void		npf_conndb_sysinit(npf_t *);
+void		npf_conndb_sysfini(npf_t *);
+
 npf_conndb_t *	npf_conndb_create(void);
 void		npf_conndb_destroy(npf_conndb_t *);
 

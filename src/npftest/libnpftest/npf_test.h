@@ -85,6 +85,7 @@ struct mbuf {
     if (!(x)) { printf("FAIL: %s line %d\n", __func__, __LINE__); return 0; }
 
 const npf_mbufops_t	npftest_mbufops;
+const npf_ifops_t	npftest_ifops;
 
 struct mbuf *	npfkern_m_get(int, int);
 size_t		npfkern_m_length(const struct mbuf *);
