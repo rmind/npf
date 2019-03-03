@@ -72,6 +72,9 @@ bool		npf_config_active_p(nl_config_t *);
 bool		npf_config_loaded_p(nl_config_t *);
 void *		npf_config_build(nl_config_t *);
 
+int		npf_param_get(nl_config_t *, const char *, int *);
+int		npf_param_set(nl_config_t *, const char *, int);
+
 int		npf_ruleset_add(int, const char *, nl_rule_t *, uint64_t *);
 int		npf_ruleset_remove(int, const char *, uint64_t);
 int		npf_ruleset_remkey(int, const char *, const void *, size_t);

@@ -242,6 +242,8 @@ npf_config_submit(nl_config_t *ncf, int fd, npf_error_t *errinfo)
 	if (error && errinfo) {
 		memset(errinfo, 0, sizeof(npf_error_t));
 		errinfo->id = dnvlist_get_number(errnv, "id", 0);
+		errinfo->error_msg =
+		    dnvlist_take_string(errnv, "error-msg", NULL);
 		errinfo->source_file =
 		    dnvlist_take_string(errnv, "source-file", NULL);
 		errinfo->source_line =
@@ -343,6 +345,47 @@ npf_config_destroy(nl_config_t *ncf)
 {
 	nvlist_destroy(ncf->ncf_dict);
 	free(ncf);
+}
+
+/*
+ * PARAMETERS.
+ */
+
+int
+npf_param_get(nl_config_t *ncf, const char *name, int *valp)
+{
+	const nvlist_t *params;
+
+	params = dnvlist_get_nvlist(ncf->ncf_dict, "params", NULL);
+	if (params == NULL || !nvlist_exists(params, name)) {
+		return ENOENT;
+	}
+	*valp = (int)dnvlist_get_number(params, name, 0);
+	return 0;
+}
+
+int
+npf_param_set(nl_config_t *ncf, const char *name, int val)
+{
+	nvlist_t *params;
+
+	/* Ensure params dictionary. */
+	if (nvlist_exists(ncf->ncf_dict, "params")) {
+		params = nvlist_take_nvlist(ncf->ncf_dict, "params");
+	} else {
+		params = nvlist_create(0);
+	}
+
+	/*
+	 * If the parameter is already set, then free it first.
+	 * Set the parameter.  Note: values can be negative.
+	 */
+	if (nvlist_exists(params, name)) {
+		nvlist_free_number(params, name);
+	}
+	nvlist_add_number(params, name, (uint64_t)val);
+	nvlist_add_nvlist(ncf->ncf_dict, "params", params);
+	return 0;
 }
 
 /*

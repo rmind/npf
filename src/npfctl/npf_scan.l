@@ -131,7 +131,6 @@ final			return FINAL;
 quick			return FINAL;
 on			return ON;
 off			return OFF;
-bpf.jit			return BPFJIT;
 inet6			return INET6;
 inet4			return INET4;
 ifaddrs			return IFADDRS;
@@ -207,6 +206,11 @@ any			return ANY;
 "$"{ID}		{
 			yylval.str = estrndup(yytext + 1, yyleng - 1);
 			return VAR_ID;
+		}
+
+[a-z]*"."[a-z.]* {
+			yylval.str = estrndup(yytext, yyleng);
+			return PARAM;
 		}
 
 {ID}		{

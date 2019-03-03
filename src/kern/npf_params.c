@@ -145,6 +145,20 @@ npf_param_lookup(npf_t *npf, const char *name)
 	return thmap_get(pinfo->map, name, namelen);
 }
 
+int
+npf_param_check(npf_t *npf, const char *name, int val)
+{
+	npf_param_t *param;
+
+	if ((param = npf_param_lookup(npf, name)) == NULL) {
+		return ENOENT;
+	}
+	if (val < param->min || val > param->max) {
+		return EINVAL;
+	}
+	return 0;
+}
+
 __dso_public int
 npf_param_get(npf_t *npf, const char *name, int *val)
 {

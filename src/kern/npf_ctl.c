@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2009-2018 The NetBSD Foundation, Inc.
+ * Copyright (c) 2009-2019 The NetBSD Foundation, Inc.
  * All rights reserved.
  *
  * This material is based upon work partially supported by The
@@ -98,6 +98,50 @@ npf_nvlist_copyout(npf_t *npf, void *data, nvlist_t *nvl)
 	}
 	nvlist_destroy(nvl);
 	return error;
+}
+
+static int __noinline
+npf_mk_params(npf_t *npf, nvlist_t *npf_dict, nvlist_t *errdict, bool set)
+{
+	const nvlist_t *params;
+	int type, error, val;
+	const char *name;
+	void *cookie;
+
+	params = dnvlist_get_nvlist(npf_dict, "params", NULL);
+	if (params == NULL) {
+		return 0;
+	}
+	cookie = NULL;
+	while ((name = nvlist_next(params, &type, &cookie)) != NULL) {
+		if (type != NV_TYPE_NUMBER) {
+			NPF_ERR_DEBUG(errdict);
+			return EINVAL;
+		}
+		val = (int)nvlist_get_number(params, name);
+		if (set) {
+			/* Actually set the parameter. */
+			error = npf_param_set(npf, name, val);
+			KASSERT(error == 0);
+			continue;
+		}
+
+		/* Validate the parameter and its value. */
+		error = npf_param_check(npf, name, val);
+		if (__predict_true(error == 0)) {
+			continue;
+		}
+		if (error == ENOENT) {
+			nvlist_add_stringf(errdict, "error-msg",
+			    "invalid parameter `%s`", name);
+		}
+		if (error == EINVAL) {
+			nvlist_add_stringf(errdict, "error-msg",
+			    "invalid parameter `%s` value %d", name, val);
+		}
+		return error;
+	}
+	return 0;
 }
 
 static int __noinline
@@ -533,6 +577,10 @@ npfctl_load_nvlist(npf_t *npf, nvlist_t *npf_dict, nvlist_t *errdict)
 		error = EPROGMISMATCH;
 		goto fail;
 	}
+	error = npf_mk_params(npf, npf_dict, errdict, false /* validate */);
+	if (error) {
+		goto fail;
+	}
 	error = npf_mk_algs(npf, npf_dict, errdict);
 	if (error) {
 		goto fail;
@@ -563,6 +611,7 @@ npfctl_load_nvlist(npf_t *npf, nvlist_t *npf_dict, nvlist_t *errdict)
 	 */
 	flush = dnvlist_get_bool(npf_dict, "flush", false);
 	npf_config_load(npf, rlset, tblset, ntset, rpset, conndb, flush);
+	npf_mk_params(npf, npf_dict, errdict, true /* set the params */);
 
 	/* Done.  Since data is consumed now, we shall not destroy it. */
 	tblset = NULL;
