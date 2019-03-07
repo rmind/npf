@@ -32,7 +32,7 @@ else
 CFLAGS+=	-DNDEBUG
 endif
 
-LDFLAGS=	-lnpf -lnv -lcrypto -lpcap
+LDFLAGS+=	-lnpf -lnv -lcrypto -lpcap
 
 #
 # System specific flags

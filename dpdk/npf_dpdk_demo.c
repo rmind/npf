@@ -138,13 +138,12 @@ load_npf_config(npf_t *npf, nl_config_t *ncf)
 	/*
 	 * - Build the config: we get a reference for loading.
 	 * - Load the config to the NPF instance.
-	 * - Destroy the config (reference becomes invalid).
+	 * - Note: npf_load() will consume the config.
 	 */
 	config_ref = npf_config_build(ncf);
 	if (npf_load(npf, config_ref, &errinfo) != 0) {
 		errx(EXIT_FAILURE, "npf_load() failed");
 	}
-	npf_config_destroy(ncf);
 }
 
 static struct rte_mbuf *
@@ -255,6 +254,7 @@ main(int argc, char **argv)
 		process_packets(npf, ifp, PFIL_IN, c);
 	}
 	printf("allow\t%d\nblock\t%d\n", c[0], c[1]);
+	npf_thread_unregister(npf);
 	npf_destroy(npf);
 	npf_sysfini();
 	return 0;
