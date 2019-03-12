@@ -313,6 +313,7 @@ npfkern_percpu_alloc(size_t size)
 static inline void
 npfkern_percpu_free(percpu_t *pc, size_t size)
 {
+	free(tls_get(pc->key));
 	tls_destroy(pc->key);
 	pthread_mutex_destroy(&pc->lock);
 	free(pc); (void)size;
