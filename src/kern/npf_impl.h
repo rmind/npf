@@ -297,6 +297,7 @@ void		npf_stats_dec(npf_t *, npf_stats_t);
 void		npf_param_init(npf_t *);
 void		npf_param_fini(npf_t *);
 void		npf_param_register(npf_t *, npf_param_t *, unsigned);
+int		npf_param_check(npf_t *, const char *, int);
 
 void		npf_ifmap_init(npf_t *, const npf_ifops_t *);
 void		npf_ifmap_fini(npf_t *);

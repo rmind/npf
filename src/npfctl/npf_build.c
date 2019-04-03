@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2011-2018 The NetBSD Foundation, Inc.
+ * Copyright (c) 2011-2019 The NetBSD Foundation, Inc.
  * All rights reserved.
  *
  * This material is based upon work partially supported by The
@@ -443,7 +443,7 @@ npfctl_build_code(nl_rule_t *rl, sa_family_t family, const opt_proto_t *op,
 	}
 	len = bf->bf_len * sizeof(struct bpf_insn);
 
-	if (npf_rule_setcode(rl, NPF_CODE_BPF, bf->bf_insns, len) == -1) {
+	if (npf_rule_setcode(rl, NPF_CODE_BPF, bf->bf_insns, len) != 0) {
 		errx(EXIT_FAILURE, "npf_rule_setcode failed");
 	}
 	npfctl_dump_bpf(bf);
@@ -465,7 +465,7 @@ npfctl_build_pcap(nl_rule_t *rl, const char *filter)
 	}
 	len = bf.bf_len * sizeof(struct bpf_insn);
 
-	if (npf_rule_setcode(rl, NPF_CODE_BPF, bf.bf_insns, len) == -1) {
+	if (npf_rule_setcode(rl, NPF_CODE_BPF, bf.bf_insns, len) != 0) {
 		errx(EXIT_FAILURE, "npf_rule_setcode failed");
 	}
 	npfctl_dump_bpf(&bf);
@@ -923,6 +923,17 @@ npfctl_build_alg(const char *al_name)
 {
 	if (_npf_alg_load(npf_conf, al_name) != 0) {
 		errx(EXIT_FAILURE, "ALG '%s' already loaded", al_name);
+	}
+}
+
+void
+npfctl_setparam(const char *name, int val)
+{
+	if (strcmp(name, "bpf.jit") == 0) {
+		npfctl_bpfjit(val != 0);
+	}
+	if (npf_param_set(npf_conf, name, val) != 0) {
+		yyerror("invalid parameter `%s` or its value", name);
 	}
 }
 
