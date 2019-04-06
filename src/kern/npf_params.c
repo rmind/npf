@@ -91,6 +91,21 @@ npf_param_fini(npf_t *npf)
 	kmem_free(pinfo, sizeof(npf_paraminfo_t));
 }
 
+void *
+npf_param_allocgroup(npf_t *npf, npf_paramgroup_t group, size_t len)
+{
+	void *params = kmem_zalloc(len, KM_SLEEP);
+	npf->params[group] = params;
+	return params;
+}
+
+void
+npf_param_freegroup(npf_t *npf, npf_paramgroup_t group, size_t len)
+{
+	kmem_free(npf->params[group], len);
+	npf->params[group] = NULL; // diagnostic
+}
+
 /*
  * npf_param_register: register an array of named parameters.
  */

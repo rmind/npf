@@ -436,18 +436,26 @@ out:
 static void
 npfctl_print_nat(npf_conf_info_t *ctx, nl_nat_t *nt)
 {
+	const unsigned dynamic_natset = NPF_RULE_GROUP | NPF_RULE_DYNAMIC;
 	nl_rule_t *rl = (nl_nat_t *)nt;
 	const char *ifname, *algo, *seg1, *seg2, *arrow;
 	const npf_addr_t *addr;
 	npf_netmask_t mask;
 	in_port_t port;
 	size_t alen;
-	u_int flags;
+	unsigned flags;
 	char *seg;
 
-	/* Get the interface. */
+	/* Get flags and the interface. */
+	flags = npf_nat_getflags(nt);
 	ifname = npf_rule_getinterface(rl);
 	assert(ifname != NULL);
+
+	if ((npf_rule_getattr(rl) & dynamic_natset) == dynamic_natset) {
+		const char *name = npf_rule_getname(rl);
+		fprintf(ctx->fp, "map ruleset \"%s\" on %s\n", name, ifname);
+		return;
+	}
 
 	/* Get the translation address or table (and port, if used). */
 	addr = npf_nat_getaddr(nt, &alen, &mask);
@@ -482,7 +490,6 @@ npfctl_print_nat(npf_conf_info_t *ctx, nl_nat_t *nt)
 	default:
 		abort();
 	}
-	flags = npf_nat_getflags(nt);
 
 	/* NAT algorithm. */
 	switch (npf_nat_getalgo(nt)) {
@@ -564,25 +571,30 @@ npfctl_config_show(int fd)
 		nl_rproc_t *rp;
 		nl_nat_t *nt;
 		nl_table_t *tl;
+		nl_iter_t i;
 		unsigned level;
 
-		while ((tl = npf_table_iterate(ncf)) != NULL) {
+		i = NPF_ITER_BEGIN;
+		while ((tl = npf_table_iterate(ncf, &i)) != NULL) {
 			npfctl_print_table(ctx, tl);
 		}
 		print_linesep(ctx);
 
-		while ((rp = npf_rproc_iterate(ncf)) != NULL) {
+		i = NPF_ITER_BEGIN;
+		while ((rp = npf_rproc_iterate(ncf, &i)) != NULL) {
 			const char *rpname = npf_rproc_getname(rp);
 			fprintf(ctx->fp, "procedure \"%s\"\n", rpname);
 		}
 		print_linesep(ctx);
 
-		while ((nt = npf_nat_iterate(ncf)) != NULL) {
+		i = NPF_ITER_BEGIN;
+		while ((nt = npf_nat_iterate(ncf, &i)) != NULL) {
 			npfctl_print_nat(ctx, nt);
 		}
 		print_linesep(ctx);
 
-		while ((rl = npf_rule_iterate(ncf, &level)) != NULL) {
+		i = NPF_ITER_BEGIN;
+		while ((rl = npf_rule_iterate(ncf, &i, &level)) != NULL) {
 			print_indent(ctx, level);
 			npfctl_print_rule(ctx, rl);
 		}
@@ -599,6 +611,7 @@ npfctl_ruleset_show(int fd, const char *ruleset_name)
 	nl_config_t *ncf;
 	nl_rule_t *rl;
 	unsigned level;
+	nl_iter_t i;
 	int error;
 
 	ncf = npf_config_create();
@@ -607,7 +620,8 @@ npfctl_ruleset_show(int fd, const char *ruleset_name)
 	if ((error = _npf_ruleset_list(fd, ruleset_name, ncf)) != 0) {
 		return error;
 	}
-	while ((rl = npf_rule_iterate(ncf, &level)) != NULL) {
+	i = NPF_ITER_BEGIN;
+	while ((rl = npf_rule_iterate(ncf, &i, &level)) != NULL) {
 		npfctl_print_rule(ctx, rl);
 	}
 	npf_config_destroy(ncf);

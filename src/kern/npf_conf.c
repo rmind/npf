@@ -169,6 +169,7 @@ npf_config_load(npf_t *npf, npf_ruleset_t *rset, npf_tableset_t *tset,
 	/* Synchronise: drain all references. */
 	pserialize_perform(npf->qsbr);
 	if (flush) {
+		npf_portmap_flush(npf);
 		npf_ifmap_flush(npf);
 	}
 

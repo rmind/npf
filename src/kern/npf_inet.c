@@ -221,6 +221,26 @@ npf_addr_cmp(const npf_addr_t *addr1, const npf_netmask_t mask1,
 	return memcmp(addr1, addr2, alen);
 }
 
+int
+npf_netmask_check(const int alen, npf_netmask_t mask)
+{
+	switch (alen) {
+	case sizeof(struct in_addr):
+		if (__predict_false(mask > 32 && mask != NPF_NO_NETMASK)) {
+			return EINVAL;
+		}
+		break;
+	case sizeof(struct in6_addr):
+		if (__predict_false(mask > 128 && mask != NPF_NO_NETMASK)) {
+			return EINVAL;
+		}
+		break;
+	default:
+		return EINVAL;
+	}
+	return 0;
+}
+
 /*
  * npf_tcpsaw: helper to fetch SEQ, ACK, WIN and return TCP data length.
  *

@@ -16,7 +16,7 @@
 
 #define	NPF_BINAT	(NPF_NATIN | NPF_NATOUT)
 
-#define	RANDOM_PORT	53472
+#define	RANDOM_PORT	46759
 
 static const struct test_case {
 	const char *	src;
@@ -217,6 +217,7 @@ npf_nat_test(bool verbose)
 {
 	npf_t *npf = npf_getkernctx();
 
+	srandom(1);
 	for (unsigned i = 0; i < __arraycount(test_cases); i++) {
 		const struct test_case *t = &test_cases[i];
 		ifnet_t *ifp = npf_test_getif(t->ifname);

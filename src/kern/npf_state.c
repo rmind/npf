@@ -90,8 +90,8 @@ static void (*npf_state_sample)(npf_state_t *, bool) = NULL;
 void
 npf_state_sysinit(npf_t *npf)
 {
-	const size_t len = sizeof(npf_state_params_t);
-	npf_state_params_t *params = kmem_zalloc(len, KM_SLEEP);
+	npf_state_params_t *params = npf_param_allocgroup(npf,
+	    NPF_PARAMS_GENERIC_STATE, sizeof(npf_state_params_t));
 	npf_param_t param_map[] = {
 		/*
 		 * Generic timeout (in seconds).
@@ -116,7 +116,6 @@ npf_state_sysinit(npf_t *npf)
 		},
 	};
 	npf_param_register(npf, param_map, __arraycount(param_map));
-	npf->params[NPF_PARAMS_GENERIC_STATE] = params;
 	npf_state_tcp_sysinit(npf);
 }
 
@@ -124,7 +123,7 @@ void
 npf_state_sysfini(npf_t *npf)
 {
 	const size_t len = sizeof(npf_state_params_t);
-	kmem_free(npf->params[NPF_PARAMS_GENERIC_STATE], len);
+	npf_param_freegroup(npf, NPF_PARAMS_GENERIC_STATE, len);
 	npf_state_tcp_sysfini(npf);
 }
 

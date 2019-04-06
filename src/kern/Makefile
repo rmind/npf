@@ -41,7 +41,7 @@ CFLAGS+=	-DNDEBUG
 OBJDIR=		build
 endif
 
-LDFLAGS+=	-lpthread -lnv -lpcap -lqsbr -lthmap -llpm -lcdb -lbpfjit
+LDFLAGS+=	-lpthread -lnv -lqsbr -lthmap -llpm -lcdb -lbpfjit
 ifeq ($(SYSNAME),Linux)
 LDFLAGS+=	-ljemalloc
 endif
