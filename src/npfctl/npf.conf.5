@@ -27,7 +27,7 @@
 .\" ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 .\" POSSIBILITY OF SUCH DAMAGE.
 .\"
-.Dd April 6, 2019
+.Dd April 7, 2019
 .Dt NPF.CONF 5
 .Os
 .Sh NAME
@@ -479,23 +479,6 @@ procedure "someproc" {
 .Ed
 .Pp
 In this case, the procedure calls the logging and normalization modules.
-.Ss Parameter settings
-Parameter settings control the behavior of NPF during loading and reloading.
-NPF supports the following parameters:
-.Bl -tag -width "Cm bpf.jit" -offset indent
-.It Cm bpf.jit
-Enable or disable
-.Xr bpfjit 4
-support.
-Some machine architectures are not presently supported by
-.Xr bpfjit 4 .
-Setting this parameter to "off" stops NPF from trying to enable this
-functionality, and generating a warning if it is unable to do so.
-.El
-.Pp
-For example:
-.Pp
-.Dl set bpf.jit off
 .Ss Misc
 Text after a hash
 .Pq Sq #
@@ -658,7 +641,6 @@ group default {
 .\" -----
 .Sh SEE ALSO
 .Xr bpf 4 ,
-.Xr bpfjit 4 ,
 .Xr npf 7 ,
 .Xr pcap-filter 7 ,
 .Xr npfctl 8 ,
