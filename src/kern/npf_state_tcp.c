@@ -64,13 +64,21 @@ __KERNEL_RCSID(0, "$NetBSD: npf_state_tcp.c,v 1.19 2018/09/29 14:41:36 rmind Exp
 
 #define	NPF_TCP_NSTATES		12
 
+/* Timeouts */
+#define	NPF_TCPT_NEW		0
+#define	NPF_TCPT_ESTABLISHED	1
+#define	NPF_TCPT_HALFCLOSE	2
+#define	NPF_TCPT_CLOSE		3
+#define	NPF_TCPT_TIMEWAIT	4
+#define	NPF_TCPT_COUNT		5
+
 /*
  * Parameters.
  */
 typedef struct {
 	int		max_ack_win;
 	int		strict_order_rst;
-	int		timeouts[NPF_TCP_NSTATES];
+	int		timeouts[NPF_TCPT_COUNT];
 } npf_state_tcp_params_t;
 
 /*
@@ -482,12 +490,30 @@ npf_state_tcp(npf_cache_t *npc, npf_state_t *nst, int di)
 int
 npf_state_tcp_timeout(npf_t *npf, const npf_state_t *nst)
 {
+	static const uint8_t state_timeout_idx[NPF_TCP_NSTATES] = {
+		[NPF_TCPS_CLOSED]	= NPF_TCPT_CLOSE,
+		/* Unsynchronised states. */
+		[NPF_TCPS_SYN_SENT]	= NPF_TCPT_NEW,
+		[NPF_TCPS_SIMSYN_SENT]	= NPF_TCPT_NEW,
+		[NPF_TCPS_SYN_RECEIVED]	= NPF_TCPT_NEW,
+		/* Established (synchronised state). */
+		[NPF_TCPS_ESTABLISHED]	= NPF_TCPT_ESTABLISHED,
+		/* Half-closed cases. */
+		[NPF_TCPS_FIN_SENT]	= NPF_TCPT_HALFCLOSE,
+		[NPF_TCPS_FIN_RECEIVED]	= NPF_TCPT_HALFCLOSE,
+		[NPF_TCPS_CLOSE_WAIT]	= NPF_TCPT_HALFCLOSE,
+		[NPF_TCPS_FIN_WAIT]	= NPF_TCPT_HALFCLOSE,
+		/* Full close cases. */
+		[NPF_TCPS_CLOSING]	= NPF_TCPT_CLOSE,
+		[NPF_TCPS_LAST_ACK]	= NPF_TCPT_CLOSE,
+		[NPF_TCPS_TIME_WAIT]	= NPF_TCPT_TIMEWAIT,
+	};
 	const npf_state_tcp_params_t *params;
 	const unsigned state = nst->nst_state;
 
 	KASSERT(state < NPF_TCP_NSTATES);
 	params = npf->params[NPF_PARAMS_TCP_STATE];
-	return params->timeouts[state];
+	return params->timeouts[state_timeout_idx[state]];
 }
 
 void
@@ -500,81 +526,38 @@ npf_state_tcp_sysinit(npf_t *npf)
 		 * TCP connection timeout table (in seconds).
 		 */
 
-		/* Closed, timeout nearly immediately. */
-		{
-			"state.tcp.timeout.closed",
-			&params->timeouts[NPF_TCPS_CLOSED],
-			.default_val = 10,
-			.min = 0, .max = INT_MAX
-		},
 		/* Unsynchronised states. */
 		{
-			"state.tcp.timeout.syn_sent",
-			&params->timeouts[NPF_TCPS_SYN_SENT],
+			"state.tcp.timeout.new",
+			&params->timeouts[NPF_TCPT_NEW],
 			.default_val = 30,
 			.min = 0, .max = INT_MAX
 		},
-		{
-			"state.tcp.timeout.simsyn_sent",
-			&params->timeouts[NPF_TCPS_SIMSYN_SENT],
-			.default_val = 30,
-			.min = 0, .max = INT_MAX
-		},
-		{
-			"state.tcp.timeout.syn_received",
-			&params->timeouts[NPF_TCPS_SYN_RECEIVED],
-			.default_val = 60,
-			.min = 0, .max = INT_MAX
-		},
-		/* Established: 24 hours. */
+		/* Established. */
 		{
 			"state.tcp.timeout.established",
-			&params->timeouts[NPF_TCPS_ESTABLISHED],
+			&params->timeouts[NPF_TCPT_ESTABLISHED],
 			.default_val = 60 * 60 * 24,
 			.min = 0, .max = INT_MAX
 		},
-		/* FIN seen: 4 minutes (2 * MSL). */
+		/* Half-closed cases. */
 		{
-			"state.tcp.timeout.fin_sent",
-			&params->timeouts[NPF_TCPS_FIN_SENT],
-			.default_val = 60 * 2 * 2,
-			.min = 0, .max = INT_MAX
-		},
-		{
-			"state.tcp.timeout.fin_received",
-			&params->timeouts[NPF_TCPS_FIN_RECEIVED],
-			.default_val = 60 * 2 * 2,
-			.min = 0, .max = INT_MAX
-		},
-		/* Half-closed cases: 6 hours. */
-		{
-			"state.tcp.timeout.close_wait",
-			&params->timeouts[NPF_TCPS_CLOSE_WAIT],
+			"state.tcp.timeout.half_close",
+			&params->timeouts[NPF_TCPT_HALFCLOSE],
 			.default_val = 60 * 60 * 6,
 			.min = 0, .max = INT_MAX
 		},
+		/* Full close cases. */
 		{
-			"state.tcp.timeout.fin_wait",
-			&params->timeouts[NPF_TCPS_FIN_WAIT],
-			.default_val = 60 * 60 * 6,
+			"state.tcp.timeout.close",
+			&params->timeouts[NPF_TCPT_CLOSE],
+			.default_val = 10,
 			.min = 0, .max = INT_MAX
 		},
-		/* Full close cases: 30 sec and 2 * MSL. */
-		{
-			"state.tcp.timeout.closing",
-			&params->timeouts[NPF_TCPS_CLOSING],
-			.default_val = 30,
-			.min = 0, .max = INT_MAX
-		},
-		{
-			"state.tcp.timeout.last_ack",
-			&params->timeouts[NPF_TCPS_LAST_ACK],
-			.default_val = 30,
-			.min = 0, .max = INT_MAX
-		},
+		/* TCP time-wait (2 * MSL). */
 		{
 			"state.tcp.timeout.time_wait",
-			&params->timeouts[NPF_TCPS_TIME_WAIT],
+			&params->timeouts[NPF_TCPT_TIMEWAIT],
 			.default_val = 60 * 2 * 2,
 			.min = 0, .max = INT_MAX
 		},
