@@ -1,4 +1,4 @@
-.\"    $NetBSD: npf.conf.5,v 1.84 2019/01/19 21:19:32 rmind Exp $
+.\"    $NetBSD: npf.conf.5,v 1.86 2019/04/08 07:58:45 wiz Exp $
 .\"
 .\" Copyright (c) 2009-2019 The NetBSD Foundation, Inc.
 .\" All rights reserved.
@@ -357,7 +357,7 @@ redirecting the public port 9022 to the port 22 of an internal host:
 .Dl map $ext_if dynamic proto tcp 10.1.1.2 port 22 <- $ext_if port 9022
 .Pp
 The translation address can also be dynamic, based on the interface.
-The following would select the IPv4 address currently assigned to the
+The following would select the IPv4 address(es) currently assigned to the
 interface:
 .Pp
 .Dl map $ext_if dynamic 10.1.1.0/24 -> ifaddrs($ext_if)
