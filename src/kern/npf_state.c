@@ -203,7 +203,7 @@ npf_state_inspect(npf_cache_t *npc, npf_state_t *nst, const bool forw)
 }
 
 /*
- * npf_state_etime: return connection expiration time according to the state.
+ * npf_state_etime: return the expiration time depending on the state.
  */
 int
 npf_state_etime(npf_t *npf, const npf_state_t *nst, const int proto)

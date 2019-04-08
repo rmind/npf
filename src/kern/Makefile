@@ -67,12 +67,14 @@ LIB=		libnpfkern-dbg
 endif
 
 INCS=		npf.h npfkern.h
-MANS=		npfkern.3
+MANS3=		npfkern.3
+MANS7=		npf-params.7
 
 $(LIB).la:	LDFLAGS+=	-rpath $(LIBDIR) -version-info 1:0:0
 install/%.la:	ILIBDIR=	$(DESTDIR)/$(LIBDIR)
 install:	IINCDIR=	$(DESTDIR)/$(INCDIR)
-install:	IMANDIR=	$(DESTDIR)/$(MANDIR)/man3/
+install:	IMAN3DIR=	$(DESTDIR)/$(MANDIR)/man3/
+install:	IMAN7DIR=	$(DESTDIR)/$(MANDIR)/man7/
 
 #
 # Targets
@@ -93,7 +95,8 @@ install/%.la: %.la
 install: $(addprefix install/,$(LIB).la)
 	libtool --mode=finish $(LIBDIR)
 	mkdir -p $(IINCDIR)/net && install -c $(INCS) $(IINCDIR)/net
-	mkdir -p $(IMANDIR) && install -c $(MANS) $(IMANDIR)
+	mkdir -p $(IMAN3DIR) && install -c $(MANS3) $(IMAN3DIR)
+	mkdir -p $(IMAN7DIR) && install -c $(MANS7) $(IMAN7DIR)
 
 clean:
 	libtool --mode=clean rm
