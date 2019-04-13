@@ -246,7 +246,7 @@ print_portrange(npf_conf_info_t *ctx, const uint32_t *words)
  */
 
 #define	F(name)		__CONCAT(NPF_RULE_, name)
-#define	STATEFUL_ENDS	(NPF_RULE_STATEFUL | NPF_RULE_MULTIENDS)
+#define	STATEFUL_ALL	(NPF_RULE_STATEFUL | NPF_RULE_GSTATEFUL)
 #define	NAME_AT		2
 
 static const struct attr_keyword_mapent {
@@ -261,8 +261,8 @@ static const struct attr_keyword_mapent {
 	{ F(RETRST)|F(RETICMP),	F(RETRST)|F(RETICMP),	"return"	},
 	{ F(RETRST)|F(RETICMP),	F(RETRST),		"return-rst"	},
 	{ F(RETRST)|F(RETICMP),	F(RETICMP),		"return-icmp"	},
-	{ STATEFUL_ENDS,	F(STATEFUL),		"stateful"	},
-	{ STATEFUL_ENDS,	STATEFUL_ENDS,		"stateful-ends"	},
+	{ STATEFUL_ALL,		F(STATEFUL),		"stateful"	},
+	{ STATEFUL_ALL,		STATEFUL_ALL,		"stateful-all"	},
 	{ F(DIMASK),		F(IN),			"in"		},
 	{ F(DIMASK),		F(OUT),			"out"		},
 	{ F(FINAL),		F(FINAL),		"final"		},
