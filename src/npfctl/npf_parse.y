@@ -158,7 +158,7 @@ yyerror(const char *fmt, ...)
 %token			SET
 %token			SLASH
 %token			STATEFUL
-%token			STATEFUL_ENDS
+%token			STATEFUL_ALL
 %token			TABLE
 %token			TCP
 %token			TO
@@ -643,7 +643,7 @@ all_or_filt_opts
 
 opt_stateful
 	: STATEFUL	{ $$ = NPF_RULE_STATEFUL; }
-	| STATEFUL_ENDS	{ $$ = NPF_RULE_STATEFUL | NPF_RULE_MULTIENDS; }
+	| STATEFUL_ALL	{ $$ = NPF_RULE_STATEFUL | NPF_RULE_GSTATEFUL; }
 	|		{ $$ = 0; }
 	;
 

@@ -264,23 +264,36 @@ conn_update_atime(npf_conn_t *con)
 }
 
 /*
- * npf_conn_ok: check if the connection is active and has the right direction.
+ * npf_conn_check: check that:
+ *
+ *	- the connection is active;
+ *
+ *	- the packet is travelling in the right direction with the respect
+ *	  to the connection direction (if interface-id is not zero);
+ *
+ *	- the packet is travelling on the same interface as the
+ *	  connection interface (if interface-id is not zero).
  */
 static bool
-npf_conn_ok(const npf_conn_t *con, const int di, bool forw)
+npf_conn_check(const npf_conn_t *con, const nbuf_t *nbuf,
+    const unsigned di, const bool forw)
 {
 	const uint32_t flags = con->c_flags;
+	const unsigned ifid = con->c_ifid;
+	bool active, pforw;
 
-	/* Check if connection is active and not expired. */
-	bool ok = (flags & (CONN_ACTIVE | CONN_EXPIRE)) == CONN_ACTIVE;
-	if (__predict_false(!ok)) {
+	active = (flags & (CONN_ACTIVE | CONN_EXPIRE)) == CONN_ACTIVE;
+	if (__predict_false(!active)) {
 		return false;
 	}
-
-	/* Check if the direction is consistent */
-	bool pforw = (flags & PFIL_ALL) == (unsigned)di;
-	if (__predict_false(forw != pforw)) {
-		return false;
+	if (ifid && nbuf) {
+		pforw = (flags & PFIL_ALL) == (unsigned)di;
+		if (__predict_false(forw != pforw)) {
+			return false;
+		}
+		if (__predict_false(ifid != nbuf->nb_ifid)) {
+			return false;
+		}
 	}
 	return true;
 }
@@ -297,7 +310,6 @@ npf_conn_lookup(const npf_cache_t *npc, const int di, bool *forw)
 	const nbuf_t *nbuf = npc->npc_nbuf;
 	npf_conn_t *con;
 	npf_connkey_t key;
-	u_int cifid;
 
 	/* Construct a key and lookup for a connection in the store. */
 	if (!npf_conn_conkey(npc, &key, true)) {
@@ -309,18 +321,8 @@ npf_conn_lookup(const npf_cache_t *npc, const int di, bool *forw)
 	}
 	KASSERT(npc->npc_proto == con->c_proto);
 
-	/* Check if connection is active and not expired. */
-	if (!npf_conn_ok(con, di, *forw)) {
-		atomic_dec_uint(&con->c_refcnt);
-		return NULL;
-	}
-
-	/*
-	 * Match the interface and the direction of the connection entry
-	 * and the packet.
-	 */
-	cifid = con->c_ifid;
-	if (__predict_false(cifid && cifid != nbuf->nb_ifid)) {
+	/* Extra checks for the connection and packet. */
+	if (!npf_conn_check(con, nbuf, di, *forw)) {
 		atomic_dec_uint(&con->c_refcnt);
 		return NULL;
 	}
@@ -394,7 +396,7 @@ npf_conn_inspect(npf_cache_t *npc, const int di, int *error)
  * => Connection will be activated on the first reference release.
  */
 npf_conn_t *
-npf_conn_establish(npf_cache_t *npc, int di, bool per_if)
+npf_conn_establish(npf_cache_t *npc, int di, bool global)
 {
 	npf_t *npf = npc->npc_ctx;
 	const unsigned alen = npc->npc_alen;
@@ -447,7 +449,7 @@ npf_conn_establish(npf_cache_t *npc, int di, bool per_if)
 		npf_conn_destroy(npf, con);
 		return NULL;
 	}
-	con->c_ifid = per_if ? nbuf->nb_ifid : 0;
+	con->c_ifid = global ? nbuf->nb_ifid : 0;
 
 	/*
 	 * Set last activity time for a new connection and acquire
@@ -914,7 +916,7 @@ npf_conn_find(npf_t *npf, const nvlist_t *idict, nvlist_t **odict)
 		return ESRCH;
 	}
 	dir = dnvlist_get_number(idict, "direction", 0);
-	if (!npf_conn_ok(con, dir, true)) {
+	if (!npf_conn_check(con, NULL, dir, true)) {
 		atomic_dec_uint(&con->c_refcnt);
 		return ESRCH;
 	}

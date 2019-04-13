@@ -299,12 +299,12 @@ before further processing.
 Stateful packet inspection is enabled using the
 .Cm stateful
 or
-.Cm stateful-ends
+.Cm stateful-all
 keywords.
 The former creates a state which is uniquely identified by a 5-tuple (source
 and destination IP addresses, port numbers and an interface identifier).
-The latter excludes the interface identifier and must be used with
-precaution.
+The latter excludes the interface identifier, i.e. making the state global,
+and must be used with precaution.
 In both cases, a full TCP state tracking is performed for TCP connections
 and a limited tracking for message-based protocols (UDP and ICMP).
 .Pp
@@ -550,7 +550,7 @@ rule-list	= [ rule new-line ] rule-list
 
 npf-filter	= [ "family" family-opt ] [ proto ] ( "all" | filt-opts )
 static-rule	= ( "block" [ block-opts ] | "pass" )
-		  [ "stateful" | "stateful-ends" ]
+		  [ "stateful" | "stateful-all" ]
 		  [ "in" | "out" ] [ "final" ] [ "on" interface ]
 		  ( npf-filter | "pcap-filter" pcap-filter-expr )
 		  [ "apply" proc-name ]

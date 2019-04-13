@@ -178,8 +178,11 @@ Create a state (session) on match, track the connection and pass the
 backwards stream (the returning packets) without the ruleset inspection.
 The state is uniquely identified by a 5-tuple (source and destination
 IP addresses, port numbers and an interface identifier).
-.It Dv NPF_RULE_MULTIENDS
+.It Dv NPF_RULE_GSTATEFUL
 Exclude the interface identifier from the state key i.e. use a 4-tuple.
+This makes the state global with the respect network interfaces.
+The state is also picked on packet travelling different direction that
+originally.
 .It Dv NPF_RULE_RETRST
 Return TCP RST packet in a case of packet block.
 .It Dv NPF_RULE_RETICMP

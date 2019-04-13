@@ -25,7 +25,7 @@ http://www.usenix.org/events/sec01/invitedtalks/rooij.pdf) paper.
 
 NPF is a stateful packet filter capable of tracking TCP connections,
 as well as performing limited UDP and ICMP tracking.  Stateful filtering is
-enabled using the `stateful` or `stateful-ends` keywords.  The former creates
+enabled using the `stateful` or `stateful-all` keywords.  The former creates
 a state which is uniquely identified by a 5-tuple (source and destination IP
 addresses, port numbers and an interface identifier).  The latter excludes
 the interface identifier and must be used with precaution.  Once the state is
@@ -59,17 +59,17 @@ IMPORTANT: Stateful rules imply `flags S/SAFR` for TCP packets.
 
 ---
 
-It is important to understand the implications of `stateful-ends`.  Bypassing
+It is important to understand the implications of `stateful-all`.  Bypassing
 the ruleset on other interfaces can have undesirable effects, e.g. a packet
 with a spoofed IP address might bypass ingress filtering.  Associating a state
 with two interfaces (forwarding case) may also cause problems if the routes
 change.  On the other hand, picking up the state on any interface may lead
 to higher performance in certain configurations and may also handle some
 asymmetric routing cases.  The administrator is free to choose whether
-`stateful` or `stateful-ends` is more suitable.
+`stateful` or `stateful-all` is more suitable.
 
 ---
-WARNING: The `stateful-ends` keyword must be used with precaution.
+WARNING: The `stateful-all` keyword must be used with precaution.
 
 ---
 

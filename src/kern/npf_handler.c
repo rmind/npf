@@ -232,7 +232,7 @@ npf_packet_handler(npf_t *npf, struct mbuf **mp, ifnet_t *ifp, int di)
 	 */
 	if ((mi.mi_retfl & NPF_RULE_STATEFUL) != 0 && !con) {
 		con = npf_conn_establish(&npc, di,
-		    (mi.mi_retfl & NPF_RULE_MULTIENDS) == 0);
+		    (mi.mi_retfl & NPF_RULE_GSTATEFUL) == 0);
 		if (con) {
 			/*
 			 * Note: the reference on the rule procedure is
