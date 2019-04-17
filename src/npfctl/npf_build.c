@@ -363,7 +363,7 @@ static bool
 npfctl_build_code(nl_rule_t *rl, sa_family_t family, const opt_proto_t *op,
     const filt_opts_t *fopts)
 {
-	bool noproto, noaddrs, noports, need_tcpudp = false;
+	bool noproto, noaddrs, noports, nostate, need_tcpudp = false;
 	const addr_port_t *apfrom = &fopts->fo_from;
 	const addr_port_t *apto = &fopts->fo_to;
 	const int proto = op->op_proto;
@@ -375,7 +375,8 @@ npfctl_build_code(nl_rule_t *rl, sa_family_t family, const opt_proto_t *op,
 	noproto = family == AF_UNSPEC && proto == -1 && !op->op_opts;
 	noaddrs = !apfrom->ap_netaddr && !apto->ap_netaddr;
 	noports = !apfrom->ap_portrange && !apto->ap_portrange;
-	if (noproto && noaddrs && noports) {
+	nostate = !(npf_rule_getattr(rl) & NPF_RULE_STATEFUL);
+	if (noproto && noaddrs && noports && nostate) {
 		return false;
 	}
 
