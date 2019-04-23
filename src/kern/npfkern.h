@@ -63,6 +63,7 @@ typedef struct {
 
 int	npf_sysinit(unsigned);
 void	npf_sysfini(void);
+void   wait_threads(void);
 
 npf_t *	npf_create(int, const npf_mbufops_t *, const npf_ifops_t *);
 int	npf_load(npf_t *, void *, npf_error_t *);

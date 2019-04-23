@@ -105,7 +105,6 @@ npf_config_fini(npf_t *npf)
 	/* Flush the connections. */
 	mutex_enter(&npf->config_lock);
 	npf_conn_tracking(npf, false);
-	pserialize_perform(npf->qsbr);
 	npf_conn_load(npf, cd, false);
 	npf_ifmap_flush(npf);
 	mutex_exit(&npf->config_lock);

@@ -59,6 +59,25 @@ static void			npf_worker(void *) __dead;
 static npf_worker_t *		npf_workers		__read_mostly;
 static unsigned			npf_worker_count	__read_mostly;
 
+void
+wait_threads(void)
+{
+	void *r;
+	for (unsigned i = 0; i < npf_worker_count; i++) {
+		npf_worker_t *wrk = &npf_workers[i];
+		mutex_enter(&wrk->worker_lock);
+		wrk->worker_exit = true;
+		mutex_exit(&wrk->worker_lock);
+
+		if (wrk->worker_lwp)
+		{
+			pthread_join(wrk->worker_lwp->thr, &r);
+			free(wrk->worker_lwp);
+			wrk->worker_lwp = r;
+		}
+	}
+}
+
 int
 npf_worker_sysinit(unsigned nworkers)
 {

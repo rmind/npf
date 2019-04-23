@@ -95,6 +95,7 @@ npf_destroy(npf_t *npf)
 	 * Destroy the current configuration.  Note: at this point all
 	 * handlers must be deactivated; we will drain any processing.
 	 */
+	wait_threads();
 	npf_config_fini(npf);
 
 	/* Finally, safe to destroy the subsystems. */
