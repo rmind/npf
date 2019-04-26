@@ -159,7 +159,7 @@ npf_conn_conkey(const npf_cache_t *npc, npf_connkey_t *key, const bool forw)
 	const unsigned alen = npc->npc_alen;
 	const struct tcphdr *th;
 	const struct udphdr *uh;
-	uint16_t id[2];
+	uint16_t id[2] = { 0, 0 };
 
 	switch (proto) {
 	case IPPROTO_TCP:
