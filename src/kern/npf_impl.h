@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2009-2014 The NetBSD Foundation, Inc.
+ * Copyright (c) 2009-2019 The NetBSD Foundation, Inc.
  * All rights reserved.
  *
  * This material is based upon work partially supported by The
@@ -72,12 +72,14 @@
 struct npf_ruleset;
 struct npf_rule;
 struct npf_rprocset;
+struct npf_portmap;
 struct npf_nat;
 struct npf_conn;
 struct npf_config;
 
 typedef struct npf_ruleset	npf_ruleset_t;
 typedef struct npf_rule		npf_rule_t;
+typedef struct npf_portmap	npf_portmap_t;
 typedef struct npf_nat		npf_nat_t;
 typedef struct npf_rprocset	npf_rprocset_t;
 typedef struct npf_alg		npf_alg_t;
@@ -179,12 +181,13 @@ typedef struct {
 	int		max;
 } npf_param_t;
 
-enum {
+typedef enum {
 	NPF_PARAMS_CONNDB = 0,
 	NPF_PARAMS_GENERIC_STATE,
 	NPF_PARAMS_TCP_STATE,
+	NPF_PARAMS_PORTMAP,
 	NPF_PARAMS_COUNT
-};
+} npf_paramgroup_t;
 
 /*
  * NPF INSTANCE (CONTEXT) STRUCTURE AND AUXILIARY OPERATIONS.
@@ -214,7 +217,8 @@ struct npf {
 	npf_conndb_t *		conn_db;
 	pool_cache_t		conn_cache[2];
 
-	/* ALGs. */
+	/* NAT and ALGs. */
+	npf_portmap_t *		portmap;
 	npf_algset_t *		algset;
 
 	/* Interface mapping. */
@@ -297,6 +301,8 @@ void		npf_stats_dec(npf_t *, npf_stats_t);
 void		npf_param_init(npf_t *);
 void		npf_param_fini(npf_t *);
 void		npf_param_register(npf_t *, npf_param_t *, unsigned);
+void *		npf_param_allocgroup(npf_t *, npf_paramgroup_t, size_t);
+void		npf_param_freegroup(npf_t *, npf_paramgroup_t, size_t);
 int		npf_param_check(npf_t *, const char *, int);
 
 void		npf_ifmap_init(npf_t *, const npf_ifops_t *);
@@ -340,6 +346,7 @@ void		npf_addr_mask(const npf_addr_t *, const npf_netmask_t,
 		    const int, npf_addr_t *);
 void		npf_addr_bitor(const npf_addr_t *, const npf_netmask_t,
 		    const int, npf_addr_t *);
+int		npf_netmask_check(const int, npf_netmask_t);
 
 int		npf_tcpsaw(const npf_cache_t *, tcp_seq *, tcp_seq *,
 		    uint32_t *);
@@ -390,7 +397,6 @@ void		npf_ruleset_destroy(npf_ruleset_t *);
 void		npf_ruleset_insert(npf_ruleset_t *, npf_rule_t *);
 void		npf_ruleset_reload(npf_t *, npf_ruleset_t *,
 		    npf_ruleset_t *, bool);
-npf_rule_t *	npf_ruleset_sharepm(npf_ruleset_t *, npf_natpolicy_t *);
 npf_natpolicy_t *npf_ruleset_findnat(npf_ruleset_t *, uint64_t);
 void		npf_ruleset_freealg(npf_ruleset_t *, npf_alg_t *);
 int		npf_ruleset_export(npf_t *, const npf_ruleset_t *,
@@ -451,6 +457,15 @@ void		npf_state_tcp_sysfini(npf_t *);
 bool		npf_state_tcp(npf_cache_t *, npf_state_t *, int);
 int		npf_state_tcp_timeout(npf_t *, const npf_state_t *);
 
+/* Portmap. */
+void		npf_portmap_init(npf_t *);
+void		npf_portmap_fini(npf_t *);
+
+in_port_t	npf_portmap_get(npf_t *, int, const npf_addr_t *);
+bool		npf_portmap_take(npf_t *, int, const npf_addr_t *, in_port_t);
+void		npf_portmap_put(npf_t *, int, const npf_addr_t *, in_port_t);
+void		npf_portmap_flush(npf_t *);
+
 /* NAT. */
 void		npf_nat_sysinit(void);
 void		npf_nat_sysfini(void);
@@ -458,7 +473,6 @@ npf_natpolicy_t *npf_nat_newpolicy(npf_t *, const nvlist_t *, npf_ruleset_t *);
 int		npf_nat_policyexport(const npf_natpolicy_t *, nvlist_t *);
 void		npf_nat_freepolicy(npf_natpolicy_t *);
 bool		npf_nat_cmppolicy(npf_natpolicy_t *, npf_natpolicy_t *);
-bool		npf_nat_sharepm(npf_natpolicy_t *, npf_natpolicy_t *);
 void		npf_nat_setid(npf_natpolicy_t *, uint64_t);
 uint64_t	npf_nat_getid(const npf_natpolicy_t *);
 void		npf_nat_freealg(npf_natpolicy_t *, npf_alg_t *);

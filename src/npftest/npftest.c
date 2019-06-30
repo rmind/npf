@@ -277,7 +277,6 @@ main(int argc, char **argv)
 		errx(EXIT_FAILURE, "failed to find the interface");
 	}
 
-	srandom(1);
 	fail = false;
 
 	if (test) {
@@ -311,7 +310,6 @@ main(int argc, char **argv)
 		}
 
 		if (!testname || strcmp("conn", testname) == 0) {
-			srandom(1);
 			ok = rumpns_npf_conn_test(verbose);
 			fail |= result("conn", ok);
 			tname_matched = true;
@@ -326,7 +324,6 @@ main(int argc, char **argv)
 		}
 
 		if (!testname || strcmp("nat", testname) == 0) {
-			srandom(1);
 			ok = rumpns_npf_nat_test(verbose);
 			fail |= result("nat", ok);
 			tname_matched = true;

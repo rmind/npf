@@ -32,8 +32,8 @@
  *
  * Warning (not applicable for the userspace npfkern):
  *
- *	The thmap data is partially lock-free data structure that uses its
- *	own spin-locks on the writer side (insert/delete operations).
+ *	thmap is partially lock-free data structure that uses its own
+ *	spin-locks on the writer side (insert/delete operations).
  *
  *	The relevant interrupt priority level (IPL) must be set and the
  *	kernel preemption disabled across the critical paths to prevent
@@ -93,8 +93,8 @@ typedef struct {
 void
 npf_conndb_sysinit(npf_t *npf)
 {
-	const size_t len = sizeof(npf_conndb_params_t);
-	npf_conndb_params_t *params = kmem_zalloc(len, KM_SLEEP);
+	npf_conndb_params_t *params = npf_param_allocgroup(npf,
+	    NPF_PARAMS_CONNDB, sizeof(npf_conndb_params_t));
 	npf_param_t param_map[] = {
 		{
 			"gc.step",
@@ -104,14 +104,13 @@ npf_conndb_sysinit(npf_t *npf)
 		}
 	};
 	npf_param_register(npf, param_map, __arraycount(param_map));
-	npf->params[NPF_PARAMS_CONNDB] = params;
 }
 
 void
 npf_conndb_sysfini(npf_t *npf)
 {
 	const size_t len = sizeof(npf_conndb_params_t);
-	kmem_free(npf->params[NPF_PARAMS_CONNDB], len);
+	npf_param_freegroup(npf, NPF_PARAMS_CONNDB, len);
 }
 
 npf_conndb_t *

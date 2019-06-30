@@ -910,9 +910,12 @@ ifref
 	| dynamic_ifaddrs
 	| static_ifaddrs
 	{
-		if (npfvar_get_count($1) != 1)
+		ifnet_addr_t *ifna;
+
+		if (npfvar_get_count($1) != 1) {
 			yyerror("multiple interfaces are not supported");
-		ifnet_addr_t *ifna = npfvar_get_data($1, NPFVAR_INTERFACE, 0);
+		}
+		ifna = npfvar_get_data($1, NPFVAR_INTERFACE, 0);
 		npfctl_note_interface(ifna->ifna_name);
 		$$ = ifna->ifna_name;
 	}

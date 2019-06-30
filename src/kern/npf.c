@@ -80,6 +80,7 @@ npf_create(int flags, const npf_mbufops_t *mbufops, const npf_ifops_t *ifops)
 	npf_state_sysinit(npf);
 	npf_ifmap_init(npf, ifops);
 	npf_conn_init(npf, flags);
+	npf_portmap_init(npf);
 	npf_alg_init(npf);
 	npf_ext_init(npf);
 
@@ -100,6 +101,7 @@ npf_destroy(npf_t *npf)
 	/* Finally, safe to destroy the subsystems. */
 	npf_ext_fini(npf);
 	npf_alg_fini(npf);
+	npf_portmap_fini(npf);
 	npf_conn_fini(npf);
 	npf_ifmap_fini(npf);
 	npf_state_sysfini(npf);

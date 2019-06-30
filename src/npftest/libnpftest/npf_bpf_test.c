@@ -82,7 +82,7 @@ test_bpf_code(void *code, size_t size)
 }
 
 static uint32_t
-npf_bpfcop_run(u_int reg)
+npf_bpfcop_run(unsigned reg)
 {
 	struct bpf_insn insns_npf_bpfcop[] = {
 		BPF_STMT(BPF_MISC+BPF_COP, NPF_COP_L3),

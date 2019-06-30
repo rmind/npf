@@ -171,14 +171,15 @@ again:
 
 #define	membar_sync()		__sync_synchronize()
 #define	membar_producer()	__sync_synchronize()
-#define	atomic_inc_uint(x)	__sync_fetch_and_add(x, 1)
-#define	atomic_inc_uint_nv(x)	__sync_add_and_fetch(x, 1)
-#define	atomic_dec_uint(x)	__sync_sub_and_fetch(x, 1)
-#define	atomic_dec_uint_nv(x)	__sync_sub_and_fetch(x, 1)
-#define	atomic_or_uint(x, v)	__sync_fetch_and_or(x, v)
-#define	atomic_cas_32(p, o, n)	__sync_val_compare_and_swap(p, o, n)
-#define	atomic_cas_ptr(p, o, n)	__sync_val_compare_and_swap(p, o, n)
-#define atomic_swap_ptr(x, y)	npfkern_atomic_swap_ptr(x, y)
+#define	atomic_inc_uint(x)	__sync_fetch_and_add((x), 1)
+#define	atomic_inc_uint_nv(x)	__sync_add_and_fetch((x), 1)
+#define	atomic_dec_uint(x)	__sync_sub_and_fetch((x), 1)
+#define	atomic_dec_uint_nv(x)	__sync_sub_and_fetch((x), 1)
+#define	atomic_or_uint(x, v)	__sync_fetch_and_or((x), (v))
+#define	atomic_cas_32(p, o, n)	__sync_val_compare_and_swap((p), (o), (n))
+#define	atomic_cas_64(p, o, n)	__sync_val_compare_and_swap((p), (o), (n))
+#define	atomic_cas_ptr(p, o, n)	__sync_val_compare_and_swap((p), (o), (n))
+#define	atomic_swap_ptr(x, y)	npfkern_atomic_swap_ptr((x), (y))
 
 /*
  * Threads.
@@ -236,11 +237,11 @@ npfkern_kmem_free(void *ptr, size_t len)
 	free(ptr);
 }
 
-#define	kmem_zalloc(len, flags)		calloc(1, len)
+#define	kmem_zalloc(len, flags)		calloc(1, (len))
 #define	kmem_alloc(len, flags)		malloc(len)
-#define	kmem_free(ptr, len)		npfkern_kmem_free(ptr, len)
-#define	kmem_intr_zalloc(len, flags)	kmem_zalloc(len, flags)
-#define	kmem_intr_free(ptr, len)	kmem_free(ptr, len)
+#define	kmem_free(ptr, len)		npfkern_kmem_free((ptr), (len))
+#define	kmem_intr_zalloc(len, flags)	kmem_zalloc((len), (flags))
+#define	kmem_intr_free(ptr, len)	kmem_free((ptr), (len))
 
 #define	kmalloc(size, type, flags)	calloc(1, (size))
 #define	kfree(ptr, type)		free(ptr)
