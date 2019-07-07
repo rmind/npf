@@ -259,6 +259,9 @@ npf_dev_ioctl(dev_t dev, u_long cmd, void *data, int flag, lwp_t *l)
 	case IOC_NPF_CONN_LOOKUP:
 		error = npfctl_conn_lookup(npf, cmd, data);
 		break;
+	case IOC_NPF_TABLE_REPLACE:
+		error = npfctl_table_replace(npf, cmd, data);
+		break;
 	case IOC_NPF_VERSION:
 		*(int *)data = NPF_VERSION;
 		error = 0;

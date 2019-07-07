@@ -456,13 +456,18 @@ npf_table_getid(npf_table_t *t)
  * npf_table_check: validate the name, ID and type.
  */
 int
-npf_table_check(npf_tableset_t *ts, const char *name, uint64_t tid, uint64_t type)
+npf_table_check(npf_tableset_t *ts, const char *name, uint64_t tid, uint64_t type, bool replacing)
 {
+	const npf_table_t *t;
 	if (tid >= ts->ts_nitems) {
 		return EINVAL;
 	}
-	if (ts->ts_map[tid] != NULL) {
-		return EEXIST;
+	if ((t = ts->ts_map[tid]) != NULL) {
+		if (!replacing) {
+			return EEXIST;
+		} else if (strcmp(t->t_name, name) != 0) {
+			return EINVAL;
+		}
 	}
 	switch (type) {
 	case NPF_TABLE_LPM:
@@ -476,7 +481,7 @@ npf_table_check(npf_tableset_t *ts, const char *name, uint64_t tid, uint64_t typ
 	if (strlen(name) >= NPF_TABLE_MAXNAMELEN) {
 		return ENAMETOOLONG;
 	}
-	if (npf_tableset_getbyname(ts, name)) {
+	if (!replacing && npf_tableset_getbyname(ts, name)) {
 		return EEXIST;
 	}
 	return 0;

@@ -178,6 +178,66 @@ npf_mk_table_entries(npf_table_t *t, const nvlist_t *table, nvlist_t *errdict)
 	return error;
 }
 
+/*
+ * npf_mk_table: create a table from provided nvlist.
+ */
+static int __noinline
+npf_mk_table(npf_t *npf, const nvlist_t *tbl_dict, nvlist_t *errdict,
+    npf_tableset_t *tblset, npf_table_t **tblp, bool replacing)
+{
+	npf_table_t *t;
+	const char *name;
+	const void *blob;
+	uint64_t tid;
+	size_t size;
+	int type;
+	int error = 0;
+
+	KASSERT(tblp != NULL);
+
+	/* Table name, ID and type.  Validate them. */
+	name = dnvlist_get_string(tbl_dict, "name", NULL);
+	if (!name) {
+		NPF_ERR_DEBUG(errdict);
+		error = EINVAL;
+		goto out;
+	}
+	tid = dnvlist_get_number(tbl_dict, "id", UINT64_MAX);
+	type = dnvlist_get_number(tbl_dict, "type", UINT64_MAX);
+	error = npf_table_check(tblset, name, tid, type, replacing);
+	if (error) {
+		NPF_ERR_DEBUG(errdict);
+		goto out;
+	}
+
+	/* Get the entries or binary data. */
+	blob = dnvlist_get_binary(tbl_dict, "data", &size, NULL, 0);
+	if (type == NPF_TABLE_CONST && (blob == NULL || size == 0)) {
+		NPF_ERR_DEBUG(errdict);
+		error = EINVAL;
+		goto out;
+	}
+
+	/* Create and swap the table. */
+	t = npf_table_create(name, (u_int)tid, type, blob, size);
+	if (t == NULL) {
+		NPF_ERR_DEBUG(errdict);
+		error = ENOMEM;
+		goto out;
+	}
+
+	if ((error = npf_mk_table_entries(t, tbl_dict, errdict)) != 0) {
+		npf_table_destroy(t);
+		goto out;
+	}
+
+	*tblp = t;
+
+	/* fallthrough */
+out:
+	return error;
+}
+
 static int __noinline
 npf_mk_tables(npf_t *npf, nvlist_t *npf_dict, nvlist_t *errdict,
     npf_tableset_t **tblsetp)
@@ -200,49 +260,15 @@ npf_mk_tables(npf_t *npf, nvlist_t *npf_dict, nvlist_t *errdict,
 	tblset = npf_tableset_create(nitems);
 	for (unsigned i = 0; i < nitems; i++) {
 		const nvlist_t *table = tables[i];
-		const char *name;
-		const void *blob;
 		npf_table_t *t;
-		uint64_t tid;
-		size_t size;
-		int type;
 
-		/* Table name, ID and type.  Validate them. */
-		name = dnvlist_get_string(table, "name", NULL);
-		if (!name) {
-			NPF_ERR_DEBUG(errdict);
-			error = EINVAL;
-			break;
-		}
-		tid = dnvlist_get_number(table, "id", UINT64_MAX);
-		type = dnvlist_get_number(table, "type", UINT64_MAX);
-		error = npf_table_check(tblset, name, tid, type);
+		error = npf_mk_table(npf, table, errdict, tblset, &t, 0);
 		if (error) {
-			NPF_ERR_DEBUG(errdict);
 			break;
 		}
 
-		/* Get the entries or binary data. */
-		blob = dnvlist_get_binary(table, "data", &size, NULL, 0);
-		if (type == NPF_TABLE_CONST && (blob == NULL || size == 0)) {
-			NPF_ERR_DEBUG(errdict);
-			error = EINVAL;
-			break;
-		}
-
-		/* Create and insert the table. */
-		t = npf_table_create(name, (u_int)tid, type, blob, size);
-		if (t == NULL) {
-			NPF_ERR_DEBUG(errdict);
-			error = ENOMEM;
-			break;
-		}
 		error = npf_tableset_insert(tblset, t);
 		KASSERT(error == 0);
-
-		if ((error = npf_mk_table_entries(t, table, errdict)) != 0) {
-			break;
-		}
 	}
 	*tblsetp = tblset;
 	return error;
@@ -730,6 +756,70 @@ out:
 		nvlist_destroy(npf_dict);
 	}
 	return error;
+}
+
+/*
+ * npfctl_table_replace_nvlist: atomically replace a table's contents
+ * with the passed table data.
+ */
+static int __noinline
+npfctl_table_replace_nvlist(npf_t *npf, nvlist_t *npf_dict, nvlist_t *errdict)
+{
+	npf_tableset_t *tblset;
+	int error = 0;
+
+	npf_table_t *oldt, *newt;
+
+	npf_config_enter(npf);
+	tblset = npf_config_tableset(npf);
+
+	/* Get the entries or binary data. */
+	error = npf_mk_table(npf, npf_dict, errdict, tblset, &newt, 1);
+	if (error) {
+		goto err_config;
+	}
+
+	oldt = npf_tableset_swap(tblset, newt);
+	if (oldt == NULL) {
+		error = EINVAL;
+		goto err_config;
+	}
+	npf_config_sync(npf);
+	npf_config_exit(npf);
+
+	/* At this point, it is safe to destroy the old table. */
+	npf_table_destroy(oldt);
+
+	/* successfully completed */
+	goto out;
+
+err_config:
+	npf_config_exit(npf);
+	npf_table_destroy(newt);
+
+	/* fallthrough */
+out:
+	return error;
+}
+
+int
+npfctl_table_replace(npf_t *npf, u_long cmd, void *data)
+{
+	nvlist_t *request, *response;
+	int error;
+
+	/*
+	 * Retrieve the configuration and check the version.
+	 * Construct a response with error reporting.
+	 */
+	error = npf_nvlist_copyin(npf, data, &request);
+	if (error) {
+		return error;
+	}
+	response = nvlist_create(0);
+	error = npfctl_table_replace_nvlist(npf, request, response);
+	nvlist_add_number(response, "errno", error);
+	return npf_nvlist_copyout(npf, data, response);
 }
 
 /*
