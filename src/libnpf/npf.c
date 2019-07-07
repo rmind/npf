@@ -1061,6 +1061,34 @@ npf_table_insert(nl_config_t *ncf, nl_table_t *tl)
 	return 0;
 }
 
+int
+npf_table_replace(nl_table_t *tl, int fd, npf_error_t *errinfo)
+{
+	nvlist_t *errnv = NULL;
+	int error;
+
+	/* Ensure the table is built. */
+	(void)_npf_table_build(tl);
+
+	if (nvlist_xfer_ioctl(fd, IOC_NPF_TABLE_REPLACE, tl->table_dict, &errnv) == -1) {
+		assert(errnv == NULL);
+		return errno;
+	}
+	error = dnvlist_get_number(errnv, "errno", 0);
+	if (error && errinfo) {
+		memset(errinfo, 0, sizeof(npf_error_t));
+		errinfo->id = dnvlist_get_number(errnv, "id", 0);
+		errinfo->error_msg =
+		    dnvlist_take_string(errnv, "error-msg", NULL);
+		errinfo->source_file =
+		    dnvlist_take_string(errnv, "source-file", NULL);
+		errinfo->source_line =
+		    dnvlist_take_number(errnv, "source-line", 0);
+	}
+	nvlist_destroy(errnv);
+	return error;
+}
+
 nl_table_t *
 npf_table_iterate(nl_config_t *ncf, nl_iter_t *iter)
 {
