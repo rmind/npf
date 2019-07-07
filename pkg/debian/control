@@ -7,6 +7,8 @@ Build-Depends:
  libtool,
  flex,
  byacc,
+ libssl-dev,
+ libjemalloc-dev,
  libnv-dev,
  libbpfjit-dev,
  libqsbr-dev,
