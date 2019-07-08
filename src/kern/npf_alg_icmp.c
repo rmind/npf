@@ -460,6 +460,7 @@ npf_alg_icmp_init(npf_t *npf)
 		.match		= npfa_icmp_match,
 		.translate	= npfa_icmp_nat,
 		.inspect	= npfa_icmp_conn,
+		.destroy	= NULL,
 	};
 	alg_icmp = npf_alg_register(npf, "icmp", &icmp);
 	return alg_icmp ? 0 : ENOMEM;
