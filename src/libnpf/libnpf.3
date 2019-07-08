@@ -104,6 +104,8 @@
 "const npf_addr_t *addr" "const npf_netmask_t mask"
 .Ft int
 .Fn npf_table_insert "nl_config_t *ncf" "nl_table_t *tl"
+.Ft int
+.Fn npf_table_replace "nl_table_t *tl" "int fd" "nl_error_t *errinfo"
 .Ft void
 .Fn npf_table_destroy "nl_table_t *tl"
 .\" -----
@@ -427,6 +429,15 @@ for IPv6 address.
 Add the table to the configuration object.
 This routine performs a check for duplicate table IDs.
 The table must not be referenced after insertion.
+.\" ---
+.It Fn npf_table_replace "tl" "fd" "errinfo"
+Submit the table object, specified by
+.Fa tl ,
+to the kernel, to replace the existing table with the
+corresponding table name and id.
+On failure, the error information is written into the structure
+specified by
+.Fa errinfo .
 .\" ---
 .It Fn npf_table_destroy "tl"
 Destroy the specified table.
