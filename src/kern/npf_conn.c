@@ -499,11 +499,20 @@ err:
 void
 npf_conn_destroy(npf_t *npf, npf_conn_t *con)
 {
+	npfa_funcs_t *alg_funcs;
+	npf_alg_t *alg;
 	const npf_connkey_t *key = npf_conn_getforwkey(con);
 	const unsigned alen = NPF_CONNKEY_ALEN(key);
 	const unsigned idx __unused = NPF_CONNCACHE(alen);
 
 	KASSERT(con->c_refcnt == 0);
+
+	/* execute NAT ALG destroy callback */
+	if (con->c_nat != NULL && (alg = npf_nat_get_alg(con->c_nat)) != NULL) {
+		alg_funcs = npf_alg_get_funcs(npf, alg);
+		if (alg_funcs->destroy != NULL)
+			alg_funcs->destroy(npf, con);
+	}
 
 	if (con->c_nat) {
 		/* Release any NAT structures. */

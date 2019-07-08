@@ -729,6 +729,24 @@ npf_nat_setalg(npf_nat_t *nt, npf_alg_t *alg, uintptr_t arg)
 	nt->nt_alg_arg = arg;
 }
 
+npf_alg_t *
+npf_nat_get_alg(const npf_nat_t *nt)
+{
+	return nt->nt_alg;
+}
+
+uintptr_t
+npf_nat_get_alg_arg(const npf_nat_t *nt)
+{
+	return nt->nt_alg_arg;
+}
+
+void
+npf_nat_set_alg_arg(npf_nat_t *nt, uintptr_t arg)
+{
+	nt->nt_alg_arg = arg;
+}
+
 /*
  * npf_nat_destroy: destroy NAT structure (performed on connection expiration).
  */
