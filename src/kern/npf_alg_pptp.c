@@ -1,7 +1,7 @@
 /*	$NetBSD: npf_alg_pptp.c,v 1.02 2019/06/17 19:23:41 alexk99 Exp $	*/
 
 /*-
- * Copyright (c) 2010 The NetBSD Foundation, Inc.
+ * Copyright (c) 2019 Alex Kiselev alex@therouter.net
  * All rights reserved.
  *
  * This material is based upon work partially supported by The
