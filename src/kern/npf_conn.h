@@ -113,6 +113,8 @@ npf_connkey_t *	npf_conn_getforwkey(npf_conn_t *);
 npf_connkey_t *	npf_conn_getbackkey(npf_conn_t *, unsigned);
 void		npf_conn_adjkey(npf_connkey_t *, const npf_addr_t *,
 		    const uint16_t, const int);
+void		npf_conn_init_ipv4_key(void *, uint16_t, uint16_t, uint16_t, uint32_t,
+		  uint32_t);
 
 unsigned	npf_connkey_import(const nvlist_t *, npf_connkey_t *);
 nvlist_t *	npf_connkey_export(const npf_connkey_t *);
@@ -137,7 +139,9 @@ void		npf_conn_expire(npf_conn_t *);
 bool		npf_conn_pass(const npf_conn_t *, npf_match_info_t *,
 		    npf_rproc_t **);
 void		npf_conn_setpass(npf_conn_t *, const npf_match_info_t *,
-		    npf_rproc_t *);
+		  npf_rproc_t *);
+void		npf_conn_set_active_pass(npf_conn_t *);
+void		npf_conn_set_expire(npf_conn_t *con);
 int		npf_conn_setnat(const npf_cache_t *, npf_conn_t *,
 		    npf_nat_t *, u_int);
 npf_nat_t *	npf_conn_getnat(npf_conn_t *, const int, bool *);
