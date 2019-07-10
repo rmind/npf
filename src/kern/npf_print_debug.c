@@ -15,7 +15,7 @@
 
 static bool g_print_debug_contex[] = {
 	true,		/* NPF_DC_PPTP_ALG */
-	false,	/* NPF_DC_GRE */
+	true,		/* NPF_DC_GRE */
 	true,		/* NPF_DC_ESTABL_CON */
 };
 
@@ -109,7 +109,7 @@ npf_dprintfcl(uint32_t context, uint32_t level, const char *format, ...)
 }
 
 void
-npf_dhexdumpcl(uint32_t context, uint32_t level, char *desc, void *addr,
+npf_dhexdumpcl(uint32_t context, uint32_t level, const char *desc, void *addr,
 		  int len)
 {
 	if (g_print_debug_contex[context] && level <= g_print_debug_level)
