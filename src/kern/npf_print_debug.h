@@ -26,11 +26,11 @@ enum npf_print_debug_context {
 };
 
 int
-npf_dprintfc(uint32_t context, char *format, ...);
+npf_dprintfc(uint32_t context, const char *format, ...);
 #define NPF_DPRINTFC(context, ...) npf_dprintfc(context, __VA_ARGS__)
 
 int
-npf_dprintfcl(uint32_t context, uint32_t level, char *format, ...);
+npf_dprintfcl(uint32_t context, uint32_t level, const char *format, ...);
 #define NPF_DPRINTFCL(context, level, ...) \
 		  npf_dprintfcl(context, level, __VA_ARGS__)
 
@@ -38,7 +38,7 @@ void
 npf_hex_dump(const char *desc, const void *addr, int len);
 
 void
-npf_dhexdumpcl(uint32_t context, uint32_t level, char *desc, void *addr,
+npf_dhexdumpcl(uint32_t context, uint32_t level, const char *desc, void *addr,
 		  int len);
 #define NPF_HEX_DUMPCL(context, level, desc, addr, len) \
 	npf_dhexdumpcl(context, level, desc, addr, len)
