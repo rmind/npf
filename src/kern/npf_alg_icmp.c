@@ -478,6 +478,12 @@ static int
 npf_alg_icmp_modcmd(modcmd_t cmd, void *arg)
 {
 	npf_t *npf = npf_getkernctx();
+#else
+int
+npf_alg_icmp_modcmd(modcmd_t cmd, void *arg)
+{
+	npf_t *npf = arg;
+#endif
 
 	switch (cmd) {
 	case MODULE_CMD_INIT:
@@ -491,4 +497,3 @@ npf_alg_icmp_modcmd(modcmd_t cmd, void *arg)
 	}
 	return 0;
 }
-#endif

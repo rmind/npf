@@ -259,6 +259,11 @@ void *		npf_ext_register(npf_t *, const char *, const npf_ext_ops_t *);
 int		npf_ext_unregister(npf_t *, void *);
 void		npf_rproc_assign(npf_rproc_t *, void *);
 
+typedef struct npf_portmap_params {
+	int		min_port;
+	int		max_port;
+} npf_portmap_params_t;
+
 /*
  * INTERFACES.
  */
@@ -460,12 +465,20 @@ int		npf_state_tcp_timeout(npf_t *, const npf_state_t *);
 
 /* Portmap. */
 void		npf_portmap_init(npf_t *);
+npf_portmap_t *	npf_portmap_init_pm(void);
 void		npf_portmap_fini(npf_t *);
+void		npf_portmap_fini_pm(npf_portmap_t *);
 
 in_port_t	npf_portmap_get(npf_t *, int, const npf_addr_t *);
+in_port_t	npf_portmap_get_pm(npf_portmap_t *, const npf_portmap_params_t *,
+		  int, const npf_addr_t *);
 bool		npf_portmap_take(npf_t *, int, const npf_addr_t *, in_port_t);
+bool		npf_portmap_take_pm(npf_portmap_t *, const npf_portmap_params_t *,
+		  int, const npf_addr_t *, in_port_t);
 void		npf_portmap_put(npf_t *, int, const npf_addr_t *, in_port_t);
+void		npf_portmap_put_pm(npf_portmap_t *, int, const npf_addr_t *, in_port_t);
 void		npf_portmap_flush(npf_t *);
+void		npf_portmap_flush_(npf_portmap_t *);
 
 /* NAT. */
 void		npf_nat_sysinit(void);
@@ -479,6 +492,7 @@ uint64_t	npf_nat_getid(const npf_natpolicy_t *);
 void		npf_nat_freealg(npf_natpolicy_t *, npf_alg_t *);
 
 int		npf_do_nat(npf_cache_t *, npf_conn_t *, const int);
+int		npf_nat_share_policy(npf_cache_t *, npf_conn_t *, npf_nat_t *);
 void		npf_nat_destroy(npf_nat_t *);
 void		npf_nat_getorig(npf_nat_t *, npf_addr_t **, in_port_t *);
 void		npf_nat_gettrans(npf_nat_t *, npf_addr_t **, in_port_t *);

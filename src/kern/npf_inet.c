@@ -59,6 +59,7 @@ __KERNEL_RCSID(0, "$NetBSD: npf_inet.c,v 1.53 2019/01/19 21:19:32 rmind Exp $");
 #endif
 
 #include "npf_impl.h"
+#include "npf_pptp_gre.h"
 
 /*
  * npf_fixup{16,32}_cksum: incremental update of the Internet checksum.
@@ -623,6 +624,12 @@ again:
 		    sizeof(struct icmp6_hdr));
 		l4flags = NPC_LAYER4 | NPC_ICMP;
 		break;
+	case IPPROTO_GRE:
+		/* Cache: layer 4 - GRE. */
+		npc->npc_l4.pptp_gre = nbuf_advance(nbuf, hlen,
+		    sizeof(struct pptp_gre_hdr));
+		l4flags = NPC_LAYER4 | NPC_ALG_PPTP_GRE;
+		break;
 	default:
 		l4flags = 0;
 		break;
@@ -730,7 +737,8 @@ npf_rwrcksum(const npf_cache_t *npc, u_int which,
 	}
 
 	/* Nothing else to do for ICMP. */
-	if (proto == IPPROTO_ICMP || proto == IPPROTO_ICMPV6) {
+	if (proto == IPPROTO_ICMP || proto == IPPROTO_ICMPV6 ||
+			  proto == IPPROTO_GRE) {
 		return true;
 	}
 	KASSERT(npf_iscached(npc, NPC_TCP) || npf_iscached(npc, NPC_UDP));

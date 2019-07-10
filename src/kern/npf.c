@@ -205,3 +205,26 @@ npf_stats_clear(npf_t *npf)
 {
 	percpu_foreach(npf->stats_percpu, npf_stats_clear_cb, NULL);
 }
+
+static int
+npf_nat_alg_act(npf_t *npf, const char *name, modcmd_t cmd)
+{
+	if (strcmp(name, "icmp") == 0)
+		return npf_alg_icmp_modcmd(cmd, npf);
+	else if (strcmp(name, "pptp") == 0)
+		return npf_alg_pptp_modcmd(cmd, npf);
+	else
+		return ENOENT;
+}
+
+__dso_public int
+npf_nat_alg_init(npf_t *npf, const char *name)
+{
+	return npf_nat_alg_act(npf, name, MODULE_CMD_INIT);
+}
+
+__dso_public int
+npf_nat_alg_fini(npf_t *npf, const char *name)
+{
+	return npf_nat_alg_act(npf, name, MODULE_CMD_FINI);
+}

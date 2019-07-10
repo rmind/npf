@@ -51,7 +51,8 @@ __KERNEL_RCSID(0, "$NetBSD: npf_state.c,v 1.21 2018/10/29 15:37:06 christos Exp 
 #define	NPF_ANY_CONN_CLOSED		0
 #define	NPF_ANY_CONN_NEW		1
 #define	NPF_ANY_CONN_ESTABLISHED	2
-#define	NPF_ANY_CONN_NSTATES		3
+#define  NPF_ANY_CONN_GRE		3
+#define	NPF_ANY_CONN_NSTATES		4
 
 /*
  * Parameters.
@@ -114,6 +115,13 @@ npf_state_sysinit(npf_t *npf)
 			.default_val = 60,
 			.min = 0, .max = INT_MAX
 		},
+		{
+			"state.generic.timeout.gre",
+			&params->timeouts[NPF_ANY_CONN_GRE],
+			/* don't expire GRE states by default */
+			.default_val = INT_MAX,
+			.min = 0, .max = INT_MAX
+		},
 	};
 	npf_param_register(npf, param_map, __arraycount(param_map));
 	npf_state_tcp_sysinit(npf);
@@ -152,6 +160,7 @@ npf_state_init(npf_cache_t *npc, npf_state_t *nst)
 		break;
 	case IPPROTO_UDP:
 	case IPPROTO_ICMP:
+	case IPPROTO_GRE:
 		/* Generic. */
 		nst->nst_state = npf_generic_fsm[nst->nst_state][NPF_FLOW_FORW];
 		ret = true;
@@ -189,6 +198,7 @@ npf_state_inspect(npf_cache_t *npc, npf_state_t *nst, const bool forw)
 		break;
 	case IPPROTO_UDP:
 	case IPPROTO_ICMP:
+	case IPPROTO_GRE:
 		/* Generic. */
 		nst->nst_state = npf_generic_fsm[nst->nst_state][di];
 		ret = true;
@@ -221,6 +231,10 @@ npf_state_etime(npf_t *npf, const npf_state_t *nst, const int proto)
 		/* Generic. */
 		params = npf->params[NPF_PARAMS_GENERIC_STATE];
 		timeout = params->timeouts[state];
+		break;
+	case IPPROTO_GRE:
+		params = npf->params[NPF_PARAMS_GENERIC_STATE];
+		timeout = params->timeouts[NPF_ANY_CONN_GRE];
 		break;
 	default:
 		KASSERT(false);
