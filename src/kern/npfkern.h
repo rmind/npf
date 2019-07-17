@@ -61,6 +61,20 @@ typedef struct {
 	bool		(*ensure_writable)(struct mbuf **, size_t);
 } npf_mbufops_t;
 
+/* NAT event callbacks */
+typedef void (*npf_nat_event_ipv4_create_translation_t) (uint16_t proto, 
+		  uint32_t src, uint16_t src_id, uint32_t dst, uint16_t dst_id,
+		  uint32_t tsrc, uint16_t tsrc_id);
+
+typedef void (*npf_nat_event_ipv4_destroy_translation_t) (uint16_t proto, 
+		  uint32_t src, uint16_t src_id, uint32_t dst, uint16_t dst_id,
+		  uint32_t tsrc, uint16_t tsrc_id);
+
+typedef struct {
+	npf_nat_event_ipv4_create_translation_t ipv4_create_translation;
+	npf_nat_event_ipv4_destroy_translation_t ipv4_destroy_translation;
+} npf_nat_events_ops_t;
+
 int	npf_sysinit(unsigned);
 void	npf_sysfini(void);
 
@@ -85,5 +99,11 @@ void	npf_stats_clear(npf_t *);
 
 int	npf_alg_icmp_init(npf_t *);
 int	npf_alg_icmp_fini(npf_t *);
+
+/* NAT events callbacks */
+void	npf_nat_events_set_create_ipv4_translation_cb(npf_t *,
+		  npf_nat_event_ipv4_create_translation_t);
+void	npf_nat_events_set_destroy_ipv4_translation_cb(npf_t *,
+	npf_nat_event_ipv4_destroy_translation_t);
 
 #endif

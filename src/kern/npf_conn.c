@@ -508,6 +508,18 @@ npf_conn_destroy(npf_t *npf, npf_conn_t *con)
 	if (con->c_nat) {
 		/* Release any NAT structures. */
 		npf_nat_destroy(con->c_nat);
+
+		/* NAT events: execute destroy ipv4 translation callback */
+		if (alen == NPF_IPV4_ALEN &&
+				  npf->nat_events_opts.ipv4_destroy_translation != NULL)
+			npf->nat_events_opts.ipv4_destroy_translation(
+					  npf_conn_key_get_proto(key),
+					  npf_conn_key_ipv4_get_src_addr(key),
+					  npf_conn_key_ipv4_get_src_id(key),
+					  npf_conn_key_ipv4_get_dst_addr(key),
+					  npf_conn_key_ipv4_get_dst_id(key),
+					  npf_nat_gettrans_addr(con->c_nat)->word32[0],
+					  (uint16_t)npf_nat_gettrans_port(con->c_nat));
 	}
 	if (con->c_rproc) {
 		/* Release the rule procedure. */
@@ -543,6 +555,7 @@ npf_conn_setnat(const npf_cache_t *npc, npf_conn_t *con,
 	npf_conn_t *ret __diagused;
 	npf_addr_t *taddr;
 	in_port_t tport;
+	unsigned alen;
 
 	KASSERT(con->c_refcnt > 0);
 
@@ -572,7 +585,8 @@ npf_conn_setnat(const npf_cache_t *npc, npf_conn_t *con,
 
 	/* Remove the "backwards" key. */
 	fw = npf_conn_getforwkey(con);
-	bk = npf_conn_getbackkey(con, NPF_CONNKEY_ALEN(fw));
+	alen = NPF_CONNKEY_ALEN(fw);
+	bk = npf_conn_getbackkey(con, alen);
 	ret = npf_conndb_remove(npf->conn_db, bk);
 	KASSERT(ret == con);
 
@@ -598,6 +612,19 @@ npf_conn_setnat(const npf_cache_t *npc, npf_conn_t *con,
 	/* Associate the NAT entry and release the lock. */
 	con->c_nat = nt;
 	mutex_exit(&con->c_lock);
+
+	/* NAT events: execute create ipv4 translation callback */
+	if (alen == NPF_IPV4_ALEN &&
+			  npf->nat_events_opts.ipv4_create_translation != NULL)
+		npf->nat_events_opts.ipv4_create_translation(
+				  npf_conn_key_get_proto(fw),
+				  npf_conn_key_ipv4_get_src_addr(fw),
+				  npf_conn_key_ipv4_get_src_id(fw),
+				  npf_conn_key_ipv4_get_dst_addr(fw),
+				  npf_conn_key_ipv4_get_dst_id(fw),
+				  npf_nat_gettrans_addr(con->c_nat)->word32[0],
+				  (uint16_t)npf_nat_gettrans_port(con->c_nat));
+
 	return 0;
 }
 

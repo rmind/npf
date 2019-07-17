@@ -103,6 +103,9 @@ struct npf_conn {
 #define	NPF_CONNKEY_ALEN(key)	((key)->ck_key[0] & 0xffff)
 #define	NPF_CONNKEY_LEN(key)	(8 + (NPF_CONNKEY_ALEN(key) * 2))
 
+#define	NPF_IPV4_ALEN 4
+#define	NPF_IPV6_ALEN 16
+
 struct npf_connkey {
 	/* Warning: ck_key has a variable length -- see above. */
 	uint32_t		ck_key[NPF_CONNKEY_MAXWORDS];
@@ -113,6 +116,12 @@ npf_connkey_t *	npf_conn_getforwkey(npf_conn_t *);
 npf_connkey_t *	npf_conn_getbackkey(npf_conn_t *, unsigned);
 void		npf_conn_adjkey(npf_connkey_t *, const npf_addr_t *,
 		    const uint16_t, const int);
+
+uint16_t	npf_conn_key_get_proto(const npf_connkey_t *);
+uint16_t	npf_conn_key_ipv4_get_src_id(const npf_connkey_t *);
+uint16_t	npf_conn_key_ipv4_get_dst_id(const npf_connkey_t *);
+uint32_t	npf_conn_key_ipv4_get_src_addr(const npf_connkey_t *);
+uint32_t	npf_conn_key_ipv4_get_dst_addr(const npf_connkey_t *);
 
 unsigned	npf_connkey_import(const nvlist_t *, npf_connkey_t *);
 nvlist_t *	npf_connkey_export(const npf_connkey_t *);

@@ -709,6 +709,18 @@ npf_nat_gettrans(npf_nat_t *nt, npf_addr_t **addr, in_port_t *port)
 	*port = nt->nt_tport;
 }
 
+const npf_addr_t *
+npf_nat_gettrans_addr(const npf_nat_t *nt)
+{
+	return &nt->nt_taddr;
+}
+
+in_port_t
+npf_nat_gettrans_port(const npf_nat_t *nt)
+{
+	return nt->nt_tport;
+}
+
 /*
  * npf_nat_getorig: return original IP address and port from translation entry.
  */
@@ -839,3 +851,17 @@ npf_nat_dump(const npf_nat_t *nt)
 }
 
 #endif
+
+__dso_public void
+npf_nat_events_set_create_ipv4_translation_cb(npf_t *npf,
+	npf_nat_event_ipv4_create_translation_t cb)
+{
+	npf->nat_events_opts.ipv4_create_translation = cb;
+}
+
+__dso_public void
+npf_nat_events_set_destroy_ipv4_translation_cb(npf_t *npf,
+	npf_nat_event_ipv4_destroy_translation_t cb)
+{
+	npf->nat_events_opts.ipv4_destroy_translation = cb;
+}

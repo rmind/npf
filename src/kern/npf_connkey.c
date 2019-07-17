@@ -66,6 +66,36 @@ __KERNEL_RCSID(0, "$NetBSD$");
 #include "npf_conn.h"
 #include "npf_impl.h"
 
+uint16_t
+npf_conn_key_get_proto(const npf_connkey_t *key)
+{
+	return (uint16_t) (key->ck_key[0] >> 16);
+}
+
+uint16_t
+npf_conn_key_ipv4_get_src_id(const npf_connkey_t *key)
+{
+	return (uint16_t) (key->ck_key[1] >> 16);
+}
+
+uint16_t
+npf_conn_key_ipv4_get_dst_id(const npf_connkey_t *key)
+{
+	return (uint16_t) (key->ck_key[1] & 0xFFFF);
+}
+
+uint32_t
+npf_conn_key_ipv4_get_src_addr(const npf_connkey_t *key)
+{
+	return key->ck_key[2];
+}
+
+uint32_t
+npf_conn_key_ipv4_get_dst_addr(const npf_connkey_t *key)
+{
+	return key->ck_key[3];
+}
+
 static inline unsigned
 connkey_setkey(npf_connkey_t *key, uint16_t proto, const void *ipv,
     const uint16_t *id, unsigned alen, bool forw)
