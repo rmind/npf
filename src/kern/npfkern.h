@@ -86,4 +86,7 @@ void	npf_stats_clear(npf_t *);
 int	npf_alg_icmp_init(npf_t *);
 int	npf_alg_icmp_fini(npf_t *);
 
+/* conndb summary */
+uint32_t *	npf_conndb_summary(const npf_t *npf);
+
 #endif

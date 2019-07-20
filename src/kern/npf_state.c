@@ -43,17 +43,6 @@ __KERNEL_RCSID(0, "$NetBSD: npf_state.c,v 1.21 2018/10/29 15:37:06 christos Exp 
 #include "npf_impl.h"
 
 /*
- * Generic connection states and timeout table.
- *
- * Note: used for connection-less protocols.
- */
-
-#define	NPF_ANY_CONN_CLOSED		0
-#define	NPF_ANY_CONN_NEW		1
-#define	NPF_ANY_CONN_ESTABLISHED	2
-#define	NPF_ANY_CONN_NSTATES		3
-
-/*
  * Parameters.
  */
 typedef struct {
