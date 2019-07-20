@@ -730,8 +730,8 @@ npf_alg_pptp_init(npf_t *npf)
 static int
 npf_alg_pptp_fini(npf_t *npf)
 {
-	KASSERT(alg_pptp_tcp != NULL);
-	KASSERT(alg_pptp_gre != NULL);
+	KASSERT(pptp_alg.alg_pptp_tcp != NULL);
+	KASSERT(pptp_alg.alg_pptp_gre != NULL);
 	npf_portmap_fini_pm(pptp_alg.pm);
 	npf_alg_unregister(npf, pptp_alg.alg_pptp_tcp);
 	return npf_alg_unregister(npf, pptp_alg.alg_pptp_gre);
