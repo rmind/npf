@@ -312,8 +312,9 @@ npf_conndb_summary_inc(npf_conndb_t *cd, npf_conn_t *con)
 		break;
 
 	default:
-		if (con->c_state.nst_state < NPF_ANY_CONN_NSTATES)
-			state = NPF_CONNDB_SUMM_ANY_STATE_OFFS + con->c_state.nst_state;
+		if (con->c_state.nst_state >= NPF_ANY_CONN_NSTATES)
+			return;
+		state = NPF_CONNDB_SUMM_ANY_STATE_OFFS + con->c_state.nst_state;
 		break;
 	}
 
