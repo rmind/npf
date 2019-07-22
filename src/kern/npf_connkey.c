@@ -66,7 +66,6 @@ __KERNEL_RCSID(0, "$NetBSD$");
 #include "npf_conn.h"
 #include "npf_impl.h"
 #include "npf_pptp_gre.h"
-#include "npf_print_debug.h"
 
 void
 npf_conn_init_ipv4_key(void *key_p, uint16_t proto,
@@ -219,21 +218,11 @@ npf_conn_conkey(const npf_cache_t *npc, npf_connkey_t *key, const bool forw)
 				id[NPF_SRC] = 0; /* not used */
 				id[NPF_DST] = pptp_gre_ctx->client_call_id;
 			}
-			NPF_DPRINTFCL(NPF_DC_GRE, 50,
-					  "gre key ctx: src_id %hu, dst_id %hu, forw %d\n",
-					  id[NPF_SRC], id[NPF_DST], forw);
 		} else {
 			/* NPC_ALG_PPTP_GRE */
 			pptp_gre_hdr = npc->npc_l4.pptp_gre;
 			id[NPF_SRC] = pptp_gre_hdr->call_id;
 			id[NPF_DST] = 0; /* not used */
-
-			NPF_DPRINTFCL(NPF_DC_GRE, 80,
-					  "gre key hdr: src ip %u, dst ip %u, src_id %hu, dst_id %hu, "
-					  "forw %d\n",
-					  npc->npc_ips[NPF_SRC]->word32[0],
-					  npc->npc_ips[NPF_DST]->word32[0],
-					  id[NPF_SRC], id[NPF_DST], forw);
 		}
 		break;
 	default:
