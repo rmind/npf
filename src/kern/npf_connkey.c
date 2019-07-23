@@ -172,8 +172,8 @@ npf_conn_conkey(const npf_cache_t *npc, npf_connkey_t *key, const bool forw)
 	const unsigned alen = npc->npc_alen;
 	const struct tcphdr *th;
 	const struct udphdr *uh;
-	const struct pptp_gre_context *pptp_gre_ctx;
-	const struct pptp_gre_hdr *pptp_gre_hdr;
+	const pptp_gre_context_t *pptp_gre_ctx;
+	const pptp_gre_hdr_t *pptp_gre_hdr;
 	uint16_t id[2] = { 0, 0 };
 
 	switch (proto) {
@@ -208,7 +208,7 @@ npf_conn_conkey(const npf_cache_t *npc, npf_connkey_t *key, const bool forw)
 	case IPPROTO_GRE:
 		KASSERT(npf_iscached(npc, NPC_ALG_PPTP_GRE | NPC_ALG_PPTP_GRE_CTX));
 		if (npf_iscached(npc, NPC_ALG_PPTP_GRE_CTX)) {
-			pptp_gre_ctx = npc->npc_l4.pptp_gre_ctx;
+			pptp_gre_ctx = npc->npc_l4.hdr;
 			if (forw) {
 				/* pptp client -> pptp server */
 				id[NPF_SRC] = pptp_gre_ctx->server_call_id;
@@ -220,7 +220,7 @@ npf_conn_conkey(const npf_cache_t *npc, npf_connkey_t *key, const bool forw)
 			}
 		} else {
 			/* NPC_ALG_PPTP_GRE */
-			pptp_gre_hdr = npc->npc_l4.pptp_gre;
+			pptp_gre_hdr = npc->npc_l4.hdr;
 			id[NPF_SRC] = pptp_gre_hdr->call_id;
 			id[NPF_DST] = 0; /* not used */
 		}

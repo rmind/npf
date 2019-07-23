@@ -776,6 +776,12 @@ npf_nat_set_alg_arg(npf_nat_t *nt, uintptr_t arg)
 	nt->nt_alg_arg = arg;
 }
 
+void *
+npf_nat_cas_alg_arg(npf_nat_t *nt, uintptr_t old_arg, uintptr_t new_arg)
+{
+	return (void *)atomic_cas_64(&nt->nt_alg_arg, old_arg, new_arg);
+}
+
 /*
  * npf_nat_destroy: destroy NAT structure (performed on connection expiration).
  */

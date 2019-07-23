@@ -147,9 +147,6 @@ int		nbuf_find_tag(nbuf_t *, uint32_t *);
 
 #define	NPC_IP46	(NPC_IP4|NPC_IP6)
 
-struct pptp_gre_hdr;
-struct pptp_gre_context;
-
 typedef struct {
 	/* NPF context, information flags and the nbuf. */
 	npf_t *			npc_ctx;
@@ -173,15 +170,13 @@ typedef struct {
 		struct ip6_hdr *	v6;
 	} npc_ip;
 
-	/* TCP, UDP, ICMP, PPTP_GRE */
+	/* TCP, UDP, ICMP */
 	union {
 		struct tcphdr *		tcp;
 		struct udphdr *		udp;
 		struct icmp *		icmp;
 		struct icmp6_hdr *	icmp6;
 		void *			hdr;
-		struct pptp_gre_hdr *		pptp_gre;
-		struct pptp_gre_context *	pptp_gre_ctx;
 	} npc_l4;
 } npf_cache_t;
 

@@ -498,6 +498,7 @@ void		npf_nat_getorig(npf_nat_t *, npf_addr_t **, in_port_t *);
 void		npf_nat_gettrans(npf_nat_t *, npf_addr_t **, in_port_t *);
 void		npf_nat_setalg(npf_nat_t *, npf_alg_t *, uintptr_t);
 void		npf_nat_set_alg_arg(npf_nat_t *, uintptr_t);
+void *	npf_nat_cas_alg_arg(npf_nat_t *, uintptr_t, uintptr_t);
 uintptr_t	npf_nat_get_alg_arg(const npf_nat_t *);
 npf_alg_t *	npf_nat_get_alg(const npf_nat_t *);
 

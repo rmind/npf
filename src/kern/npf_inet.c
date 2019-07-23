@@ -626,8 +626,8 @@ again:
 		break;
 	case IPPROTO_GRE:
 		/* Cache: layer 4 - GRE. */
-		npc->npc_l4.pptp_gre = nbuf_advance(nbuf, hlen,
-		    sizeof(struct pptp_gre_hdr));
+		npc->npc_l4.hdr = nbuf_advance(nbuf, hlen,
+		    sizeof(pptp_gre_hdr_t));
 		l4flags = NPC_LAYER4 | NPC_ALG_PPTP_GRE;
 		break;
 	default:

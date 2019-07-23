@@ -42,20 +42,18 @@
 /*
  * PPTP GRE header
  */
-struct pptp_gre_hdr {
+typedef struct {
 	uint16_t flags_ver;
 	uint16_t proto;
 	uint16_t payload_len;
 	uint16_t call_id;
 	uint16_t seq_num;
-}
-__packed;
+} __packed pptp_gre_hdr_t;
 
-struct pptp_gre_context {
+typedef struct {
 	uint16_t client_call_id;
 	uint16_t server_call_id;
-}
-__packed;
+} __packed pptp_gre_context_t;
 
 #endif /* NPF_PPTP_GRE_H */
 

@@ -178,6 +178,7 @@ again:
 #define	atomic_or_uint(x, v)	__sync_fetch_and_or((x), (v))
 #define	atomic_cas_32(p, o, n)	__sync_val_compare_and_swap((p), (o), (n))
 #define	atomic_cas_64(p, o, n)	__sync_val_compare_and_swap((p), (o), (n))
+#define	atomic_cas_64_bool(p, o, n) __sync_bool_compare_and_swap((p), (o), (n))
 #define	atomic_cas_ptr(p, o, n)	__sync_val_compare_and_swap((p), (o), (n))
 #define	atomic_swap_ptr(x, y)	npfkern_atomic_swap_ptr((x), (y))
 
