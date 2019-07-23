@@ -203,7 +203,8 @@ npfa_pptp_gre_establish_gre_conn(npf_cache_t *npc, int di,
 	npf_nat_setalg(con->c_nat, pptp_alg.alg_pptp_gre, (uintptr_t)gre_slot->u64);
 
 	/* make gre connection active and pass */
-	npf_conn_set_active_pass(con);
+	npf_conn_setpass(con, NULL, NULL);
+	npf_conn_release(con);
 
 	gre_slot->flags |= PPTP_ALG_FL_GRE_STATE_ESTABLISHED;
 	return 0;
@@ -251,13 +252,15 @@ npfa_pptp_gre_slot_free(npf_t *npf, pptp_gre_con_slot_t *gre_slot,
 
 		/* lookup for the associated pptp gre connection */
 		gre_con = npf_conndb_lookup(npf->conn_db, &key, &forw);
-		if (gre_con != NULL)
+		if (gre_con != NULL) {
 			/* mark the gre connection as expired.
 			 * note: translated call-id will be put back to the portmap
 			 * by gre connection destructor
 			 */
-			npf_conn_set_expire(gre_con);
+			npf_conn_expire(gre_con);
+			npf_conn_release(gre_con);
 
+		}
 		gre_slot->flags &= ~PPTP_ALG_FL_GRE_STATE_ESTABLISHED;
 	} else if (gre_slot->ctx.client_call_id != 0) {
 		/* return translated call-id value back to the portmap */
@@ -681,7 +684,7 @@ npfa_pptp_gre_destroy(npf_t *npf, npf_conn_t *con)
 	nt = con->c_nat;
 
 	/* only ipv4 is supported */
-	if (NPF_CONNKEY_ALEN(fw) == sizeof(uint32_t) || nt == NULL)
+	if (NPF_CONNKEY_ALEN(fw) != sizeof(uint32_t) || nt == NULL)
 		return;
 
 	server_ip = fw->ck_key[3];

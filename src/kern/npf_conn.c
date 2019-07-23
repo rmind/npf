@@ -660,18 +660,6 @@ npf_conn_setpass(npf_conn_t *con, const npf_match_info_t *mi, npf_rproc_t *rp)
 	}
 }
 
-void
-npf_conn_set_active_pass(npf_conn_t *con)
-{
-	atomic_or_uint(&con->c_flags, CONN_ACTIVE | CONN_PASS);
-}
-
-void
-npf_conn_set_expire(npf_conn_t *con)
-{
-	atomic_or_uint(&con->c_flags, CONN_EXPIRE);
-}
-
 /*
  * npf_conn_release: release a reference, which might allow G/C thread
  * to destroy this connection.
