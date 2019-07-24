@@ -118,8 +118,7 @@ npf_state_sysinit(npf_t *npf)
 		{
 			"state.generic.timeout.gre",
 			&params->timeouts[NPF_ANY_CONN_GRE],
-			/* don't expire GRE states by default */
-			.default_val = INT_MAX,
+			.default_val = 24 * 60 * 60,
 			.min = 0, .max = INT_MAX
 		},
 	};

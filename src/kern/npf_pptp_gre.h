@@ -37,7 +37,7 @@
 #ifndef NPF_PPTP_GRE_H
 #define NPF_PPTP_GRE_H
 
-#include "stand/cext.h"
+#include <stdint.h>
 
 /*
  * PPTP GRE header
@@ -49,11 +49,6 @@ typedef struct {
 	uint16_t call_id;
 	uint16_t seq_num;
 } __packed pptp_gre_hdr_t;
-
-typedef struct {
-	uint16_t client_call_id;
-	uint16_t server_call_id;
-} __packed pptp_gre_context_t;
 
 #endif /* NPF_PPTP_GRE_H */
 

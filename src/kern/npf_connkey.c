@@ -65,32 +65,27 @@ __KERNEL_RCSID(0, "$NetBSD$");
 #define __NPF_CONN_PRIVATE
 #include "npf_conn.h"
 #include "npf_impl.h"
-#include "npf_pptp_gre.h"
 
-void
-npf_conn_init_ipv4_key(void *key_p, uint16_t proto,
-		  uint16_t src_id, uint16_t dst_id, uint32_t src_ip, uint32_t dst_ip)
+inline unsigned
+npf_connkey_setkey(npf_connkey_t *key, uint16_t proto, const void *src_ip,
+    const void *dst_ip, uint16_t src_id, uint16_t dst_id,
+    unsigned alen, bool forw)
 {
-	uint32_t *key = key_p;
-
-	key[0] = ((uint32_t)proto << 16) | sizeof(uint32_t);
-	key[1] = ((uint32_t)src_id << 16) | dst_id;
-	key[2] = src_ip;
-	key[3] = dst_ip;
-}
-
-static inline unsigned
-connkey_setkey(npf_connkey_t *key, uint16_t proto, const void *ipv,
-    const uint16_t *id, unsigned alen, bool forw)
-{
-	const npf_addr_t * const *ips = ipv;
+	const npf_addr_t *ip1;
+	const npf_addr_t *ip2;
 	uint32_t *k = key->ck_key;
-	unsigned isrc, idst;
+	uint16_t id1, id2;
 
 	if (__predict_true(forw)) {
-		isrc = NPF_SRC, idst = NPF_DST;
+		ip1 = src_ip;
+		ip2 = dst_ip;
+		id1 = src_id;
+		id2 = dst_id;
 	} else {
-		isrc = NPF_DST, idst = NPF_SRC;
+		ip1 = dst_ip;
+		ip2 = src_ip;
+		id1 = dst_id;
+		id2 = src_id;
 	}
 
 	/*
@@ -98,22 +93,22 @@ connkey_setkey(npf_connkey_t *key, uint16_t proto, const void *ipv,
 	 */
 
 	k[0] = ((uint32_t)proto << 16) | (alen & 0xffff);
-	k[1] = ((uint32_t)id[isrc] << 16) | id[idst];
+	k[1] = ((uint32_t)id1 << 16) | id2;
 
 	if (__predict_true(alen == sizeof(in_addr_t))) {
-		k[2] = ips[isrc]->word32[0];
-		k[3] = ips[idst]->word32[0];
+		k[2] = ip1->word32[0];
+		k[3] = ip2->word32[0];
 		return 4 * sizeof(uint32_t);
 	} else {
 		const unsigned nwords = alen >> 2;
-		memcpy(&k[2], ips[isrc], alen);
-		memcpy(&k[2 + nwords], ips[idst], alen);
+		memcpy(&k[2], ip1, alen);
+		memcpy(&k[2 + nwords], ip2, alen);
 		return (2 + (nwords * 2)) * sizeof(uint32_t);
 	}
 }
 
-static inline void
-connkey_getkey(const npf_connkey_t *key, uint16_t *proto, npf_addr_t *ips,
+inline void
+npf_connkey_getkey(const npf_connkey_t *key, uint16_t *proto, npf_addr_t *ips,
     uint16_t *id, uint16_t *alen)
 {
 	const uint32_t *k = key->ck_key;
@@ -172,8 +167,6 @@ npf_conn_conkey(const npf_cache_t *npc, npf_connkey_t *key, const bool forw)
 	const unsigned alen = npc->npc_alen;
 	const struct tcphdr *th;
 	const struct udphdr *uh;
-	const pptp_gre_context_t *pptp_gre_ctx;
-	const pptp_gre_hdr_t *pptp_gre_hdr;
 	uint16_t id[2] = { 0, 0 };
 
 	switch (proto) {
@@ -206,30 +199,14 @@ npf_conn_conkey(const npf_cache_t *npc, npf_connkey_t *key, const bool forw)
 		}
 		return 0;
 	case IPPROTO_GRE:
-		KASSERT(npf_iscached(npc, NPC_ALG_PPTP_GRE | NPC_ALG_PPTP_GRE_CTX));
-		if (npf_iscached(npc, NPC_ALG_PPTP_GRE_CTX)) {
-			pptp_gre_ctx = npc->npc_l4.hdr;
-			if (forw) {
-				/* pptp client -> pptp server */
-				id[NPF_SRC] = pptp_gre_ctx->server_call_id;
-				id[NPF_DST] = 0; /* not used */
-			} else {
-				/* pptp client <- pptp server */
-				id[NPF_SRC] = 0; /* not used */
-				id[NPF_DST] = pptp_gre_ctx->client_call_id;
-			}
-		} else {
-			/* NPC_ALG_PPTP_GRE */
-			pptp_gre_hdr = npc->npc_l4.hdr;
-			id[NPF_SRC] = pptp_gre_hdr->call_id;
-			id[NPF_DST] = 0; /* not used */
-		}
+		npf_pptp_conn_conkey(npc, id, forw);
 		break;
 	default:
 		/* Unsupported protocol. */
 		return 0;
 	}
-	return connkey_setkey(key, proto, npc->npc_ips, id, alen, forw);
+	return npf_connkey_setkey(key, proto, npc->npc_ips[NPF_SRC],
+			  npc->npc_ips[NPF_DST], id[NPF_SRC], id[NPF_DST], alen, forw);
 }
 
 /*
@@ -266,7 +243,7 @@ npf_connkey_export(const npf_connkey_t *key)
 	nvlist_t *kdict;
 
 	kdict = nvlist_create(0);
-	connkey_getkey(key, &proto, ips, ids, &alen);
+	npf_connkey_getkey(key, &proto, ips, ids, &alen);
 	nvlist_add_number(kdict, "proto", proto);
 	nvlist_add_number(kdict, "sport", ids[NPF_SRC]);
 	nvlist_add_number(kdict, "dport", ids[NPF_DST]);
@@ -290,7 +267,8 @@ npf_connkey_import(const nvlist_t *kdict, npf_connkey_t *key)
 	if (alen1 == 0 || alen1 > sizeof(npf_addr_t) || alen1 != alen2) {
 		return 0;
 	}
-	return connkey_setkey(key, proto, ips, ids, alen1, true);
+	return npf_connkey_setkey(key, proto, ips[NPF_SRC], ips[NPF_DST],
+			  ids[NPF_SRC], ids[NPF_DST], alen1, true);
 }
 
 #if defined(DDB) || defined(_NPF_TESTING)
@@ -301,7 +279,7 @@ npf_connkey_print(const npf_connkey_t *key)
 	uint16_t proto, ids[2], alen;
 	npf_addr_t ips[2];
 
-	connkey_getkey(key, &proto, ips, ids, &alen);
+	npf_connkey_getkey(key, &proto, ips, ids, &alen);
 	printf("\tforw %s:%d", npf_addr_dump(&ips[0], alen), ids[0]);
 	printf("-> %s:%d\n", npf_addr_dump(&ips[1], alen), ids[1]);
 }

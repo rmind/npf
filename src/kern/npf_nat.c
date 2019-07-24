@@ -759,7 +759,7 @@ npf_nat_setalg(npf_nat_t *nt, npf_alg_t *alg, uintptr_t arg)
 }
 
 npf_alg_t *
-npf_nat_get_alg(const npf_nat_t *nt)
+npf_nat_getalg(const npf_nat_t *nt)
 {
 	return nt->nt_alg;
 }

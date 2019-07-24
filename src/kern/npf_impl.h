@@ -500,7 +500,7 @@ void		npf_nat_setalg(npf_nat_t *, npf_alg_t *, uintptr_t);
 void		npf_nat_set_alg_arg(npf_nat_t *, uintptr_t);
 void *	npf_nat_cas_alg_arg(npf_nat_t *, uintptr_t, uintptr_t);
 uintptr_t	npf_nat_get_alg_arg(const npf_nat_t *);
-npf_alg_t *	npf_nat_get_alg(const npf_nat_t *);
+npf_alg_t *	npf_nat_getalg(const npf_nat_t *);
 
 void		npf_nat_export(nvlist_t *, npf_nat_t *);
 npf_nat_t *	npf_nat_import(npf_t *, const nvlist_t *, npf_ruleset_t *,
@@ -518,7 +518,10 @@ bool		npf_alg_match(npf_cache_t *, npf_nat_t *, int);
 void		npf_alg_exec(npf_cache_t *, npf_nat_t *, bool);
 npf_conn_t *	npf_alg_conn(npf_cache_t *, int);
 int		npf_alg_export(npf_t *, nvlist_t *);
-npfa_funcs_t *	npf_alg_get_funcs(npf_t *, npf_alg_t *);
+void		npf_alg_destroy(npf_t *, npf_alg_t *, npf_conn_t *);
+
+/* PPTP ALG interface */
+void		npf_pptp_conn_conkey(const npf_cache_t *, uint16_t *, bool);
 
 /* Debugging routines. */
 const char *	npf_addr_dump(const npf_addr_t *, int);
