@@ -57,10 +57,6 @@ OBJS=		$(shell awk '/^file/ { print $$2 }' files.npf | \
 OBJS+=		stand/bpf_filter.o
 OBJS+=		stand/murmurhash.o stand/tls_pth.o stand/misc.o
 
-ifeq ($(NPF_PRINT_DEBUG),1)
-CFLAGS+=	-DNPF_PRINT_DEBUG
-OBJS+=		npf_print_debug.o
-endif
 #
 # Flags for the library target
 #
