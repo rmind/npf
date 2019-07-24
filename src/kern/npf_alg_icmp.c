@@ -453,7 +453,7 @@ err:
  * and module interface.
  */
 
-int
+__dso_public int
 npf_alg_icmp_init(npf_t *npf)
 {
 	static const npfa_funcs_t icmp = {
@@ -466,7 +466,7 @@ npf_alg_icmp_init(npf_t *npf)
 	return alg_icmp ? 0 : ENOMEM;
 }
 
-int
+__dso_public int
 npf_alg_icmp_fini(npf_t *npf)
 {
 	KASSERT(alg_icmp != NULL);
@@ -478,12 +478,6 @@ static int
 npf_alg_icmp_modcmd(modcmd_t cmd, void *arg)
 {
 	npf_t *npf = npf_getkernctx();
-#else
-int
-npf_alg_icmp_modcmd(modcmd_t cmd, void *arg)
-{
-	npf_t *npf = arg;
-#endif
 
 	switch (cmd) {
 	case MODULE_CMD_INIT:
@@ -497,3 +491,4 @@ npf_alg_icmp_modcmd(modcmd_t cmd, void *arg)
 	}
 	return 0;
 }
+#endif

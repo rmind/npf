@@ -696,7 +696,7 @@ npfa_pptp_gre_destroy(npf_t *npf, npf_conn_t *con)
  * and module interface.
  */
 
-static int
+__dso_public int
 npf_alg_pptp_init(npf_t *npf)
 {
 	static const npfa_funcs_t pptp_tcp = {
@@ -734,7 +734,7 @@ npf_alg_pptp_init(npf_t *npf)
 	}
 }
 
-static int
+__dso_public int
 npf_alg_pptp_fini(npf_t *npf)
 {
 	KASSERT(pptp_alg.alg_pptp_tcp != NULL);
@@ -775,12 +775,6 @@ static int
 npf_alg_pptp_modcmd(modcmd_t cmd, void *arg)
 {
 	npf_t *npf = npf_getkernctx();
-#else
-int
-npf_alg_pptp_modcmd(modcmd_t cmd, void *arg)
-{
-	npf_t *npf = arg;
-#endif
 
 	switch (cmd) {
 	case MODULE_CMD_INIT:
@@ -794,3 +788,4 @@ npf_alg_pptp_modcmd(modcmd_t cmd, void *arg)
 	}
 	return 0;
 }
+#endif

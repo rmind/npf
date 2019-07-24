@@ -82,18 +82,10 @@ void	npf_stats_clear(npf_t *);
 /*
  * ALGs.
  */
-
-int	npf_alg_icmp_init(npf_t *);
+	int	npf_alg_icmp_init(npf_t *);
 int	npf_alg_icmp_fini(npf_t *);
 
-typedef int modcmd_t;
-
-#ifndef _KERNEL
-int	npf_alg_icmp_modcmd(modcmd_t, void *);
-int	npf_alg_pptp_modcmd(modcmd_t, void *);
-#endif
-
-int	npf_nat_alg_init(npf_t *, const char *);
-int	npf_nat_alg_fini(npf_t *, const char *);
+int	npf_alg_pptp_init(npf_t *);
+int	npf_alg_pptp_fini(npf_t *);
 
 #endif
