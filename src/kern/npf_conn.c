@@ -500,7 +500,7 @@ void
 npf_conn_destroy(npf_t *npf, npf_conn_t *con)
 {
 	const npf_connkey_t *key = npf_conn_getforwkey(con);
-	const unsigned alen = NPF_CONNKEY_ALEN(key);
+	uint16_t alen = NPF_CONNKEY_ALEN(key);
 	const unsigned idx __unused = NPF_CONNCACHE(alen);
 
 	KASSERT(con->c_refcnt == 0);
@@ -510,16 +510,19 @@ npf_conn_destroy(npf_t *npf, npf_conn_t *con)
 		npf_nat_destroy(con->c_nat);
 
 		/* NAT events: execute destroy ipv4 translation callback */
-		if (alen == NPF_IPV4_ALEN &&
-				  npf->nat_events_opts.ipv4_destroy_translation != NULL)
+		if (alen == sizeof(in_addr_t) &&
+				  npf->nat_events_opts.ipv4_destroy_translation != NULL) {
+			uint16_t proto;
+			uint16_t ids[2];
+			npf_addr_t ips[2];
+
+			npf_connkey_getkey(key, &proto, ips, ids, &alen);
 			npf->nat_events_opts.ipv4_destroy_translation(
-					  npf_conn_key_get_proto(key),
-					  npf_conn_key_ipv4_get_src_addr(key),
-					  npf_conn_key_ipv4_get_src_id(key),
-					  npf_conn_key_ipv4_get_dst_addr(key),
-					  npf_conn_key_ipv4_get_dst_id(key),
+					  proto, ips[NPF_SRC].word32[0], ips[NPF_DST].word32[0],
+					  ids[NPF_SRC], ids[NPF_DST],
 					  npf_nat_gettrans_addr(con->c_nat)->word32[0],
 					  (uint16_t)npf_nat_gettrans_port(con->c_nat));
+		}
 	}
 	if (con->c_rproc) {
 		/* Release the rule procedure. */
@@ -555,7 +558,7 @@ npf_conn_setnat(const npf_cache_t *npc, npf_conn_t *con,
 	npf_conn_t *ret __diagused;
 	npf_addr_t *taddr;
 	in_port_t tport;
-	unsigned alen;
+	uint16_t alen;
 
 	KASSERT(con->c_refcnt > 0);
 
@@ -614,16 +617,19 @@ npf_conn_setnat(const npf_cache_t *npc, npf_conn_t *con,
 	mutex_exit(&con->c_lock);
 
 	/* NAT events: execute create ipv4 translation callback */
-	if (alen == NPF_IPV4_ALEN &&
-			  npf->nat_events_opts.ipv4_create_translation != NULL)
+	if (alen == sizeof(in_addr_t) &&
+			  npf->nat_events_opts.ipv4_create_translation != NULL) {
+		uint16_t proto;
+		uint16_t ids[2];
+		npf_addr_t ips[2];
+
+		npf_connkey_getkey(fw, &proto, ips, ids, &alen);
 		npf->nat_events_opts.ipv4_create_translation(
-				  npf_conn_key_get_proto(fw),
-				  npf_conn_key_ipv4_get_src_addr(fw),
-				  npf_conn_key_ipv4_get_src_id(fw),
-				  npf_conn_key_ipv4_get_dst_addr(fw),
-				  npf_conn_key_ipv4_get_dst_id(fw),
+				  proto, ips[NPF_SRC].word32[0], ips[NPF_DST].word32[0],
+				  ids[NPF_SRC], ids[NPF_DST],
 				  npf_nat_gettrans_addr(con->c_nat)->word32[0],
 				  (uint16_t)npf_nat_gettrans_port(con->c_nat));
+	}
 
 	return 0;
 }

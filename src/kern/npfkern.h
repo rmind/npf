@@ -63,11 +63,11 @@ typedef struct {
 
 /* NAT event callbacks */
 typedef void (*npf_nat_event_ipv4_create_translation_t) (uint16_t proto, 
-		  uint32_t src, uint16_t src_id, uint32_t dst, uint16_t dst_id,
+		  uint32_t src, uint32_t dst, uint16_t src_id, uint16_t dst_id,
 		  uint32_t tsrc, uint16_t tsrc_id);
 
 typedef void (*npf_nat_event_ipv4_destroy_translation_t) (uint16_t proto, 
-		  uint32_t src, uint16_t src_id, uint32_t dst, uint16_t dst_id,
+		  uint32_t src, uint32_t dst, uint16_t src_id, uint16_t dst_id,
 		  uint32_t tsrc, uint16_t tsrc_id);
 
 typedef struct {
