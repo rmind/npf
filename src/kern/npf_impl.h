@@ -237,6 +237,9 @@ struct npf {
 
 	/* Statistics. */
 	percpu_t *		stats_percpu;
+	
+	/* NAT events callbacks */
+	npf_nat_events_ops_t	nat_events_opts;	
 };
 
 /*
@@ -481,6 +484,8 @@ int		npf_do_nat(npf_cache_t *, npf_conn_t *, const int);
 void		npf_nat_destroy(npf_nat_t *);
 void		npf_nat_getorig(npf_nat_t *, npf_addr_t **, in_port_t *);
 void		npf_nat_gettrans(npf_nat_t *, npf_addr_t **, in_port_t *);
+const npf_addr_t *	npf_nat_gettrans_addr(const npf_nat_t *);
+in_port_t	npf_nat_gettrans_port(const npf_nat_t *);
 void		npf_nat_setalg(npf_nat_t *, npf_alg_t *, uintptr_t);
 
 void		npf_nat_export(nvlist_t *, npf_nat_t *);
