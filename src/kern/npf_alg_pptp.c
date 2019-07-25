@@ -252,7 +252,6 @@ npfa_pptp_gre_slot_free(npf_t *npf, pptp_gre_con_slot_t *gre_slot,
 			 */
 			npf_conn_expire(gre_con);
 			npf_conn_release(gre_con);
-
 		}
 		gre_slot->flags &= ~PPTP_ALG_FL_GRE_STATE_ESTABLISHED;
 	} else if (gre_slot->ctx.client_call_id != 0) {
@@ -305,13 +304,13 @@ npfa_pptp_gre_conns_fini(pptp_gre_conns_t *gre_conns)
  * Result:
  *   NULL - no empty slots or slot to reuse
  *   otherwise - a reference to a slot marked as used
- *      and into which client_call_id and trans_client_call_id are saved
+ *      and into which client_call_id and trans_client_call_id are written
  */
 static pptp_gre_con_slot_t *
 npfa_pptp_gre_slot_lookup_and_use(npf_cache_t *npc, pptp_gre_conns_t *gre_conns,
 		  uint16_t client_call_id, uint16_t trans_client_call_id)
 {
-	pptp_gre_con_slot_t *slot, *empty_slot, slot_to_expire, new_slot;
+	pptp_gre_con_slot_t *slot, *empty_slot, old_reused_slot, new_slot;
 	bool reuse_slot;
 
 	reuse_slot = false;
@@ -331,7 +330,7 @@ npfa_pptp_gre_slot_lookup_and_use(npf_cache_t *npc, pptp_gre_conns_t *gre_conns,
 		}
 		else if (slot->orig_client_call_id == client_call_id) {
 			reuse_slot = true;
-			slot_to_expire.u64 = slot->u64;
+			old_reused_slot.u64 = slot->u64;
 			break;
 		}
 	}
@@ -352,7 +351,7 @@ npfa_pptp_gre_slot_lookup_and_use(npf_cache_t *npc, pptp_gre_conns_t *gre_conns,
 	npfa_pptp_tcp_conn_unlock(gre_conns);
 
 	if (reuse_slot) {
-		npfa_pptp_gre_slot_free(npc->npc_ctx, &slot_to_expire,
+		npfa_pptp_gre_slot_free(npc->npc_ctx, &old_reused_slot,
 				  npc->npc_ips[NPF_SRC], npc->npc_ips[NPF_DST]);
 		return slot;
 	}
@@ -491,8 +490,8 @@ npfa_pptp_tcp_translate(npf_cache_t *npc, npf_nat_t *nt, bool forw)
 		/* lookup for an empty gre slot or
 		 * reuse one with the same original call_id
 		 */
-		gre_slot = npfa_pptp_gre_slot_lookup_and_use(npc, gre_conns, pptp->call_id,
-				  trans_client_call_id);
+		gre_slot = npfa_pptp_gre_slot_lookup_and_use(npc, gre_conns,
+				  pptp->call_id, trans_client_call_id);
 		if (gre_slot == NULL) {
 			/* all entries are in use */
 			npfa_translated_call_id_put(ip, trans_client_call_id);
