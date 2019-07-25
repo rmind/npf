@@ -436,8 +436,6 @@ npf_portmap_flush(npf_t *npf)
 	npf_portmap_t *pm = npf->portmap;
 	bitmap_t *bm;
 
-	KASSERT(npf_config_locked_p(npf));
-
 	while ((bm = LIST_FIRST(&pm->bitmap_list)) != NULL) {
 		for (unsigned i = 0; i < PORTMAP_L0_WORDS; i++) {
 			uintptr_t bm1 = bm->bits0[i];
