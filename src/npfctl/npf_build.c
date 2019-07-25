@@ -969,6 +969,7 @@ npfctl_setparam(const char *name, int val)
 {
 	if (strcmp(name, "bpf.jit") == 0) {
 		npfctl_bpfjit(val != 0);
+		return;
 	}
 	if (npf_param_set(npf_conf, name, val) != 0) {
 		yyerror("invalid parameter `%s` or its value", name);
