@@ -60,7 +60,7 @@ __KERNEL_RCSID(0, "$NetBSD: npf_conndb.c,v 1.5 2019/01/19 21:19:31 rmind Exp $")
 #include "npf_conn.h"
 #include "npf_impl.h"
 
-#define NPF_CONNDB_SUMM_NUM_COPIES 2
+#define	NPF_CONNDB_SUMM_NUM_COPIES		2
 
 struct npf_conndb {
 	thmap_t *		cd_map;
@@ -80,7 +80,7 @@ struct npf_conndb {
 	npf_conn_t *		cd_marker;
 
 	/* connection db summary stat */
-	uint8_t		summary_work_copy_ind; /* current working summary copy */
+	uint8_t			summary_work_copy_ind; /* current working summary copy */
 	uint32_t		summary[NPF_CONNDB_SUMM_NUM_COPIES][NPF_CONNDB_SUMM_NSTATES];
 };
 
