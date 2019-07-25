@@ -202,7 +202,7 @@ struct npf {
 	/* BPF byte-code context. */
 	bpf_ctx_t *		bpfctx;
 	const npf_mbufops_t *	mbufops;
-	
+
 	/* Parameters. */
 	npf_paraminfo_t *	paraminfo;
 	void *			params[NPF_PARAMS_COUNT];
@@ -239,7 +239,7 @@ struct npf {
 	percpu_t *		stats_percpu;
 	
 	/* NAT events callbacks */
-	npf_nat_events_ops_t nat_events_opts;	
+	npf_nat_events_ops_t	nat_events_opts;	
 };
 
 /*
