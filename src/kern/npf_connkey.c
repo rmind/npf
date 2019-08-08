@@ -67,25 +67,17 @@ __KERNEL_RCSID(0, "$NetBSD$");
 #include "npf_impl.h"
 
 inline unsigned
-npf_connkey_setkey(npf_connkey_t *key, uint16_t proto, const void *src_ip,
-    const void *dst_ip, uint16_t src_id, uint16_t dst_id,
-    unsigned alen, bool forw)
+npf_connkey_setkey(npf_connkey_t *key, uint16_t proto, const void *ipv,
+    const uint16_t *id, unsigned alen, bool forw)
 {
-	const npf_addr_t *ip1;
-	const npf_addr_t *ip2;
+	const npf_addr_t * const *ips = ipv;
 	uint32_t *k = key->ck_key;
-	uint16_t id1, id2;
+	unsigned isrc, idst;
 
 	if (__predict_true(forw)) {
-		ip1 = src_ip;
-		ip2 = dst_ip;
-		id1 = src_id;
-		id2 = dst_id;
+		isrc = NPF_SRC, idst = NPF_DST;
 	} else {
-		ip1 = dst_ip;
-		ip2 = src_ip;
-		id1 = dst_id;
-		id2 = src_id;
+		isrc = NPF_DST, idst = NPF_SRC;
 	}
 
 	/*
@@ -93,16 +85,16 @@ npf_connkey_setkey(npf_connkey_t *key, uint16_t proto, const void *src_ip,
 	 */
 
 	k[0] = ((uint32_t)proto << 16) | (alen & 0xffff);
-	k[1] = ((uint32_t)id1 << 16) | id2;
+	k[1] = ((uint32_t)id[isrc] << 16) | id[idst];
 
 	if (__predict_true(alen == sizeof(in_addr_t))) {
-		k[2] = ip1->word32[0];
-		k[3] = ip2->word32[0];
+		k[2] = ips[isrc]->word32[0];
+		k[3] = ips[idst]->word32[0];
 		return 4 * sizeof(uint32_t);
 	} else {
 		const unsigned nwords = alen >> 2;
-		memcpy(&k[2], ip1, alen);
-		memcpy(&k[2 + nwords], ip2, alen);
+		memcpy(&k[2], ips[isrc], alen);
+		memcpy(&k[2 + nwords], ips[idst], alen);
 		return (2 + (nwords * 2)) * sizeof(uint32_t);
 	}
 }
@@ -205,8 +197,7 @@ npf_conn_conkey(const npf_cache_t *npc, npf_connkey_t *key, const bool forw)
 		/* Unsupported protocol. */
 		return 0;
 	}
-	return npf_connkey_setkey(key, proto, npc->npc_ips[NPF_SRC],
-			  npc->npc_ips[NPF_DST], id[NPF_SRC], id[NPF_DST], alen, forw);
+	return npf_connkey_setkey(key, proto, npc->npc_ips, id, alen, forw);
 }
 
 /*
@@ -267,8 +258,7 @@ npf_connkey_import(const nvlist_t *kdict, npf_connkey_t *key)
 	if (alen1 == 0 || alen1 > sizeof(npf_addr_t) || alen1 != alen2) {
 		return 0;
 	}
-	return npf_connkey_setkey(key, proto, ips[NPF_SRC], ips[NPF_DST],
-			  ids[NPF_SRC], ids[NPF_DST], alen1, true);
+	return npf_connkey_setkey(key, proto, ips, ids, alen1, true);
 }
 
 #if defined(DDB) || defined(_NPF_TESTING)

@@ -230,9 +230,10 @@ npfa_translated_call_id_put(const npf_addr_t *ip, uint16_t call_id)
  */
 static void
 npfa_pptp_gre_slot_free(npf_t *npf, pptp_gre_con_slot_t *gre_slot,
-		  const npf_addr_t *client_ip, const npf_addr_t *server_ip)
+		  npf_addr_t **ips)
 {
 	npf_conn_t *gre_con;
+	uint16_t ids[2];
 	bool forw;
 
 	/* expire the gre connection associated with the slot */
@@ -240,13 +241,16 @@ npfa_pptp_gre_slot_free(npf_t *npf, pptp_gre_con_slot_t *gre_slot,
 		npf_connkey_t key;
 
 		/* init a forward gre key */
-		npf_connkey_setkey((void *)&key, IPPROTO_GRE, client_ip, server_ip,
-				  gre_slot->ctx.server_call_id, 0, sizeof(uint32_t), true);
+		ids[NPF_SRC] = gre_slot->ctx.server_call_id;
+		ids[NPF_DST] = 0;
+		npf_connkey_setkey((void *)&key, IPPROTO_GRE, ips, ids, sizeof(uint32_t),
+				  true);
 
 		/* lookup for the associated pptp gre connection */
 		gre_con = npf_conndb_lookup(npf->conn_db, &key, &forw);
 		if (gre_con != NULL) {
-			/* mark the gre connection as expired.
+			/*
+			 * mark the gre connection as expired.
 			 * note: translated call-id will be put back to the portmap
 			 * by gre connection destructor
 			 */
@@ -256,7 +260,7 @@ npfa_pptp_gre_slot_free(npf_t *npf, pptp_gre_con_slot_t *gre_slot,
 		gre_slot->flags &= ~PPTP_ALG_FL_GRE_STATE_ESTABLISHED;
 	} else if (gre_slot->ctx.client_call_id != 0) {
 		/* return translated call-id value back to the portmap */
-		npfa_translated_call_id_put(server_ip, gre_slot->ctx.client_call_id);
+		npfa_translated_call_id_put(ips[NPF_DST], gre_slot->ctx.client_call_id);
 	}
 
 	/* free gre slot in the parent tcp connection nat arg */
@@ -351,8 +355,7 @@ npfa_pptp_gre_slot_lookup_and_use(npf_cache_t *npc, pptp_gre_conns_t *gre_conns,
 	npfa_pptp_tcp_conn_unlock(gre_conns);
 
 	if (reuse_slot) {
-		npfa_pptp_gre_slot_free(npc->npc_ctx, &old_reused_slot,
-				  npc->npc_ips[NPF_SRC], npc->npc_ips[NPF_DST]);
+		npfa_pptp_gre_slot_free(npc->npc_ctx, &old_reused_slot, npc->npc_ips);
 		return slot;
 	}
 
@@ -439,6 +442,7 @@ npfa_pptp_tcp_translate(npf_cache_t *npc, npf_nat_t *nt, bool forw)
 	pptp_gre_conns_t *gre_conns;
 	pptp_gre_con_slot_t *gre_slot;
 	npf_addr_t *o_addr, *ip;
+	npf_addr_t *ips[2];
 	npf_cache_t gre_npc;
 
 	/* only ipv4 is supported so far */
@@ -555,7 +559,7 @@ npfa_pptp_tcp_translate(npf_cache_t *npc, npf_nat_t *nt, bool forw)
 	case PPTP_CALL_DISCONNECT_NOTIFY:
 		if (pptp->len < sizeof(pptp_msg_hdr_t))
 			return false;
-		npf_nat_getorig(nt, &o_addr, &o_port);
+		npf_nat_getorig(nt, &ips[NPF_SRC], &o_port);
 
 		/* lookup for a gre connection entry */
 		npfa_pptp_tcp_conn_lock(gre_conns);
@@ -566,8 +570,8 @@ npfa_pptp_tcp_translate(npf_cache_t *npc, npf_nat_t *nt, bool forw)
 			return false;
 		}
 
-		npfa_pptp_gre_slot_free(npc->npc_ctx, gre_slot, o_addr,
-				  npc->npc_ips[NPF_SRC]);
+		ips[NPF_DST] = npc->npc_ips[NPF_SRC];
+		npfa_pptp_gre_slot_free(npc->npc_ctx, gre_slot, ips);
 		npfa_pptp_tcp_conn_unlock(gre_conns);
 		break;
 
@@ -611,6 +615,7 @@ npfa_pptp_tcp_destroy(npf_t *npf, npf_conn_t *con)
 	pptp_gre_conns_t *gre_conns;
 	npf_connkey_t *fw;
 	npf_addr_t ips[2];
+	npf_addr_t *ipv[2];
 	uint16_t ids[2];
 	uint16_t alen;
 	uint16_t proto;
@@ -622,12 +627,14 @@ npfa_pptp_tcp_destroy(npf_t *npf, npf_conn_t *con)
 	if (NPF_CONNKEY_ALEN(fw) == sizeof(uint32_t) || gre_conns == NULL)
 		return;
 
+	ipv[NPF_SRC] = &ips[NPF_SRC];
+	ipv[NPF_DST] = &ips[NPF_DST];
 	npf_connkey_getkey(fw, &proto, ips, ids, &alen);
 
 	for (int i = 0; i < PPTP_MAX_GRE_PER_CLIENT; i++) {
 		gre_slot = &gre_conns->gre_con_slots[i];
 		if ((gre_slot->flags & PPTP_ALG_FL_FREE_SLOT) == 0)
-			npfa_pptp_gre_slot_free(npf, gre_slot, &ips[NPF_SRC], &ips[NPF_DST]);
+			npfa_pptp_gre_slot_free(npf, gre_slot, ipv);
 	}
 
 	npfa_pptp_gre_conns_fini(gre_conns);
