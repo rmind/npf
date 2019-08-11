@@ -662,8 +662,7 @@ npfa_pptp_gre_translate(npf_cache_t *npc, npf_nat_t *nt, bool forw)
 	pptp_gre_hdr_t *gre;
 	pptp_gre_con_slot_t gre_slot;
 
-	if (forw || !npf_iscached(npc, NPC_IP4 | NPC_ALG_PPTP_GRE) ||
-	    npc->npc_proto != IPPROTO_GRE)
+	if (forw || !npf_iscached(npc, NPC_IP4 | NPC_ALG_PPTP_GRE))
 		return false;
 
 	nbuf_reset(nbuf);
