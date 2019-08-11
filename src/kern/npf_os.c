@@ -33,7 +33,7 @@
 
 #ifdef _KERNEL
 #include <sys/cdefs.h>
-__KERNEL_RCSID(0, "$NetBSD: npf_os.c,v 1.10 2018/09/29 14:41:36 rmind Exp $");
+__KERNEL_RCSID(0, "$NetBSD: npf_os.c,v 1.13 2019/08/10 21:13:54 rmind Exp $");
 
 #ifdef _KERNEL_OPT
 #include "pf.h"
@@ -135,8 +135,8 @@ npf_fini(void)
 	devsw_detach(NULL, &npf_cdevsw);
 #endif
 	npf_pfil_unregister(true);
-	npf_destroy(npf);
-	npf_sysfini();
+	npfk_destroy(npf);
+	npfk_sysfini();
 	return 0;
 }
 
@@ -146,10 +146,10 @@ npf_init(void)
 	npf_t *npf;
 	int error = 0;
 
-	error = npf_sysinit(nworkers);
+	error = npfk_sysinit(nworkers);
 	if (error)
 		return error;
-	npf = npf_create(0, NULL, &kern_ifops);
+	npf = npfk_create(0, NULL, &kern_ifops);
 	npf_setkernctx(npf);
 	npf_pfil_register(true);
 
@@ -313,7 +313,7 @@ npf_ifop_flush(void *arg)
 	KERNEL_LOCK(1, NULL);
 	IFNET_GLOBAL_LOCK();
 	IFNET_WRITER_FOREACH(ifp) {
-		ifp->if_pf_kif = arg;
+		ifp->if_npf_private = arg;
 	}
 	IFNET_GLOBAL_UNLOCK();
 	KERNEL_UNLOCK_ONE(NULL);
@@ -322,13 +322,13 @@ npf_ifop_flush(void *arg)
 static void *
 npf_ifop_getmeta(const ifnet_t *ifp)
 {
-	return ifp->if_pf_kif;
+	return ifp->if_npf_private;
 }
 
 static void
 npf_ifop_setmeta(ifnet_t *ifp, void *arg)
 {
-	ifp->if_pf_kif = arg;
+	ifp->if_npf_private = arg;
 }
 
 #ifdef _KERNEL
@@ -354,11 +354,11 @@ npf_ifhook(void *arg, unsigned long cmd, void *arg2)
 
 	switch (cmd) {
 	case PFIL_IFNET_ATTACH:
-		npf_ifmap_attach(npf, ifp);
+		npfk_ifmap_attach(npf, ifp);
 		npf_ifaddr_sync(npf, ifp);
 		break;
 	case PFIL_IFNET_DETACH:
-		npf_ifmap_detach(npf, ifp);
+		npfk_ifmap_detach(npf, ifp);
 		npf_ifaddr_flush(npf, ifp);
 		break;
 	}
