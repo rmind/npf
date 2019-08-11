@@ -198,7 +198,7 @@ npf_worker(void *arg)
 			npf_workfunc_t work;
 
 			if (!npf->sync_registered) {
-				npf_thread_register(npf);
+				npfk_thread_register(npf);
 				npf->sync_registered = true;
 			}
 

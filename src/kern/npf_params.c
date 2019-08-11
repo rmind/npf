@@ -175,7 +175,7 @@ npf_param_check(npf_t *npf, const char *name, int val)
 }
 
 __dso_public int
-npf_param_get(npf_t *npf, const char *name, int *val)
+npfk_param_get(npf_t *npf, const char *name, int *val)
 {
 	npf_param_t *param;
 
@@ -187,7 +187,7 @@ npf_param_get(npf_t *npf, const char *name, int *val)
 }
 
 __dso_public int
-npf_param_set(npf_t *npf, const char *name, int val)
+npfk_param_set(npf_t *npf, const char *name, int val)
 {
 	npf_param_t *param;
 

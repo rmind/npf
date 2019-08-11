@@ -57,7 +57,6 @@ typedef struct {
 	npf_alg_t *	alg_pptp_tcp;
 	npf_alg_t *	alg_pptp_gre;
 	npf_portmap_t *	pm;
-	npf_portmap_params_t	pm_params;
 } npf_pptp_alg_t;
 
 static npf_pptp_alg_t pptp_alg;
@@ -230,14 +229,13 @@ npfa_pptp_gre_establish_gre_conn(npf_cache_t *npc, int di,
 static inline uint16_t
 npfa_translated_call_id_get(const npf_addr_t *ip)
 {
-	return (uint16_t)npf_portmap_get_pm(pptp_alg.pm, &pptp_alg.pm_params,
-	    sizeof(uint32_t), ip);
+	return (uint16_t)npf_portmap_get(pptp_alg.pm, sizeof(uint32_t), ip);
 }
 
 static inline void
 npfa_translated_call_id_put(const npf_addr_t *ip, uint16_t call_id)
 {
-	npf_portmap_put_pm(pptp_alg.pm, sizeof(uint32_t), ip, (in_port_t)call_id);
+	npf_portmap_put(pptp_alg.pm, sizeof(uint32_t), ip, (in_port_t)call_id);
 }
 
 /*
@@ -744,10 +742,7 @@ npf_alg_pptp_init(npf_t *npf)
 	};
 
 	/* call_id range */
-	pptp_alg.pm_params.min_port = 1;
-	pptp_alg.pm_params.max_port = UINT16_MAX;
-
-	pptp_alg.pm = npf_portmap_init_pm();
+	pptp_alg.pm = npf_portmap_create(1, UINT16_MAX);
 	if (pptp_alg.pm == NULL)
 		return ENOMEM;
 
@@ -769,7 +764,7 @@ npf_alg_pptp_fini(npf_t *npf)
 {
 	KASSERT(pptp_alg.alg_pptp_tcp != NULL);
 	KASSERT(pptp_alg.alg_pptp_gre != NULL);
-	npf_portmap_fini_pm(pptp_alg.pm);
+	npf_portmap_destroy(pptp_alg.pm);
 	npf_alg_unregister(npf, pptp_alg.alg_pptp_tcp);
 	return npf_alg_unregister(npf, pptp_alg.alg_pptp_gre);
 }
