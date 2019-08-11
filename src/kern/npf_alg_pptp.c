@@ -101,7 +101,6 @@ typedef struct {
 	uint16_t proto;
 	uint16_t payload_len;
 	uint16_t call_id;
-	uint16_t seq_num;
 } __packed pptp_gre_hdr_t;
 
 /*
