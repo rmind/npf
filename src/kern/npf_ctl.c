@@ -121,7 +121,7 @@ npf_mk_params(npf_t *npf, nvlist_t *npf_dict, nvlist_t *errdict, bool set)
 		val = (int)nvlist_get_number(params, name);
 		if (set) {
 			/* Actually set the parameter. */
-			error = npf_param_set(npf, name, val);
+			error = npfk_param_set(npf, name, val);
 			KASSERT(error == 0);
 			continue;
 		}

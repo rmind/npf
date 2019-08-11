@@ -141,7 +141,7 @@ load_npf_config(npf_t *npf, nl_config_t *ncf)
 	 * - Note: npf_load() will consume the config.
 	 */
 	config_ref = npf_config_build(ncf);
-	if (npf_load(npf, config_ref, &errinfo) != 0) {
+	if (npfk_load(npf, config_ref, &errinfo) != 0) {
 		errx(EXIT_FAILURE, "npf_load() failed");
 	}
 }
@@ -202,7 +202,7 @@ process_packets(npf_t *npf, struct ifnet *ifp, int di, int *c)
 			continue;
 		}
 
-		ret = npf_packet_handler(npf,
+		ret = npfk_packet_handler(npf,
 		    (struct mbuf **)&in_pkts[i], ifp, di);
 		c[!!ret]++;
 
@@ -230,7 +230,7 @@ main(int argc, char **argv)
 
 	/* Initialise DPDK and NPF. */
 	dpdk_init(argc, argv);
-	npf_sysinit(NWORKERS);
+	npfk_sysinit(NWORKERS);
 	npf_dpdk_init(pktmbuf_pool);
 
 	/* Create a new NPF instance. */
@@ -249,13 +249,13 @@ main(int argc, char **argv)
 	 * Process the packets.  Note: before processing packets,
 	 * each thread doing that must register with NPF instance.
 	 */
-	npf_thread_register(npf);
+	npfk_thread_register(npf);
 	for (unsigned i = 0; i < (16 * 1024); i++) {
 		process_packets(npf, ifp, PFIL_IN, c);
 	}
 	printf("allow\t%d\nblock\t%d\n", c[0], c[1]);
-	npf_thread_unregister(npf);
-	npf_destroy(npf);
-	npf_sysfini();
+	npfk_thread_unregister(npf);
+	npfk_destroy(npf);
+	npfk_sysfini();
 	return 0;
 }

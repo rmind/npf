@@ -36,35 +36,37 @@
 .In net/npfkern.h
 .\" ---
 .Ft int
-.Fn npf_sysinit "unsigned nworkers"
+.Fn npfk_sysinit "unsigned nworkers"
 .Ft void
-.Fn npf_sysfini "void"
+.Fn npfk_sysfini "void"
 .Ft npf_t *
-.Fn npf_create "int flags" "const npf_mbufops_t *mbufops" "const npf_ifops_t *ifops"
+.Fn npfk_create "int flags" "const npf_mbufops_t *mbufops" \
+"const npf_ifops_t *ifops"
 .Ft int
-.Fn npf_load "npf_t *npf" "void *ref" "npf_error_t *err"
+.Fn npfk_load "npf_t *npf" "void *ref" "npf_error_t *err"
 .Ft void
-.Fn npf_gc "npf_t *npf"
+.Fn npfk_gc "npf_t *npf"
 .Ft void
-.Fn npf_destroy "npf_t *npf"
+.Fn npfk_destroy "npf_t *npf"
 .Ft void
-.Fn npf_thread_register "npf_t *npf"
+.Fn npfk_thread_register "npf_t *npf"
 .Ft void
-.Fn npf_thread_unregister "npf_t *npf"
+.Fn npfk_thread_unregister "npf_t *npf"
 .Ft int
-.Fn npf_packet_handler "npf_t *npf" "struct mbuf **mp" "struct ifnet *ifp" "int di"
+.Fn npfk_packet_handler "npf_t *npf" "struct mbuf **mp" \
+"struct ifnet *ifp" "int di"
 .Ft void
-.Fn npf_ifmap_attach "npf_t *npf" "struct ifnet *ifp"
+.Fn npfk_ifmap_attach "npf_t *npf" "struct ifnet *ifp"
 .Ft void
-.Fn npf_ifmap_detach "npf_t *npf" "struct ifnet *ifp"
+.Fn npfk_ifmap_detach "npf_t *npf" "struct ifnet *ifp"
 .Ft int
-.Fn npf_param_get "npf_t *npf" "const char *name" "int64_t *val"
+.Fn npfk_param_get "npf_t *npf" "const char *name" "int64_t *val"
 .Ft int
-.Fn npf_param_set "npf_t *npf" "const char *name" "int64_t val"
+.Fn npfk_param_set "npf_t *npf" "const char *name" "int64_t val"
 .Ft void
-.Fn npf_stats "npf_t *npf" "uint64_t *buf"
+.Fn npfk_stats "npf_t *npf" "uint64_t *buf"
 .Ft void
-.Fn npf_stats_clear "npf_t *npf"
+.Fn npfk_stats_clear "npf_t *npf"
 .\" -----
 .Sh DESCRIPTION
 The
@@ -74,7 +76,7 @@ library provides an interface to kernel component of the NPF packet filter.
 .Sh FUNCTIONS
 .Bl -tag -width 4n
 .\" ---
-.It Fn npf_sysinit "nworkers"
+.It Fn npfk_sysinit "nworkers"
 Initialize the NPF kernel component system.
 This must be called before starting the use of
 .Nm
@@ -87,13 +89,13 @@ amongst all the instances.
 .Pp
 Returns zero on success and the error number on failure.
 .\" ---
-.It Fn npf_sysfini
+.It Fn npfk_sysfini
 Destroy any resources used by the
 .Fm
 library, e.g. stop and exit the worker threads.
 This function must be called once finished using the component.
 .\" ---
-.It Fn npf_create "flags" "mbufops" "ifops"
+.It Fn npfk_create "flags" "mbufops" "ifops"
 Construct and return a new instance of the NPF kernel component.
 The parameter
 .Fa flags
@@ -115,18 +117,18 @@ Returns a reference (pointer) to the instance on success and
 .Dv NULL
 on failure.
 .\" ---
-.It Fn npf_gc "npf"
+.It Fn npfk_gc "npf"
 Perform the garbage collection of connection and/or any other objects
 related to the specified NPF instance.
 This routine should only be used if the instance was created with
 .Dv NPF_NO_GC
 flag.
 .\" ---
-.It Fn npf_destroy "npf"
+.It Fn npfk_destroy "npf"
 Destroy the instance of the NPF kernel compaining, freeing all resources
 used by it.
 .\" ---
-.It Fn npf_load "npf" "ref" "err"
+.It Fn npfk_load "npf" "ref" "err"
 Load a new configuration into the NPF instance.
 The new configuration is specified by a
 .Fa ref
@@ -143,21 +145,21 @@ structure specified by the
 .Fa err
 parameter.
 .\" ---
-.It Fn npf_thread_register "npf"
+.It Fn npfk_thread_register "npf"
 Register a "processing context" i.e. a thread which will perform the
-.Fn npf_packet_handler
+.Fn npfk_packet_handler
 calls.
 All threads processing packets (invoking the handler) must register;
 all registered threads must also remove themselves from the register
 using before exit using the
-.Fa npf_thread_unregister
+.Fa npfk_thread_unregister
 routine.
 Failure to register may result in undefined behaviour.
 .\" ---
-.It Fn npf_thread_unregister "npf"
+.It Fn npfk_thread_unregister "npf"
 Remove the thread from the register of threads which process the packets.
 .\" ---
-.It Fn npf_packet_handler "npf" "mp" "ifp" "di"
+.It Fn npfk_packet_handler "npf" "mp" "ifp" "di"
 Inspect the packet, matching and processing it against the configuration
 loaded in the specified NPF instance.
 This is the main routine performing packet filtering (as well as any other
@@ -186,26 +188,26 @@ A regular "block" is indicated by the
 .Dv ENETUNREACH
 error nubmer.
 .\" ---
-.It Fn npf_ifmap_attach "npf" "ifp"
+.It Fn npfk_ifmap_attach "npf" "ifp"
 Attach the virtual network interface to the NPF instance.
 This indicates that the packets on this interface shall be processed.
-.It Fn npf_ifmap_detach "npf" "ifp"
+.It Fn npfk_ifmap_detach "npf" "ifp"
 Detach the virtual network interface from the NPF instance.
 .\" ---
-.It Fn npf_param_get "npf" "name" "valp"
+.It Fn npfk_param_get "npf" "name" "valp"
 Get the parameter value of the given NPF instance.
 On success, the function returns zero and the parameter value stored in
 .Fa valp .
 On failure, if the parameter does not exist, the function returns
 .Dv ENOENT .
 .\" ---
-.It Fn npf_param_set "npf" "name" "val"
+.It Fn npfk_param_set "npf" "name" "val"
 Set the parameter vale for the given NPF instance.
 Returns zero on success or
 .Dv ENOENT
 if the parameter does not exist.
 .\" ---
-.It Fn npf_stats "npf" "buf"
+.It Fn npfk_stats "npf" "buf"
 Get the statistics of the NPF instance into the buffer specified by the
 .Fa buf
 parameter.
@@ -218,7 +220,7 @@ number of elements (or
 .Dv NPF_STATS_SIZE
 in bytes).
 .\" ---
-.It Fn npf_stats_clear "npf"
+.It Fn npfk_stats_clear "npf"
 Clear (by resetting to zero) the statistics of the given NPF instance.
 .\" ---
 .El

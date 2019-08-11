@@ -219,7 +219,7 @@ npf_stats_export(npf_t *npf, void *data)
 	int error;
 
 	fullst = kmem_alloc(NPF_STATS_SIZE, KM_SLEEP);
-	npf_stats(npf, fullst); /* will zero the buffer */
+	npfk_stats(npf, fullst); /* will zero the buffer */
 	error = copyout(fullst, uptr, NPF_STATS_SIZE);
 	kmem_free(fullst, NPF_STATS_SIZE);
 	return error;
@@ -337,10 +337,10 @@ npf_ifop_setmeta(ifnet_t *ifp, void *arg)
  * Wrapper of the main packet handler to pass the kernel NPF context.
  */
 static int
-npfkern_packet_handler(void *arg, struct mbuf **mp, ifnet_t *ifp, int di)
+npfos_packet_handler(void *arg, struct mbuf **mp, ifnet_t *ifp, int di)
 {
 	npf_t *npf = npf_getkernctx();
-	return npf_packet_handler(npf, mp, ifp, di);
+	return npfk_packet_handler(npf, mp, ifp, di);
 }
 
 /*
@@ -434,12 +434,12 @@ npf_pfil_register(bool init)
 
 	/* Packet IN/OUT handlers for IP layer. */
 	if (npf_ph_inet) {
-		error = pfil_add_hook(npfkern_packet_handler, npf,
+		error = pfil_add_hook(npfos_packet_handler, npf,
 		    PFIL_ALL, npf_ph_inet);
 		KASSERT(error == 0);
 	}
 	if (npf_ph_inet6) {
-		error = pfil_add_hook(npfkern_packet_handler, npf,
+		error = pfil_add_hook(npfos_packet_handler, npf,
 		    PFIL_ALL, npf_ph_inet6);
 		KASSERT(error == 0);
 	}
@@ -473,11 +473,11 @@ npf_pfil_unregister(bool fini)
 		    PFIL_IFADDR, npf_ph_if);
 	}
 	if (npf_ph_inet) {
-		(void)pfil_remove_hook(npfkern_packet_handler, npf,
+		(void)pfil_remove_hook(npfos_packet_handler, npf,
 		    PFIL_ALL, npf_ph_inet);
 	}
 	if (npf_ph_inet6) {
-		(void)pfil_remove_hook(npfkern_packet_handler, npf,
+		(void)pfil_remove_hook(npfos_packet_handler, npf,
 		    PFIL_ALL, npf_ph_inet6);
 	}
 	pfil_registered = false;
