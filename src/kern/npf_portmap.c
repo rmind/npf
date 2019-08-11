@@ -95,6 +95,9 @@ typedef struct bitmap {
 	unsigned		addr_len;
 } bitmap_t;
 
+#define	NPF_PORTMAP_MINPORT	1024
+#define	NPF_PORTMAP_MAXPORT	65535
+
 struct npf_portmap {
 	thmap_t	*		addr_map;
 	LIST_HEAD(, bitmap)	bitmap_list;
@@ -103,24 +106,22 @@ struct npf_portmap {
 	int			max_port;
 };
 
-typedef struct {
-} npf_portmap_params_t;
-
 void
 npf_portmap_init(npf_t *npf)
 {
-	npf_portmap_t *pm = npf_portmap_create();
+	npf_portmap_t *pm = npf_portmap_create(
+	    NPF_PORTMAP_MINPORT, NPF_PORTMAP_MAXPORT);
 	npf_param_t param_map[] = {
 		{
 			"portmap.min_port",
 			&pm->min_port,
-			.default_val = 1024,
+			.default_val = NPF_PORTMAP_MINPORT,
 			.min = 1024, .max = 65535
 		},
 		{
 			"portmap.max_port",
 			&pm->max_port,
-			.default_val = 65535,
+			.default_val = NPF_PORTMAP_MAXPORT,
 			.min = 1024, .max = 65535
 		}
 	};
@@ -136,13 +137,15 @@ npf_portmap_fini(npf_t *npf)
 }
 
 npf_portmap_t *
-npf_portmap_create(void)
+npf_portmap_create(int min_port, int max_port)
 {
 	npf_portmap_t *pm;
 
 	pm = kmem_zalloc(sizeof(npf_portmap_t), KM_SLEEP);
 	mutex_init(&pm->list_lock, MUTEX_DEFAULT, IPL_SOFTNET);
 	pm->addr_map = thmap_create(0, NULL, THMAP_NOCOPY);
+	pm->min_port = min_port;
+	pm->max_port = max_port;
 	return pm;
 }
 
