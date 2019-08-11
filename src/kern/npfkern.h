@@ -82,7 +82,7 @@ void	npf_stats_clear(npf_t *);
 /*
  * ALGs.
  */
-	int	npf_alg_icmp_init(npf_t *);
+int	npf_alg_icmp_init(npf_t *);
 int	npf_alg_icmp_fini(npf_t *);
 
 int	npf_alg_pptp_init(npf_t *);

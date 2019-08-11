@@ -534,6 +534,8 @@ void		npf_state_setsampler(void (*)(npf_state_t *, bool));
 void		npf_setkernctx(npf_t *);
 npf_t *		npf_getkernctx(void);
 
+size_t		npf_pptp_gre_hdr_len(void);
+
 #ifdef __NetBSD__
 #define	pserialize_register(x)
 #define	pserialize_checkpoint(x)
