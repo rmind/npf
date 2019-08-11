@@ -53,8 +53,6 @@ MODULE(MODULE_CLASS_MISC, npf_alg_pptp, "npf");
 
 #define	PPTP_SERVER_PORT	1723
 
-#define	IPV4_ADDR(ip)		(ip)->word32[0]
-
 typedef struct {
 	npf_alg_t *	alg_pptp_tcp;
 	npf_alg_t *	alg_pptp_gre;
@@ -198,6 +196,8 @@ npfa_pptp_gre_establish_gre_conn(npf_cache_t *npc, int di,
 {
 	npf_conn_t *con = NULL;
 	int ret;
+
+	KASSERT(mutex_owned(&gre_conns->lock));
 
 	/* establish new gre connection state */
 	con = npf_conn_establish(npc, di, true);
