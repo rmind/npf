@@ -76,7 +76,7 @@ static npf_pptp_alg_t pptp_alg;
 
 #define	PPTP_OUTGOING_CALL_MIN_LEN		32
 
-#define	PPTP_MAGIC_COOKIE				0x1A2B3C4D
+#define	PPTP_MAGIC_COOKIE			0x1A2B3C4D
 
 /*
  * Maximum number of GRE connections
@@ -85,8 +85,8 @@ static npf_pptp_alg_t pptp_alg;
 #define	PPTP_MAX_GRE_PER_CLIENT			4
 
 /* PPTP ALG argument flags */
-#define	PPTP_ALG_FL_GRE_STATE_ESTABLISHED 0x1
-#define	PPTP_ALG_FL_FREE_SLOT             0x2
+#define	PPTP_ALG_FL_GRE_STATE_ESTABLISHED	0x1
+#define	PPTP_ALG_FL_FREE_SLOT			0x2
 
 typedef struct {
 	uint16_t client_call_id;
@@ -94,13 +94,27 @@ typedef struct {
 } __packed pptp_gre_context_t;
 
 /*
- * PPTP GRE header
+ * Standard GRE header
+ */
+typedef struct {
+	uint16_t	flags_ver;
+	uint16_t	proto;
+	/* optional fields */
+} __packed gre_hdr_t;
+
+#define	GRE_VER_FLD_MASK			0x7
+#define	GRE_ENHANCED_HDR_VER			1
+#define	GRE_STANDARD_HDR_VER			0
+
+/*
+ * PPTP GRE header (Enhanced GRE header)
  */
 typedef struct {
 	uint16_t flags_ver;
 	uint16_t proto;
 	uint16_t payload_len;
 	uint16_t call_id;
+	/* optional fields */
 } __packed pptp_gre_hdr_t;
 
 /*
@@ -786,10 +800,21 @@ npf_pptp_conn_conkey(const npf_cache_t *npc, uint16_t *id, bool forw)
 	}
 }
 
-inline size_t
-npf_pptp_gre_hdr_len(void)
+int
+npf_pptp_gre_cache(npf_cache_t *npc, nbuf_t *nbuf, unsigned hlen)
 {
-	return sizeof(pptp_gre_hdr_t);
+	gre_hdr_t *gre_hdr;
+	unsigned ver;
+
+	gre_hdr = nbuf_advance(nbuf, hlen, sizeof(gre_hdr_t));
+	ver = ntohs(gre_hdr->flags_ver) & GRE_VER_FLD_MASK;
+
+	if (ver == GRE_ENHANCED_HDR_VER) {
+		npc->npc_l4.hdr = nbuf_ensure_contig(nbuf, sizeof(pptp_gre_hdr_t));
+		return NPC_LAYER4 | NPC_ALG_PPTP_GRE;
+	}
+
+	return 0;
 }
 
 #ifdef _KERNEL

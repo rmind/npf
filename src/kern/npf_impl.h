@@ -522,6 +522,7 @@ void		npf_alg_destroy(npf_t *, npf_alg_t *, npf_conn_t *);
 
 /* PPTP ALG interface */
 void		npf_pptp_conn_conkey(const npf_cache_t *, uint16_t *, bool);
+int		npf_pptp_gre_cache(npf_cache_t *, nbuf_t *, unsigned);
 
 /* Debugging routines. */
 const char *	npf_addr_dump(const npf_addr_t *, int);
@@ -533,8 +534,6 @@ void		npf_state_setsampler(void (*)(npf_state_t *, bool));
 /* In-kernel routines. */
 void		npf_setkernctx(npf_t *);
 npf_t *		npf_getkernctx(void);
-
-size_t		npf_pptp_gre_hdr_len(void);
 
 #ifdef __NetBSD__
 #define	pserialize_register(x)
