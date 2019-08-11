@@ -258,11 +258,6 @@ void *		npf_ext_register(npf_t *, const char *, const npf_ext_ops_t *);
 int		npf_ext_unregister(npf_t *, void *);
 void		npf_rproc_assign(npf_rproc_t *, void *);
 
-typedef struct npf_portmap_params {
-	int		min_port;
-	int		max_port;
-} npf_portmap_params_t;
-
 /*
  * INTERFACES.
  */
