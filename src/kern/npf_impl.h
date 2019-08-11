@@ -460,7 +460,7 @@ int		npf_state_tcp_timeout(npf_t *, const npf_state_t *);
 void		npf_portmap_init(npf_t *);
 void		npf_portmap_fini(npf_t *);
 
-npf_portmap_t *	npf_portmap_create(void);
+npf_portmap_t *	npf_portmap_create(int, int);
 void		npf_portmap_destroy(npf_portmap_t *);
 
 in_port_t	npf_portmap_get(npf_portmap_t *, int, const npf_addr_t *);
