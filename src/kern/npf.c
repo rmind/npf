@@ -79,13 +79,17 @@ npf_create(int flags, const npf_mbufops_t *mbufops, const npf_ifops_t *ifops)
 	npf_param_init(npf);
 	npf_state_sysinit(npf);
 	npf_ifmap_init(npf, ifops);
-	npf_conn_init(npf, flags);
+	npf_conn_init(npf);
 	npf_portmap_init(npf);
 	npf_alg_init(npf);
 	npf_ext_init(npf);
 
 	/* Load an empty configuration. */
 	npf_config_init(npf);
+
+	if ((flags & NPF_NO_GC) == 0) {
+		npf_worker_register(npf, npf_conn_worker);
+	}
 	return npf;
 }
 

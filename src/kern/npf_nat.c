@@ -138,6 +138,7 @@ struct npf_nat {
 	npf_addr_t		nt_taddr;
 	npf_addr_t		nt_oaddr;
 
+	unsigned		nt_alen;
 	in_port_t		nt_oport;
 	in_port_t		nt_tport;
 
@@ -205,19 +206,21 @@ npf_nat_newpolicy(npf_t *npf, const nvlist_t *nat, npf_ruleset_t *rset)
 			goto err;
 		}
 		np->n_tid = nvlist_get_number(nat, "nat-table-id");
+		np->n_tmask = NPF_NO_NETMASK;
 		np->n_flags |= NPF_NAT_USETABLE;
+	} else {
+		addr = dnvlist_get_binary(nat, "nat-addr", &len, NULL, 0);
+		if (!addr || len == 0 || len > sizeof(npf_addr_t)) {
+			goto err;
+		}
+		memcpy(&np->n_taddr, addr, len);
+		np->n_alen = len;
+		np->n_tmask = dnvlist_get_number(nat, "nat-mask", NPF_NO_NETMASK);
+		if (npf_netmask_check(np->n_alen, np->n_tmask)) {
+			goto err;
+		}
 	}
-	addr = dnvlist_get_binary(nat, "nat-addr", &len, NULL, 0);
-	if (!addr || len == 0 || len > sizeof(npf_addr_t)) {
-		goto err;
-	}
-	memcpy(&np->n_taddr, addr, len);
-	np->n_alen = len;
-	np->n_tmask = dnvlist_get_number(nat, "nat-mask", NPF_NO_NETMASK);
 	np->n_tport = dnvlist_get_number(nat, "nat-port", 0);
-	if (npf_netmask_check(np->n_alen , np->n_tmask)) {
-		goto err;
-	}
 
 	/*
 	 * NAT algorithm.
@@ -253,9 +256,10 @@ npf_nat_policyexport(const npf_natpolicy_t *np, nvlist_t *nat)
 
 	if (np->n_flags & NPF_NAT_USETABLE) {
 		nvlist_add_number(nat, "nat-table-id", np->n_tid);
+	} else {
+		nvlist_add_binary(nat, "nat-addr", &np->n_taddr, np->n_alen);
+		nvlist_add_number(nat, "nat-mask", np->n_tmask);
 	}
-	nvlist_add_binary(nat, "nat-addr", &np->n_taddr, np->n_alen);
-	nvlist_add_number(nat, "nat-mask", np->n_tmask);
 	nvlist_add_number(nat, "nat-port", np->n_tport);
 	nvlist_add_number(nat, "nat-algo", np->n_algo);
 
@@ -475,6 +479,7 @@ npf_nat_create(npf_cache_t *npc, npf_natpolicy_t *np, npf_conn_t *con)
 		taddr = &np->n_taddr;
 		memcpy(&nt->nt_taddr, taddr, alen);
 	}
+	nt->nt_alen = alen;
 
 	/* Save the original address which may be rewritten. */
 	if (np->n_type == NPF_NATOUT) {
@@ -793,7 +798,7 @@ npf_nat_destroy(npf_nat_t *nt)
 
 	/* Return taken port to the portmap. */
 	if ((np->n_flags & NPF_NAT_PORTMAP) != 0 && nt->nt_tport) {
-		npf_portmap_put(npf, np->n_alen, &nt->nt_taddr, nt->nt_tport);
+		npf_portmap_put(npf, nt->nt_alen, &nt->nt_taddr, nt->nt_tport);
 	}
 	npf_stats_inc(np->n_npfctx, NPF_STAT_NAT_DESTROY);
 
@@ -853,7 +858,7 @@ npf_nat_import(npf_t *npf, const nvlist_t *nat,
 
 	/* Take a specific port from port-map. */
 	if ((np->n_flags & NPF_NAT_PORTMAP) != 0 && nt->nt_tport &&
-	    !npf_portmap_take(npf, np->n_alen, &nt->nt_taddr, nt->nt_tport)) {
+	    !npf_portmap_take(npf, nt->nt_alen, &nt->nt_taddr, nt->nt_tport)) {
 		pool_cache_put(nat_cache, nt);
 		return NULL;
 	}
