@@ -142,7 +142,7 @@ int		nbuf_find_tag(nbuf_t *, uint32_t *);
 
 #define	NPC_FMTERR	0x200	/* Format error. */
 
-#define	NPC_ALG_PPTP_GRE	0x400	/* PPTP GRE header */
+#define	NPC_ENHANCED_GRE	0x400	/* Enhanced GRE header */
 #define	NPC_ALG_PPTP_GRE_CTX	0x800	/* PPTP GRE context */
 
 #define	NPC_IP46	(NPC_IP4|NPC_IP6)

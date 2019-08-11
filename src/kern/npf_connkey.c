@@ -191,8 +191,11 @@ npf_conn_conkey(const npf_cache_t *npc, npf_connkey_t *key, const bool forw)
 		}
 		return 0;
 	case IPPROTO_GRE:
-		npf_pptp_conn_conkey(npc, id, forw);
-		break;
+		if (npf_iscached(npc, NPC_ENHANCED_GRE | NPC_ALG_PPTP_GRE_CTX)) {
+			npf_pptp_conn_conkey(npc, id, forw);
+			break;
+		}
+		return 0;
 	default:
 		/* Unsupported protocol. */
 		return 0;

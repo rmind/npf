@@ -676,7 +676,7 @@ npfa_pptp_gre_translate(npf_cache_t *npc, npf_nat_t *nt, bool forw)
 	pptp_gre_hdr_t *gre;
 	pptp_gre_con_slot_t gre_slot;
 
-	if (forw || !npf_iscached(npc, NPC_IP4 | NPC_ALG_PPTP_GRE))
+	if (forw || !npf_iscached(npc, NPC_IP4 | NPC_ENHANCED_GRE))
 		return false;
 
 	nbuf_reset(nbuf);
@@ -780,7 +780,7 @@ npf_pptp_conn_conkey(const npf_cache_t *npc, uint16_t *id, bool forw)
 	const pptp_gre_context_t *pptp_gre_ctx;
 	const pptp_gre_hdr_t *pptp_gre_hdr;
 
-	KASSERT(npf_iscached(npc, NPC_ALG_PPTP_GRE | NPC_ALG_PPTP_GRE_CTX));
+	KASSERT(npf_iscached(npc, NPC_ENHANCED_GRE | NPC_ALG_PPTP_GRE_CTX));
 	if (npf_iscached(npc, NPC_ALG_PPTP_GRE_CTX)) {
 		pptp_gre_ctx = npc->npc_l4.hdr;
 		if (forw) {
@@ -811,7 +811,7 @@ npf_pptp_gre_cache(npf_cache_t *npc, nbuf_t *nbuf, unsigned hlen)
 
 	if (ver == GRE_ENHANCED_HDR_VER) {
 		npc->npc_l4.hdr = nbuf_ensure_contig(nbuf, sizeof(pptp_gre_hdr_t));
-		return NPC_LAYER4 | NPC_ALG_PPTP_GRE;
+		return NPC_LAYER4 | NPC_ENHANCED_GRE;
 	}
 
 	return 0;
