@@ -59,7 +59,6 @@ __KERNEL_RCSID(0, "$NetBSD: npf_inet.c,v 1.53 2019/01/19 21:19:32 rmind Exp $");
 #endif
 
 #include "npf_impl.h"
-#include "npf_pptp_gre.h"
 
 /*
  * npf_fixup{16,32}_cksum: incremental update of the Internet checksum.
