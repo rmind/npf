@@ -71,7 +71,7 @@ npf_dpdk_ifattach(npf_t *npf, const char *name, unsigned idx)
 	ifp->ini.if_name = (char *)(uintptr_t)name;
 	ifp->ini.if_index = idx;
 	LIST_INSERT_HEAD(&dpdk_ifnet_list, ifp, entry);
-	npf_ifmap_attach(npf, ifp);
+	npfk_ifmap_attach(npf, ifp);
 	return ifp;
 }
 
@@ -79,7 +79,7 @@ void
 npf_dpdk_ifdetach(npf_t *npf, ifnet_t *ifp)
 {
 	LIST_REMOVE(ifp, entry);
-	npf_ifmap_detach(npf, ifp);
+	npfk_ifmap_detach(npf, ifp);
 	free(ifp);
 }
 
@@ -208,5 +208,5 @@ static const npf_ifops_t npf_ifops = {
 npf_t *
 npf_dpdk_create(int flags)
 {
-	return npf_create(flags, &npf_mbufops, &npf_ifops);
+	return npfk_create(flags, &npf_mbufops, &npf_ifops);
 }

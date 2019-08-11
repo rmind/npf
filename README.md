@@ -24,6 +24,7 @@ Some key features are:
   - NAPT and other forms of port translation (e.g. port forwarding).
   - Inbound and outbound NAT as well as bi-directional NAT.
   - Network-to-network translation, including NETMAP and NPTv6.
+- Carrier-grade NAT (CG-NAT) capability: known to serve over a million connections.
 - Tables for efficient IP sets, including the _longest prefix match_ support.
 - Application Level Gateways (e.g. to support traceroute).
 - NPF uses [BPF with just-in-time (JIT) compilation](https://github.com/rmind/bpfjit).
