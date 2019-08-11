@@ -99,7 +99,7 @@ npf_connkey_setkey(npf_connkey_t *key, uint16_t proto, const void *ipv,
 	}
 }
 
-inline void
+void
 npf_connkey_getkey(const npf_connkey_t *key, uint16_t *proto, npf_addr_t *ips,
     uint16_t *id, uint16_t *alen)
 {
