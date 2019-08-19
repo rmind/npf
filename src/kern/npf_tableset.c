@@ -456,9 +456,11 @@ npf_table_getid(npf_table_t *t)
  * npf_table_check: validate the name, ID and type.
  */
 int
-npf_table_check(npf_tableset_t *ts, const char *name, uint64_t tid, uint64_t type, bool replacing)
+npf_table_check(npf_tableset_t *ts, const char *name, uint64_t tid,
+    uint64_t type, bool replacing)
 {
 	const npf_table_t *t;
+
 	if (tid >= ts->ts_nitems) {
 		return EINVAL;
 	}
