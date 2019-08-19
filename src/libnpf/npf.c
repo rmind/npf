@@ -203,6 +203,29 @@ _npf_rules_process(nl_config_t *ncf, nvlist_t *dict, const char *key)
 }
 
 /*
+ * _npf_extract_error: check nvlist errno for errors and extract
+ * error details into the provided npf_error_t.
+ */
+static int
+_npf_extract_error(nvlist_t *errnv, npf_error_t *errinfo)
+{
+	int error;
+
+	error = dnvlist_get_number(errnv, "errno", 0);
+	if (error && errinfo) {
+		memset(errinfo, 0, sizeof(npf_error_t));
+		errinfo->id = dnvlist_get_number(errnv, "id", 0);
+		errinfo->error_msg =
+			dnvlist_take_string(errnv, "error-msg", NULL);
+		errinfo->source_file =
+			dnvlist_take_string(errnv, "source-file", NULL);
+		errinfo->source_line =
+			dnvlist_take_number(errnv, "source-line", 0);
+	}
+	return error;
+}
+
+/*
  * CONFIGURATION INTERFACE.
  */
 
@@ -233,17 +256,7 @@ npf_config_submit(nl_config_t *ncf, int fd, npf_error_t *errinfo)
 		assert(errnv == NULL);
 		return errno;
 	}
-	error = dnvlist_get_number(errnv, "errno", 0);
-	if (error && errinfo) {
-		memset(errinfo, 0, sizeof(npf_error_t));
-		errinfo->id = dnvlist_get_number(errnv, "id", 0);
-		errinfo->error_msg =
-		    dnvlist_take_string(errnv, "error-msg", NULL);
-		errinfo->source_file =
-		    dnvlist_take_string(errnv, "source-file", NULL);
-		errinfo->source_line =
-		    dnvlist_take_number(errnv, "source-line", 0);
-	}
+	error = _npf_extract_error(errnv, errinfo);
 	nvlist_destroy(errnv);
 	return error;
 }
@@ -1074,17 +1087,7 @@ npf_table_replace(nl_table_t *tl, int fd, npf_error_t *errinfo)
 		assert(errnv == NULL);
 		return errno;
 	}
-	error = dnvlist_get_number(errnv, "errno", 0);
-	if (error && errinfo) {
-		memset(errinfo, 0, sizeof(npf_error_t));
-		errinfo->id = dnvlist_get_number(errnv, "id", 0);
-		errinfo->error_msg =
-		    dnvlist_take_string(errnv, "error-msg", NULL);
-		errinfo->source_file =
-		    dnvlist_take_string(errnv, "source-file", NULL);
-		errinfo->source_line =
-		    dnvlist_take_number(errnv, "source-line", 0);
-	}
+	error = _npf_extract_error(errnv, errinfo);
 	nvlist_destroy(errnv);
 	return error;
 }
