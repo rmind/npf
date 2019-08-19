@@ -218,7 +218,6 @@ npf_mk_table(npf_t *npf, const nvlist_t *tbl_dict, nvlist_t *errdict,
 		goto out;
 	}
 
-	/* Create and swap the table. */
 	t = npf_table_create(name, (u_int)tid, type, blob, size);
 	if (t == NULL) {
 		NPF_ERR_DEBUG(errdict);
