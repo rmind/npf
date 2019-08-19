@@ -773,7 +773,7 @@ npfctl_table_replace_nvlist(npf_t *npf, nvlist_t *npf_dict, nvlist_t *errdict)
 	tblset = npf_config_tableset(npf);
 
 	/* Get the entries or binary data. */
-	error = npf_mk_table(npf, npf_dict, errdict, tblset, &newt, 1);
+	error = npf_mk_table(npf, npf_dict, errdict, tblset, &tbl, true);
 	if (error) {
 		goto err;
 	}
