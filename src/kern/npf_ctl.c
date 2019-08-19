@@ -768,7 +768,7 @@ npfctl_table_replace_nvlist(npf_t *npf, nvlist_t *npf_dict, nvlist_t *errdict)
 	npf_tableset_t *tblset;
 	int error = 0;
 
-	npf_table_t *oldt, *newt;
+	npf_table_t *tbl, *gc_tbl;
 
 	npf_config_enter(npf);
 	tblset = npf_config_tableset(npf);
@@ -776,29 +776,20 @@ npfctl_table_replace_nvlist(npf_t *npf, nvlist_t *npf_dict, nvlist_t *errdict)
 	/* Get the entries or binary data. */
 	error = npf_mk_table(npf, npf_dict, errdict, tblset, &newt, 1);
 	if (error) {
-		goto err_config;
+		goto err;
 	}
 
-	oldt = npf_tableset_swap(tblset, newt);
-	if (oldt == NULL) {
+	gc_tbl = npf_tableset_swap(tblset, tbl);
+	if (gc_tbl == NULL) {
 		error = EINVAL;
-		goto err_config;
+		gc_tbl = tbl;
+		goto err_gc;
 	}
 	npf_config_sync(npf);
+err_gc:
+	npf_table_destroy(gc_tbl);
+err:
 	npf_config_exit(npf);
-
-	/* At this point, it is safe to destroy the old table. */
-	npf_table_destroy(oldt);
-
-	/* successfully completed */
-	goto out;
-
-err_config:
-	npf_config_exit(npf);
-	npf_table_destroy(newt);
-
-	/* fallthrough */
-out:
 	return error;
 }
 
