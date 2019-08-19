@@ -231,8 +231,6 @@ npf_mk_table(npf_t *npf, const nvlist_t *tbl_dict, nvlist_t *errdict,
 	}
 
 	*tblp = t;
-
-	/* fallthrough */
 out:
 	return error;
 }
