@@ -809,7 +809,9 @@ npfctl_table_replace(npf_t *npf, u_long cmd, void *data)
 	response = nvlist_create(0);
 	error = npfctl_table_replace_nvlist(npf, request, response);
 	nvlist_add_number(response, "errno", error);
-	return npf_nvlist_copyout(npf, data, response);
+	error = npf_nvlist_copyout(npf, data, response);
+	nvlist_destroy(request);
+	return error;
 }
 
 /*
