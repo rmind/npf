@@ -341,8 +341,9 @@ Usage:	npfctl start | stop | flush | show | stats
 	npfctl rule "rule-name" { add | rem } <rule-syntax>
 	npfctl rule "rule-name" rem-id <rule-id>
 	npfctl rule "rule-name" { list | flush }
-	npfctl table <tid> { add | rem | test } <address/mask>
-	npfctl table <tid> { list | flush }
+	npfctl table "table-name" { add | rem | test } <address/mask>
+	npfctl table "table-name" { list | flush }
+	npfctl table "table-name" replace [-n "name"] [-t <type>] <table-file>
 	npfctl save | load
 	npfctl list [-46hNnw] [-i <ifname>]
 	npfctl debug [<rule-file>] [<raw-output>]
