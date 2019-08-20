@@ -962,7 +962,7 @@ npf_table_add_entry(nl_table_t *tl, int af, const npf_addr_t *addr,
 }
 
 static inline int
-_npf_table_build(nl_table_t *tl)
+_npf_table_build_const(nl_table_t *tl)
 {
 	struct cdbw *cdbw;
 	const nvlist_t * const *entries;
@@ -971,6 +971,10 @@ _npf_table_build(nl_table_t *tl)
 	void *cdb, *buf;
 	struct stat sb;
 	char sfn[32];
+
+	if (dnvlist_get_number(tl->table_dict, "type", 0) != NPF_TABLE_CONST) {
+		return 0;
+	}
 
 	if (!nvlist_exists_nvlist_array(tl->table_dict, "entries")) {
 		return 0;
@@ -1063,10 +1067,8 @@ npf_table_insert(nl_config_t *ncf, nl_table_t *tl)
 	if (_npf_dataset_lookup(ncf->ncf_dict, "tables", "name", name)) {
 		return EEXIST;
 	}
-	if (dnvlist_get_number(tl->table_dict, "type", 0) == NPF_TABLE_CONST) {
-		if ((error = _npf_table_build(tl)) != 0) {
-			return error;
-		}
+	if ((error = _npf_table_build_const(tl)) != 0) {
+		return error;
 	}
 	nvlist_append_nvlist_array(ncf->ncf_dict, "tables", tl->table_dict);
 	nvlist_destroy(tl->table_dict);
@@ -1080,8 +1082,10 @@ npf_table_replace(nl_table_t *tl, int fd, npf_error_t *errinfo)
 	nvlist_t *errnv = NULL;
 	int error;
 
-	/* Ensure the table is built. */
-	(void)_npf_table_build(tl);
+	/* Ensure const tables are built. */
+	if ((error = _npf_table_build_const(tl)) != 0) {
+		return error;
+	}
 
 	if (nvlist_xfer_ioctl(fd, IOC_NPF_TABLE_REPLACE, tl->table_dict, &errnv) == -1) {
 		assert(errnv == NULL);
