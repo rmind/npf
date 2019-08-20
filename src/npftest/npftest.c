@@ -324,6 +324,7 @@ main(int argc, char **argv)
 		}
 
 		if (!testname || strcmp("nat", testname) == 0) {
+			srandom(1);
 			ok = rumpns_npf_nat_test(verbose);
 			fail |= result("nat", ok);
 			tname_matched = true;

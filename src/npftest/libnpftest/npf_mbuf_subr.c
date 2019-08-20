@@ -101,6 +101,7 @@ npfkern_m_ensure_contig(struct mbuf **m0, size_t len)
 		memcpy(dptr, m->m_data, m->m_len);
 		dptr += m->m_len;
 	}
+	npfkern_m_freem(*m0);
 	*m0 = m1;
 	(void)len;
 	return true;
@@ -297,7 +298,7 @@ mbuf_get_pkt(int af, int proto, const char *src, const char *dst,
 		uh->uh_dport = htons(dport);
 		break;
 	default:
-		abort();
+		KASSERT(false);
 	}
 	return m;
 }

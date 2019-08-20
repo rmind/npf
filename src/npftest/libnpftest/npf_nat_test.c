@@ -217,7 +217,6 @@ npf_nat_test(bool verbose)
 {
 	npf_t *npf = npf_getkernctx();
 
-	srandom(1);
 	for (unsigned i = 0; i < __arraycount(test_cases); i++) {
 		const struct test_case *t = &test_cases[i];
 		ifnet_t *ifp = npf_test_getif(t->ifname);
