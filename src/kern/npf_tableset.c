@@ -459,12 +459,12 @@ int
 npf_table_check(npf_tableset_t *ts, const char *name, uint64_t tid,
     uint64_t type, bool replacing)
 {
-	const npf_table_t *t, *dt;
+	const npf_table_t *t;
 
 	if (tid >= ts->ts_nitems) {
 		return EINVAL;
 	}
-	if ((t = ts->ts_map[tid]) != NULL && !replacing) {
+	if (!replacing && ts->ts_map[tid] != NULL) {
 		return EEXIST;
 	}
 	switch (type) {
@@ -479,8 +479,8 @@ npf_table_check(npf_tableset_t *ts, const char *name, uint64_t tid,
 	if (strlen(name) >= NPF_TABLE_MAXNAMELEN) {
 		return ENAMETOOLONG;
 	}
-	if ((dt = npf_tableset_getbyname(ts, name)) != NULL) {
-		if (!replacing || dt->t_id != tid) {
+	if ((t = npf_tableset_getbyname(ts, name)) != NULL) {
+		if (!replacing || t->t_id != tid) {
 			return EEXIST;
 		}
 	}
