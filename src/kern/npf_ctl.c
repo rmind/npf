@@ -762,10 +762,9 @@ out:
 static int __noinline
 npfctl_table_replace_nvlist(npf_t *npf, nvlist_t *npf_dict, nvlist_t *errdict)
 {
+	npf_table_t *tbl, *gc_tbl = NULL;
 	npf_tableset_t *tblset;
 	int error = 0;
-
-	npf_table_t *tbl, *gc_tbl;
 
 	npf_config_enter(npf);
 	tblset = npf_config_tableset(npf);
@@ -780,13 +779,14 @@ npfctl_table_replace_nvlist(npf_t *npf, nvlist_t *npf_dict, nvlist_t *errdict)
 	if (gc_tbl == NULL) {
 		error = EINVAL;
 		gc_tbl = tbl;
-		goto err_gc;
+		goto err;
 	}
 	npf_config_sync(npf);
-err_gc:
-	npf_table_destroy(gc_tbl);
 err:
 	npf_config_exit(npf);
+	if (gc_tbl) {
+		npf_table_destroy(gc_tbl);
+	}
 	return error;
 }
 
