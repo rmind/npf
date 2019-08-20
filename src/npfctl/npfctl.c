@@ -701,7 +701,7 @@ npfctl_open_dev(const char *path)
 	if (kernver != NPF_VERSION) {
 		errx(EXIT_FAILURE,
 		    "incompatible NPF interface version (%d, kernel %d)\n"
-		    "Hint: update %s?", NPF_VERSION, kernver, 
+		    "Hint: update %s?", NPF_VERSION, kernver,
 		    kernver > NPF_VERSION ? "userland" : "kernel");
 	}
 	return fd;
