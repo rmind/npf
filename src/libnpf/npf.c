@@ -203,24 +203,25 @@ _npf_rules_process(nl_config_t *ncf, nvlist_t *dict, const char *key)
 }
 
 /*
- * _npf_extract_error: check nvlist errno for errors and extract
- * error details into the provided npf_error_t.
+ * _npf_extract_error: check the error number field and extract the
+ * error details into the npf_error_t structure.
  */
 static int
-_npf_extract_error(nvlist_t *errnv, npf_error_t *errinfo)
+_npf_extract_error(nvlist_t *resp, npf_error_t *errinfo)
 {
 	int error;
 
-	error = dnvlist_get_number(errnv, "errno", 0);
+	error = dnvlist_get_number(resp, "errno", 0);
 	if (error && errinfo) {
 		memset(errinfo, 0, sizeof(npf_error_t));
-		errinfo->id = dnvlist_get_number(errnv, "id", 0);
+
+		errinfo->id = dnvlist_get_number(resp, "id", 0);
 		errinfo->error_msg =
-			dnvlist_take_string(errnv, "error-msg", NULL);
+		    dnvlist_take_string(resp, "error-msg", NULL);
 		errinfo->source_file =
-			dnvlist_take_string(errnv, "source-file", NULL);
+		    dnvlist_take_string(resp, "source-file", NULL);
 		errinfo->source_line =
-			dnvlist_take_number(errnv, "source-line", 0);
+		    dnvlist_take_number(resp, "source-line", 0);
 	}
 	return error;
 }
@@ -1077,7 +1078,7 @@ npf_table_insert(nl_config_t *ncf, nl_table_t *tl)
 }
 
 int
-npf_table_replace(nl_table_t *tl, int fd, npf_error_t *errinfo)
+npf_table_replace(int fd, nl_table_t *tl, npf_error_t *errinfo)
 {
 	nvlist_t *errnv = NULL;
 	int error;
@@ -1087,7 +1088,8 @@ npf_table_replace(nl_table_t *tl, int fd, npf_error_t *errinfo)
 		return error;
 	}
 
-	if (nvlist_xfer_ioctl(fd, IOC_NPF_TABLE_REPLACE, tl->table_dict, &errnv) == -1) {
+	if (nvlist_xfer_ioctl(fd, IOC_NPF_TABLE_REPLACE,
+	    tl->table_dict, &errnv) == -1) {
 		assert(errnv == NULL);
 		return errno;
 	}
