@@ -29,8 +29,8 @@
 
 /*
  * This file contains wrappers of the kernel interfaces for the
- * standalone version of NPF.  These wrappers use inteded to be portable,
- * using the standard C99 or POSIX interfaces.
+ * standalone version of NPF.  These wrappers use intended to be
+ * portable, using the standard C99 or POSIX interfaces.
  */
 
 #include <sys/cdefs.h>
@@ -150,6 +150,7 @@ typedef ebr_t *			pserialize_t;
 #else
 #define	pserialize_read_exit(s)	assert((s) == NPF_DIAG_MAGIC_VAL)
 #endif
+#define	pserialize_in_read_section()	true
 
 /*
  * Atomic operations and memory barriers.

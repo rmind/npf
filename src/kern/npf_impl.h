@@ -75,7 +75,6 @@ struct npf_rprocset;
 struct npf_portmap;
 struct npf_nat;
 struct npf_conn;
-struct npf_config;
 
 typedef struct npf_ruleset	npf_ruleset_t;
 typedef struct npf_rule		npf_rule_t;
@@ -85,7 +84,6 @@ typedef struct npf_rprocset	npf_rprocset_t;
 typedef struct npf_alg		npf_alg_t;
 typedef struct npf_natpolicy	npf_natpolicy_t;
 typedef struct npf_conn		npf_conn_t;
-typedef struct npf_config	npf_config_t;
 
 struct npf_conndb;
 struct npf_table;
@@ -101,6 +99,14 @@ typedef struct npf_algset	npf_algset_t;
 /*
  * DEFINITIONS.
  */
+
+typedef struct {
+	npf_ruleset_t *		ruleset;
+	npf_ruleset_t *		nat_ruleset;
+	npf_rprocset_t *	rule_procs;
+	npf_tableset_t *	tableset;
+	bool			default_pass;
+} npf_config_t;
 
 typedef void (*npf_workfunc_t)(npf_t *);
 
@@ -265,19 +271,19 @@ void		npf_rproc_assign(npf_rproc_t *, void *);
 void		npf_config_init(npf_t *);
 void		npf_config_fini(npf_t *);
 
-void		npf_config_enter(npf_t *);
+npf_config_t *	npf_config_enter(npf_t *);
 void		npf_config_exit(npf_t *);
 void		npf_config_sync(npf_t *);
 bool		npf_config_locked_p(npf_t *);
 int		npf_config_read_enter(void);
 void		npf_config_read_exit(int s);
 
-void		npf_config_load(npf_t *, npf_ruleset_t *, npf_tableset_t *,
-		    npf_ruleset_t *, npf_rprocset_t *, npf_conndb_t *, bool);
+npf_config_t *	npf_config_create(void);
+void		npf_config_destroy(npf_config_t *);
+void		npf_config_load(npf_t *, npf_config_t *, npf_conndb_t *, bool);
 npf_ruleset_t *	npf_config_ruleset(npf_t *npf);
 npf_ruleset_t *	npf_config_natset(npf_t *npf);
 npf_tableset_t *npf_config_tableset(npf_t *npf);
-npf_rprocset_t *npf_config_rprocs(npf_t *);
 bool		npf_default_pass(npf_t *);
 
 int		npf_worker_sysinit(unsigned);
