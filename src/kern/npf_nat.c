@@ -381,19 +381,22 @@ npf_nat_which(const unsigned type, bool forw)
 static npf_natpolicy_t *
 npf_nat_inspect(npf_cache_t *npc, const int di)
 {
-	int slock = npf_config_read_enter();
-	npf_ruleset_t *rlset = npf_config_natset(npc->npc_ctx);
+	npf_t *npf = npc->npc_ctx;
+	npf_ruleset_t *rlset;
 	npf_natpolicy_t *np;
 	npf_rule_t *rl;
+	int slock;
 
+	slock = npf_config_read_enter(npf);
+	rlset = npf_config_natset(npf);
 	rl = npf_ruleset_inspect(npc, rlset, di, NPF_LAYER_3);
 	if (rl == NULL) {
-		npf_config_read_exit(slock);
+		npf_config_read_exit(npf, slock);
 		return NULL;
 	}
 	np = npf_rule_getnat(rl);
 	atomic_inc_uint(&np->n_refcnt);
-	npf_config_read_exit(slock);
+	npf_config_read_exit(npf, slock);
 	return np;
 }
 

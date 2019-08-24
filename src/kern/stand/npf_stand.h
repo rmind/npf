@@ -135,24 +135,6 @@ npfkern_pthread_cond_timedwait(pthread_cond_t *t, pthread_mutex_t *l,
 #define	cv_destroy(c)		pthread_cond_destroy(c)
 
 /*
- * Passive serialization based on EBR.
- */
-typedef ebr_t *			pserialize_t;
-
-#define	pserialize_create()	ebr_create()
-#define	pserialize_destroy(p)	ebr_destroy(p)
-#define	pserialize_register(p)	ebr_register(p)
-#define	pserialize_unregister(p) ebr_unregister(p)
-#define	pserialize_perform(p)	ebr_full_sync(p, 1)
-#define	pserialize_read_enter()	NPF_DIAG_MAGIC_VAL
-#ifdef NDEBUG
-#define	pserialize_read_exit(s)	(void)(s);
-#else
-#define	pserialize_read_exit(s)	assert((s) == NPF_DIAG_MAGIC_VAL)
-#endif
-#define	pserialize_in_read_section()	true
-
-/*
  * Atomic operations and memory barriers.
  */
 
