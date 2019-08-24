@@ -54,7 +54,6 @@ __KERNEL_RCSID(0, "$NetBSD: npf_conf.c,v 1.13 2019/07/23 00:52:01 rmind Exp $");
 
 #include <sys/atomic.h>
 #include <sys/kmem.h>
-#include <sys/pserialize.h>
 #include <sys/mutex.h>
 #endif
 
@@ -110,7 +109,7 @@ npf_config_fini(npf_t *npf)
 	/* Flush the connections. */
 	mutex_enter(&npf->config_lock);
 	npf_conn_tracking(npf, false);
-	pserialize_perform(npf->qsbr);
+	npf_ebr_full_sync(npf->ebr);
 	npf_conn_load(npf, cd, false);
 	npf_ifmap_flush(npf);
 	mutex_exit(&npf->config_lock);
@@ -165,7 +164,7 @@ npf_config_load(npf_t *npf, npf_config_t *nc, npf_conndb_t *conns, bool flush)
 	}
 
 	/* Synchronise: drain all references. */
-	pserialize_perform(npf->qsbr);
+	npf_ebr_full_sync(npf->ebr);
 	if (flush) {
 		npf_portmap_flush(npf->portmap);
 		npf_ifmap_flush(npf);
@@ -212,7 +211,7 @@ void
 npf_config_sync(npf_t *npf)
 {
 	KASSERT(npf_config_locked_p(npf));
-	pserialize_perform(npf->qsbr);
+	npf_ebr_full_sync(npf->ebr);
 }
 
 /*
@@ -220,15 +219,15 @@ npf_config_sync(npf_t *npf)
  */
 
 int
-npf_config_read_enter(void)
+npf_config_read_enter(npf_t *npf)
 {
-	return pserialize_read_enter();
+	return npf_ebr_enter(npf->ebr);
 }
 
 void
-npf_config_read_exit(int s)
+npf_config_read_exit(npf_t *npf, int s)
 {
-	pserialize_read_exit(s);
+	npf_ebr_exit(npf->ebr, s);
 }
 
 /*
@@ -238,27 +237,27 @@ npf_config_read_exit(int s)
 npf_ruleset_t *
 npf_config_ruleset(npf_t *npf)
 {
-	KASSERT(pserialize_in_read_section());
+	KASSERT(npf_config_locked_p(npf) || npf_ebr_incrit_p(npf->ebr));
 	return npf->config->ruleset;
 }
 
 npf_ruleset_t *
 npf_config_natset(npf_t *npf)
 {
-	KASSERT(pserialize_in_read_section());
+	KASSERT(npf_config_locked_p(npf) || npf_ebr_incrit_p(npf->ebr));
 	return npf->config->nat_ruleset;
 }
 
 npf_tableset_t *
 npf_config_tableset(npf_t *npf)
 {
-	KASSERT(pserialize_in_read_section());
+	KASSERT(npf_config_locked_p(npf) || npf_ebr_incrit_p(npf->ebr));
 	return npf->config->tableset;
 }
 
 bool
 npf_default_pass(npf_t *npf)
 {
-	KASSERT(pserialize_in_read_section());
+	KASSERT(npf_config_locked_p(npf) || npf_ebr_incrit_p(npf->ebr));
 	return npf->config->default_pass;
 }

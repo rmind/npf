@@ -7,10 +7,6 @@ if [ -z "$base_netbsd" ]; then
 	echo "ERROR: ./npf_to_netbsd.sh <base-netbsd-src>" >&2
 	exit 1
 fi
-if [ ! -f "$base_netbsd/build.sh" ]; then
-	echo "ERROR: '$base_netbsd' does not seem to be a NetBSD source tree" >&2
-	exit 1
-fi
 
 base_npf="$(dirname $0)/../src"
 cd "$base_npf"

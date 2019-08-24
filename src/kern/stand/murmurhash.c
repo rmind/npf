@@ -13,6 +13,7 @@
 
 #include <sys/cdefs.h>
 #include <sys/types.h>
+#include <endian.h>
 
 #include "npf_stand.h"
 
@@ -37,6 +38,8 @@ murmurhash2(const void *key, size_t len, uint32_t seed)
 	if (__predict_true(ALIGNED_POINTER(key, uint32_t))) {
 		while (len >= sizeof(uint32_t)) {
 			uint32_t k = *(const uint32_t *)(const void *)data;
+
+			k = htole32(k);
 
 			k *= m;
 			k ^= k >> r;
