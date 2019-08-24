@@ -260,7 +260,7 @@ npf_alg_exec(npf_cache_t *npc, npf_nat_t *nt, bool forw)
 }
 
 /*
- * npf_alg_conn: query ALGs giving which may perform a custom state lookup.
+ * npf_alg_conn: query ALGs which may perform a custom state lookup.
  *
  *	The purpose of ALG connection inspection function is to provide
  *	ALGs with a mechanism to override the regular connection state
