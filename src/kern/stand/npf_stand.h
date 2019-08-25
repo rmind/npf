@@ -379,6 +379,10 @@ npfkern_kpause(const char *wmesg, bool intr, int timo, kmutex_t *mtx)
 #define PFIL_IFADDR	0x00000008
 #define PFIL_IFNET	0x00000010
 
+#ifndef PACKET_TAG_NPF
+#define	PACKET_TAG_NPF	10
+#endif
+
 #define	MAX_TCPOPTLEN	40
 
 #ifndef satosin
