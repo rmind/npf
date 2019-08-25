@@ -28,11 +28,11 @@
 
 struct npf;
 
-bool	npf_pfil_registered_p(void);
+bool	npf_active_p(void);
 void	npf_ifaddr_syncall(struct npf *);
 
 bool
-npf_pfil_registered_p(void)
+npf_active_p(void)
 {
 	return true;
 }

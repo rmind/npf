@@ -29,6 +29,7 @@
 #include <assert.h>
 
 #include <qsbr/ebr.h>
+
 #include "../npf_impl.h"
 
 /*
@@ -63,13 +64,13 @@ int
 npf_ebr_enter(ebr_t *ebr)
 {
 	ebr_enter(ebr);
-	return 0x5a5a5a5a;
+	return NPF_DIAG_MAGIC_VAL;
 }
 
 void
 npf_ebr_exit(ebr_t *ebr, int s)
 {
-	assert(s == 0x5a5a5a5a);
+	assert(s == NPF_DIAG_MAGIC_VAL);
 	ebr_exit(ebr);
 }
 

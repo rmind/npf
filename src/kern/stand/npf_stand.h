@@ -379,8 +379,6 @@ npfkern_kpause(const char *wmesg, bool intr, int timo, kmutex_t *mtx)
 #define PFIL_IFADDR	0x00000008
 #define PFIL_IFNET	0x00000010
 
-#define	pfil_head_t	void
-
 #define	MAX_TCPOPTLEN	40
 
 #ifndef satosin
@@ -465,8 +463,6 @@ typedef int modcmd_t;
 #ifndef EPROGMISMATCH
 #define	EPROGMISMATCH		ENOTSUP
 #endif
-
-#define	ffs32(x)		ffs(x)
 
 struct cpu_info { unsigned id; };
 
