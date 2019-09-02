@@ -213,7 +213,7 @@ void		npfctl_build_natseg(int, int, unsigned, const char *,
 		    const addr_port_t *, const addr_port_t *,
 		    const opt_proto_t *, const filt_opts_t *, unsigned);
 void		npfctl_build_maprset(const char *, int, const char *);
-void		npfctl_build_table(const char *, int, u_int, const char *);
+void		npfctl_build_table(const char *, u_int, const char *);
 
 void		npfctl_setparam(const char *, int);
 

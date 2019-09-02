@@ -314,7 +314,7 @@ element
 table
 	: TABLE TABLE_ID TYPE table_type table_store
 	{
-		npfctl_build_table($2, -1, $4, $5);
+		npfctl_build_table($2, $4, $5);
 	}
 	;
 

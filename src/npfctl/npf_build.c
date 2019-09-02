@@ -934,7 +934,7 @@ npfctl_load_table(const char *tname, int tid, u_int type,
  * if required, fill with contents from a file.
  */
 void
-npfctl_build_table(const char *tname, int tid, u_int type, const char *fname)
+npfctl_build_table(const char *tname, u_int type, const char *fname)
 {
 	nl_table_t *tl;
 
@@ -942,11 +942,7 @@ npfctl_build_table(const char *tname, int tid, u_int type, const char *fname)
 		yyerror("table type 'const' must be loaded from a file");
 	}
 
-	if (tid < 0) {
-		tid = npfctl_tid_counter++;
-	}
-
-	tl = npfctl_load_table(tname, tid, type, fname, NULL);
+	tl = npfctl_load_table(tname, npfctl_tid_counter++, type, fname, NULL);
 	assert(tl != NULL);
 
 	if (npf_table_insert(npf_conf, tl)) {
