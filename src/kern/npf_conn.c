@@ -782,7 +782,8 @@ npf_conn_export(npf_t *npf, npf_conn_t *con)
 	nvlist_add_number(cdict, "flags", con->c_flags);
 	nvlist_add_number(cdict, "proto", con->c_proto);
 	if (con->c_ifid) {
-		const char *ifname = npf_ifmap_getname(npf, con->c_ifid);
+		char ifname[IFNAMSIZ];
+		npf_ifmap_copyname(npf, con->c_ifid, ifname, sizeof(ifname));
 		nvlist_add_string(cdict, "ifname", ifname);
 	}
 	nvlist_add_binary(cdict, "state", &con->c_state, sizeof(npf_state_t));

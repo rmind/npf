@@ -680,7 +680,8 @@ npf_rule_export(npf_t *npf, const npf_rule_t *rl)
 		nvlist_add_binary(rule, "code", rl->r_code, rl->r_clen);
 	}
 	if (rl->r_ifid) {
-		const char *ifname = npf_ifmap_getname(npf, rl->r_ifid);
+		char ifname[IFNAMSIZ];
+		npf_ifmap_copyname(npf, rl->r_ifid, ifname, sizeof(ifname));
 		nvlist_add_string(rule, "ifname", ifname);
 	}
 	nvlist_add_number(rule, "id", rl->r_id);
