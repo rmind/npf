@@ -1,4 +1,4 @@
-.\"	$NetBSD: npfctl.8,v 1.21 2019/01/19 21:19:32 rmind Exp $
+.\"	$NetBSD$
 .\"
 .\" Copyright (c) 2009-2014 The NetBSD Foundation, Inc.
 .\" All rights reserved.
@@ -148,7 +148,7 @@ be named
 .Ar newname ,
 effectively renaming the table.
 If not specified, the name of the table being replaced will be used.
-.It Fl n Ar type
+.It Fl t Ar type
 be of type
 .Ar type ;
 currently supported types are
@@ -203,7 +203,7 @@ See
 for details.
 .\" -----
 .Sh FILES
-.Bl -tag -width /etc/npf.conf -compact
+.Bl -tag -width Pa -compact
 .It Pa /dev/npf
 control device
 .It Pa /etc/npf.conf
