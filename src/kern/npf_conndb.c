@@ -60,6 +60,8 @@ __KERNEL_RCSID(0, "$NetBSD: npf_conndb.c,v 1.6 2019/07/23 00:52:01 rmind Exp $")
 #include "npf_conn.h"
 #include "npf_impl.h"
 
+#define	NPF_CONNDB_SUMM_NUM_COPIES		2
+
 struct npf_conndb {
 	thmap_t *		cd_map;
 
@@ -76,6 +78,10 @@ struct npf_conndb {
 
 	/* The last inspected connection (for circular iteration). */
 	npf_conn_t *		cd_marker;
+
+	/* connection db summary stat */
+	uint8_t			summary_work_copy_ind; /* current working summary copy */
+	uint32_t		summary[NPF_CONNDB_SUMM_NUM_COPIES][NPF_CONNDB_SUMM_NSTATES];
 };
 
 typedef struct {
@@ -274,6 +280,48 @@ npf_conndb_getnext(npf_conndb_t *cd, npf_conn_t *con)
 }
 
 /*
+ * Clear conndb summary stat working copy
+ */
+static void
+npf_conndb_summary_clear(npf_conndb_t *cd)
+{
+	uint8_t ind;
+
+	ind = cd->summary_work_copy_ind & (NPF_CONNDB_SUMM_NUM_COPIES - 1);
+	memset(&cd->summary[ind], 0, sizeof(cd->summary[0][0]) *
+			  NPF_CONNDB_SUMM_NSTATES);
+}
+
+/*
+ */
+static void
+npf_conndb_summary_inc(npf_conndb_t *cd, npf_conn_t *con)
+{
+	unsigned state;
+	uint8_t ind;
+
+	ind = cd->summary_work_copy_ind & (NPF_CONNDB_SUMM_NUM_COPIES - 1);
+
+	switch (con->c_proto) {
+	case IPPROTO_TCP:
+		state = con->c_state.nst_state;
+		break;
+
+	case IPPROTO_GRE:
+		state = NPF_CONNDB_SUMM_GRE_STATE;
+		break;
+
+	default:
+		if (con->c_state.nst_state >= NPF_ANY_CONN_NSTATES)
+			return;
+		state = NPF_CONNDB_SUMM_ANY_STATE_OFFS + con->c_state.nst_state;
+		break;
+	}
+
+	cd->summary[ind][state]++;
+}
+
+/*
  * npf_conndb_gc_incr: incremental G/C of the expired connections.
  */
 static void
@@ -301,6 +349,13 @@ npf_conndb_gc_incr(npf_t *npf, npf_conndb_t *cd, const time_t now)
 	while (con && target--) {
 		npf_conn_t *next = npf_conndb_getnext(cd, con);
 
+		/* keep track of conndb statistic */
+		if (con == LIST_FIRST(&cd->cd_list)) {
+			/* start new summary cycle */
+			cd->summary_work_copy_ind++;
+			npf_conndb_summary_clear(cd);
+		}
+
 		/*
 		 * Can we G/C this connection?
 		 */
@@ -321,6 +376,9 @@ npf_conndb_gc_incr(npf_t *npf, npf_conndb_t *cd, const time_t now)
 			}
 		}
 		con = next;
+
+		/* keep track of conndb statistic */
+		npf_conndb_summary_inc(cd, con);
 
 		/*
 		 * Circular iteration: if we returned back to the
@@ -406,4 +464,17 @@ npf_conndb_gc(npf_t *npf, npf_conndb_t *cd, bool flush, bool sync)
 		LIST_REMOVE(con, c_entry);
 		npf_conn_destroy(npf, con);
 	}
+}
+
+/*
+ * Return reference to the conndb summary array
+ */
+__dso_public uint32_t *
+npf_conndb_summary(const npf_t *npf)
+{
+	uint8_t ind;
+
+	ind = (npf->conn_db->summary_work_copy_ind + 1) &
+			  (NPF_CONNDB_SUMM_NUM_COPIES - 1);
+	return &npf->conn_db->summary[ind][0];
 }

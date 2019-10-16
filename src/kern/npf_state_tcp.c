@@ -44,26 +44,6 @@ __KERNEL_RCSID(0, "$NetBSD: npf_state_tcp.c,v 1.20 2019/07/23 00:52:01 rmind Exp
 
 #include "npf_impl.h"
 
-/*
- * NPF TCP states.  Note: these states are different from the TCP FSM
- * states of RFC 793.  The packet filter is a man-in-the-middle.
- */
-#define	NPF_TCPS_OK		255
-#define	NPF_TCPS_CLOSED		0
-#define	NPF_TCPS_SYN_SENT	1
-#define	NPF_TCPS_SIMSYN_SENT	2
-#define	NPF_TCPS_SYN_RECEIVED	3
-#define	NPF_TCPS_ESTABLISHED	4
-#define	NPF_TCPS_FIN_SENT	5
-#define	NPF_TCPS_FIN_RECEIVED	6
-#define	NPF_TCPS_CLOSE_WAIT	7
-#define	NPF_TCPS_FIN_WAIT	8
-#define	NPF_TCPS_CLOSING	9
-#define	NPF_TCPS_LAST_ACK	10
-#define	NPF_TCPS_TIME_WAIT	11
-
-#define	NPF_TCP_NSTATES		12
-
 /* Timeouts */
 #define	NPF_TCPT_NEW		0
 #define	NPF_TCPT_ESTABLISHED	1
