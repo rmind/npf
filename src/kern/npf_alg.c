@@ -33,13 +33,12 @@
 
 #ifdef _KERNEL
 #include <sys/cdefs.h>
-__KERNEL_RCSID(0, "$NetBSD: npf_alg.c,v 1.19 2019/01/19 21:19:31 rmind Exp $");
+__KERNEL_RCSID(0, "$NetBSD: npf_alg.c,v 1.20 2019/07/23 00:52:01 rmind Exp $");
 
 #include <sys/param.h>
 #include <sys/types.h>
 
 #include <sys/kmem.h>
-#include <sys/pserialize.h>
 #include <sys/module.h>
 #endif
 
@@ -192,7 +191,7 @@ npf_alg_unregister(npf_t *npf, npf_alg_t *alg)
 	afuncs->match = NULL;
 	afuncs->translate = NULL;
 	afuncs->inspect = NULL;
-	pserialize_perform(npf->qsbr);
+	npf_ebr_full_sync(npf->ebr);
 
 	/* Finally, unregister the ALG. */
 	npf_ruleset_freealg(npf_config_natset(npf), alg);
@@ -217,13 +216,14 @@ npf_alg_unregister(npf_t *npf, npf_alg_t *alg)
 bool
 npf_alg_match(npf_cache_t *npc, npf_nat_t *nt, int di)
 {
-	npf_algset_t *aset = npc->npc_ctx->algset;
+	npf_t *npf = npc->npc_ctx;
+	npf_algset_t *aset = npf->algset;
 	bool match = false;
 	int s;
 
 	KASSERTMSG(npf_iscached(npc, NPC_IP46), "expecting protocol number");
 
-	s = pserialize_read_enter();
+	s = npf_ebr_enter(npf->ebr);
 	for (unsigned i = 0; i < aset->alg_count; i++) {
 		const npfa_funcs_t *f = &aset->alg_funcs[i];
 
@@ -232,7 +232,7 @@ npf_alg_match(npf_cache_t *npc, npf_nat_t *nt, int di)
 			break;
 		}
 	}
-	pserialize_read_exit(s);
+	npf_ebr_exit(npf->ebr, s);
 	return match;
 }
 
@@ -251,22 +251,23 @@ void
 npf_alg_exec(npf_cache_t *npc, npf_nat_t *nt, bool forw)
 {
 	int s;
+	npf_t *npf = npc->npc_ctx;
 	npf_alg_t *alg;
 
-	s = pserialize_read_enter();
-
+	s = npf_ebr_enter(npf->ebr);
+	
 	alg = npf_nat_getalg(nt);
 	if (alg != NULL) {
-		npfa_funcs_t *funcs = npf_alg_get_funcs(npc->npc_ctx, alg);
+		npfa_funcs_t *funcs = npf_alg_get_funcs(npf, alg);
 		if (funcs->translate != NULL)
 			funcs->translate(npc, nt, forw);
 	}
 
-	pserialize_read_exit(s);
+	npf_ebr_exit(npf->ebr, s);
 }
 
 /*
- * npf_alg_conn: query ALGs giving which may perform a custom state lookup.
+ * npf_alg_conn: query ALGs which may perform a custom state lookup.
  *
  *	The purpose of ALG connection inspection function is to provide
  *	ALGs with a mechanism to override the regular connection state
@@ -285,11 +286,12 @@ npf_alg_exec(npf_cache_t *npc, npf_nat_t *nt, bool forw)
 npf_conn_t *
 npf_alg_conn(npf_cache_t *npc, int di)
 {
-	npf_algset_t *aset = npc->npc_ctx->algset;
+	npf_t *npf = npc->npc_ctx;
+	npf_algset_t *aset = npf->algset;
 	npf_conn_t *con = NULL;
 	int s;
 
-	s = pserialize_read_enter();
+	s = npf_ebr_enter(npf->ebr);
 	for (unsigned i = 0; i < aset->alg_count; i++) {
 		const npfa_funcs_t *f = &aset->alg_funcs[i];
 
@@ -298,7 +300,7 @@ npf_alg_conn(npf_cache_t *npc, int di)
 		if ((con = f->inspect(npc, di)) != NULL)
 			break;
 	}
-	pserialize_read_exit(s);
+	npf_ebr_exit(npf->ebr, s);
 	return con;
 }
 

@@ -256,8 +256,9 @@ bool		npf_autounload_p(void);
 #define	NPF_LAYER_2			2
 #define	NPF_LAYER_3			3
 
-/* XXX mbuf.h: just for now. */
-#define	PACKET_TAG_NPF			10
+/*
+ * Flags passed via nbuf tags.
+ */
 #define	NPF_NTAG_PASS			0x0001
 
 /*
@@ -313,6 +314,7 @@ typedef struct npf_ioctl_table {
 #define	IOC_NPF_SAVE		_IOR('N', 105, nvlist_ref_t)
 #define	IOC_NPF_RULE		_IOWR('N', 107, nvlist_ref_t)
 #define	IOC_NPF_CONN_LOOKUP	_IOWR('N', 108, nvlist_ref_t)
+#define	IOC_NPF_TABLE_REPLACE	_IOWR('N', 109, nvlist_ref_t)
 
 /*
  * NPF error report.

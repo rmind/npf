@@ -33,7 +33,7 @@
 
 #ifdef _KERNEL
 #include <sys/cdefs.h>
-__KERNEL_RCSID(0, "$NetBSD: npf_os.c,v 1.10 2018/09/29 14:41:36 rmind Exp $");
+__KERNEL_RCSID(0, "$NetBSD: npf_os.c,v 1.13 2019/08/10 21:13:54 rmind Exp $");
 
 #ifdef _KERNEL_OPT
 #include "pf.h"
@@ -50,6 +50,7 @@ __KERNEL_RCSID(0, "$NetBSD: npf_os.c,v 1.10 2018/09/29 14:41:36 rmind Exp $");
 #include <sys/kmem.h>
 #include <sys/lwp.h>
 #include <sys/module.h>
+#include <sys/pserialize.h>
 #include <sys/socketvar.h>
 #include <sys/uio.h>
 
@@ -82,6 +83,9 @@ MODULE(MODULE_CLASS_MISC, npf, "bpf");
 /* This module autoloads via /dev/npf so it needs to be a driver */
 MODULE(MODULE_CLASS_DRIVER, npf, "bpf");
 #endif
+
+static int	npf_pfil_register(bool);
+static void	npf_pfil_unregister(bool);
 
 static int	npf_dev_open(dev_t, int, int, lwp_t *);
 static int	npf_dev_close(dev_t, int, int, lwp_t *);
@@ -135,8 +139,8 @@ npf_fini(void)
 	devsw_detach(NULL, &npf_cdevsw);
 #endif
 	npf_pfil_unregister(true);
-	npf_destroy(npf);
-	npf_sysfini();
+	npfk_destroy(npf);
+	npfk_sysfini();
 	return 0;
 }
 
@@ -146,10 +150,10 @@ npf_init(void)
 	npf_t *npf;
 	int error = 0;
 
-	error = npf_sysinit(nworkers);
+	error = npfk_sysinit(nworkers);
 	if (error)
 		return error;
-	npf = npf_create(0, NULL, &kern_ifops);
+	npf = npfk_create(0, NULL, &kern_ifops);
 	npf_setkernctx(npf);
 	npf_pfil_register(true);
 
@@ -225,6 +229,26 @@ npf_stats_export(npf_t *npf, void *data)
 	return error;
 }
 
+/*
+ * npfctl_switch: enable or disable packet inspection.
+ */
+static int
+npfctl_switch(void *data)
+{
+	const bool onoff = *(int *)data ? true : false;
+	int error;
+
+	if (onoff) {
+		/* Enable: add pfil hooks. */
+		error = npf_pfil_register(false);
+	} else {
+		/* Disable: remove pfil hooks. */
+		npf_pfil_unregister(false);
+		error = 0;
+	}
+	return error;
+}
+
 static int
 npf_dev_ioctl(dev_t dev, u_long cmd, void *data, int flag, lwp_t *l)
 {
@@ -259,6 +283,9 @@ npf_dev_ioctl(dev_t dev, u_long cmd, void *data, int flag, lwp_t *l)
 	case IOC_NPF_CONN_LOOKUP:
 		error = npfctl_conn_lookup(npf, cmd, data);
 		break;
+	case IOC_NPF_TABLE_REPLACE:
+		error = npfctl_table_replace(npf, cmd, data);
+		break;
 	case IOC_NPF_VERSION:
 		*(int *)data = NPF_VERSION;
 		error = 0;
@@ -286,7 +313,7 @@ bool
 npf_autounload_p(void)
 {
 	npf_t *npf = npf_getkernctx();
-	return !npf_pfil_registered_p() && npf_default_pass(npf);
+	return !npf_active_p() && npf_default_pass(npf);
 }
 
 /*
@@ -313,7 +340,7 @@ npf_ifop_flush(void *arg)
 	KERNEL_LOCK(1, NULL);
 	IFNET_GLOBAL_LOCK();
 	IFNET_WRITER_FOREACH(ifp) {
-		ifp->if_pf_kif = arg;
+		ifp->if_npf_private = arg;
 	}
 	IFNET_GLOBAL_UNLOCK();
 	KERNEL_UNLOCK_ONE(NULL);
@@ -322,13 +349,13 @@ npf_ifop_flush(void *arg)
 static void *
 npf_ifop_getmeta(const ifnet_t *ifp)
 {
-	return ifp->if_pf_kif;
+	return ifp->if_npf_private;
 }
 
 static void
 npf_ifop_setmeta(ifnet_t *ifp, void *arg)
 {
-	ifp->if_pf_kif = arg;
+	ifp->if_npf_private = arg;
 }
 
 #ifdef _KERNEL
@@ -354,11 +381,11 @@ npf_ifhook(void *arg, unsigned long cmd, void *arg2)
 
 	switch (cmd) {
 	case PFIL_IFNET_ATTACH:
-		npf_ifmap_attach(npf, ifp);
+		npfk_ifmap_attach(npf, ifp);
 		npf_ifaddr_sync(npf, ifp);
 		break;
 	case PFIL_IFNET_DETACH:
-		npf_ifmap_detach(npf, ifp);
+		npfk_ifmap_detach(npf, ifp);
 		npf_ifaddr_flush(npf, ifp);
 		break;
 	}
@@ -390,7 +417,7 @@ npf_ifaddrhook(void *arg, u_long cmd, void *arg2)
 /*
  * npf_pfil_register: register pfil(9) hooks.
  */
-int
+static int
 npf_pfil_register(bool init)
 {
 	npf_t *npf = npf_getkernctx();
@@ -459,7 +486,7 @@ out:
 /*
  * npf_pfil_unregister: unregister pfil(9) hooks.
  */
-void
+static void
 npf_pfil_unregister(bool fini)
 {
 	npf_t *npf = npf_getkernctx();
@@ -486,8 +513,64 @@ npf_pfil_unregister(bool fini)
 }
 
 bool
-npf_pfil_registered_p(void)
+npf_active_p(void)
 {
 	return pfil_registered;
 }
+
+#endif
+
+#ifdef __NetBSD__
+
+ebr_t *
+npf_ebr_create(void)
+{
+	return pserialize_create();
+}
+
+void
+npf_ebr_destroy(ebr_t *ebr)
+{
+	pserialize_destroy(ebr);
+}
+
+void
+npf_ebr_register(ebr_t *ebr)
+{
+	KASSERT(ebr != NULL); (void)ebr;
+}
+
+void
+npf_ebr_unregister(ebr_t *ebr)
+{
+	KASSERT(ebr != NULL); (void)ebr;
+}
+
+int
+npf_ebr_enter(ebr_t *ebr)
+{
+	KASSERT(ebr != NULL); (void)ebr;
+	return pserialize_read_enter();
+}
+
+void
+npf_ebr_exit(ebr_t *ebr, int s)
+{
+	KASSERT(ebr != NULL); (void)ebr;
+	pserialize_read_exit(s);
+}
+
+void
+npf_ebr_full_sync(ebr_t *ebr)
+{
+	pserialize_perform(ebr);
+}
+
+bool
+npf_ebr_incrit_p(ebr_t *ebr)
+{
+	KASSERT(ebr != NULL); (void)ebr;
+	return pserialize_in_read_section();
+}
+
 #endif

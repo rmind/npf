@@ -56,6 +56,12 @@ typedef struct nl_ext		nl_ext_t;
 typedef signed long		nl_iter_t;
 
 /*
+ * Ruleset prefix(es).
+ */
+
+#define	NPF_RULESET_MAP_PREF	"map:"
+
+/*
  * Extensions API types.
  */
 typedef int (*npfext_initfunc_t)(void);
@@ -145,6 +151,8 @@ int		npf_table_add_entry(nl_table_t *, int,
 		    const npf_addr_t *, const npf_netmask_t);
 int		npf_table_insert(nl_config_t *, nl_table_t *);
 void		npf_table_destroy(nl_table_t *);
+
+int		npf_table_replace(int, nl_table_t *, npf_error_t *);
 
 #ifdef _NPF_PRIVATE
 

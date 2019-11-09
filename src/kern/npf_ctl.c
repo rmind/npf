@@ -36,7 +36,7 @@
 
 #ifdef _KERNEL
 #include <sys/cdefs.h>
-__KERNEL_RCSID(0, "$NetBSD: npf_ctl.c,v 1.53 2019/01/19 21:19:31 rmind Exp $");
+__KERNEL_RCSID(0, "$NetBSD: npf_ctl.c,v 1.54 2019/07/23 00:52:01 rmind Exp $");
 
 #include <sys/param.h>
 #include <sys/conf.h>
@@ -52,28 +52,6 @@ __KERNEL_RCSID(0, "$NetBSD: npf_ctl.c,v 1.53 2019/01/19 21:19:31 rmind Exp $");
 #define	NPF_ERR_DEBUG(e) \
 	nvlist_add_string((e), "source-file", __FILE__); \
 	nvlist_add_number((e), "source-line", __LINE__);
-
-#ifdef _KERNEL
-/*
- * npfctl_switch: enable or disable packet inspection.
- */
-int
-npfctl_switch(void *data)
-{
-	const bool onoff = *(int *)data ? true : false;
-	int error;
-
-	if (onoff) {
-		/* Enable: add pfil hooks. */
-		error = npf_pfil_register(false);
-	} else {
-		/* Disable: remove pfil hooks. */
-		npf_pfil_unregister(false);
-		error = 0;
-	}
-	return error;
-}
-#endif
 
 static int
 npf_nvlist_copyin(npf_t *npf, void *data, nvlist_t **nvl)
@@ -178,9 +156,66 @@ npf_mk_table_entries(npf_table_t *t, const nvlist_t *table, nvlist_t *errdict)
 	return error;
 }
 
+/*
+ * npf_mk_table: create a table from provided nvlist.
+ */
+static int __noinline
+npf_mk_table(npf_t *npf, const nvlist_t *tbl_dict, nvlist_t *errdict,
+    npf_tableset_t *tblset, npf_table_t **tblp, bool replacing)
+{
+	npf_table_t *t;
+	const char *name;
+	const void *blob;
+	uint64_t tid;
+	size_t size;
+	int type;
+	int error = 0;
+
+	KASSERT(tblp != NULL);
+
+	/* Table name, ID and type.  Validate them. */
+	name = dnvlist_get_string(tbl_dict, "name", NULL);
+	if (!name) {
+		NPF_ERR_DEBUG(errdict);
+		error = EINVAL;
+		goto out;
+	}
+	tid = dnvlist_get_number(tbl_dict, "id", UINT64_MAX);
+	type = dnvlist_get_number(tbl_dict, "type", UINT64_MAX);
+	error = npf_table_check(tblset, name, tid, type, replacing);
+	if (error) {
+		NPF_ERR_DEBUG(errdict);
+		goto out;
+	}
+
+	/* Get the entries or binary data. */
+	blob = dnvlist_get_binary(tbl_dict, "data", &size, NULL, 0);
+	if (type == NPF_TABLE_CONST && (blob == NULL || size == 0)) {
+		NPF_ERR_DEBUG(errdict);
+		error = EINVAL;
+		goto out;
+	}
+
+	t = npf_table_create(name, (unsigned)tid, type, blob, size);
+	if (t == NULL) {
+		NPF_ERR_DEBUG(errdict);
+		error = ENOMEM;
+		goto out;
+	}
+
+	if ((error = npf_mk_table_entries(t, tbl_dict, errdict)) != 0) {
+		npf_table_destroy(t);
+		goto out;
+	}
+
+	*tblp = t;
+out:
+	return error;
+}
+
 static int __noinline
 npf_mk_tables(npf_t *npf, nvlist_t *npf_dict, nvlist_t *errdict,
-    npf_tableset_t **tblsetp)
+    npf_config_t *nc)
 {
 	const nvlist_t * const *tables;
 	npf_tableset_t *tblset;
@@ -200,51 +235,17 @@ npf_mk_tables(npf_t *npf, nvlist_t *npf_dict, nvlist_t *errdict,
 	tblset = npf_tableset_create(nitems);
 	for (unsigned i = 0; i < nitems; i++) {
 		const nvlist_t *table = tables[i];
-		const char *name;
-		const void *blob;
 		npf_table_t *t;
-		uint64_t tid;
-		size_t size;
-		int type;
 
-		/* Table name, ID and type.  Validate them. */
-		name = dnvlist_get_string(table, "name", NULL);
-		if (!name) {
-			NPF_ERR_DEBUG(errdict);
-			error = EINVAL;
-			break;
-		}
-		tid = dnvlist_get_number(table, "id", UINT64_MAX);
-		type = dnvlist_get_number(table, "type", UINT64_MAX);
-		error = npf_table_check(tblset, name, tid, type);
+		error = npf_mk_table(npf, table, errdict, tblset, &t, 0);
 		if (error) {
-			NPF_ERR_DEBUG(errdict);
 			break;
 		}
 
-		/* Get the entries or binary data. */
-		blob = dnvlist_get_binary(table, "data", &size, NULL, 0);
-		if (type == NPF_TABLE_CONST && (blob == NULL || size == 0)) {
-			NPF_ERR_DEBUG(errdict);
-			error = EINVAL;
-			break;
-		}
-
-		/* Create and insert the table. */
-		t = npf_table_create(name, (u_int)tid, type, blob, size);
-		if (t == NULL) {
-			NPF_ERR_DEBUG(errdict);
-			error = ENOMEM;
-			break;
-		}
 		error = npf_tableset_insert(tblset, t);
 		KASSERT(error == 0);
-
-		if ((error = npf_mk_table_entries(t, table, errdict)) != 0) {
-			break;
-		}
 	}
-	*tblsetp = tblset;
+	nc->tableset = tblset;
 	return error;
 }
 
@@ -282,7 +283,7 @@ npf_mk_singlerproc(npf_t *npf, const nvlist_t *rproc, nvlist_t *errdict)
 
 static int __noinline
 npf_mk_rprocs(npf_t *npf, nvlist_t *npf_dict, nvlist_t *errdict,
-    npf_rprocset_t **rpsetp)
+    npf_config_t *nc)
 {
 	const nvlist_t * const *rprocs;
 	npf_rprocset_t *rpset;
@@ -310,7 +311,7 @@ npf_mk_rprocs(npf_t *npf, nvlist_t *npf_dict, nvlist_t *errdict,
 		}
 		npf_rprocset_insert(rpset, rp);
 	}
-	*rpsetp = rpset;
+	nc->rule_procs = rpset;
 	return error;
 }
 
@@ -412,7 +413,7 @@ err:
 
 static int __noinline
 npf_mk_rules(npf_t *npf, nvlist_t *npf_dict, nvlist_t *errdict,
-     npf_rprocset_t *rpset, npf_ruleset_t **rlsetp)
+    npf_config_t *nc)
 {
 	const nvlist_t * const *rules;
 	npf_ruleset_t *rlset;
@@ -435,7 +436,8 @@ npf_mk_rules(npf_t *npf, nvlist_t *npf_dict, nvlist_t *errdict,
 		npf_rule_t *rl = NULL;
 		const char *name;
 
-		error = npf_mk_singlerule(npf, rule, rpset, &rl, errdict);
+		error = npf_mk_singlerule(npf, rule, nc->rule_procs, &rl,
+		    errdict);
 		if (error) {
 			break;
 		}
@@ -448,7 +450,7 @@ npf_mk_rules(npf_t *npf, nvlist_t *npf_dict, nvlist_t *errdict,
 		}
 		npf_ruleset_insert(rlset, rl);
 	}
-	*rlsetp = rlset;
+	nc->ruleset = rlset;
 	return error;
 }
 
@@ -471,7 +473,7 @@ npf_mk_singlenat(npf_t *npf, const nvlist_t *nat, npf_ruleset_t *ntset,
 	KASSERT(rl != NULL);
 	*rlp = rl;
 
-	/* If rule is named, it is a group with NAT policies. */
+	/* If this rule is named, then it is a group with NAT policies. */
 	if (dnvlist_get_string(nat, "name", NULL)) {
 		return 0;
 	}
@@ -503,8 +505,8 @@ out:
 }
 
 static int __noinline
-npf_mk_natlist(npf_t *npf, nvlist_t *npf_dict, npf_tableset_t *tblset,
-    nvlist_t *errdict, npf_ruleset_t **ntsetp)
+npf_mk_natlist(npf_t *npf, nvlist_t *npf_dict, nvlist_t *errdict,
+    npf_config_t *nc)
 {
 	const nvlist_t * const *nat_rules;
 	npf_ruleset_t *ntset;
@@ -529,13 +531,14 @@ npf_mk_natlist(npf_t *npf, nvlist_t *npf_dict, npf_tableset_t *tblset,
 		const nvlist_t *nat = nat_rules[i];
 		npf_rule_t *rl = NULL;
 
-		error = npf_mk_singlenat(npf, nat, ntset, tblset, errdict, &rl);
+		error = npf_mk_singlenat(npf, nat, ntset, nc->tableset,
+		    errdict, &rl);
 		if (error) {
 			break;
 		}
 		npf_ruleset_insert(ntset, rl);
 	}
-	*ntsetp = ntset;
+	nc->nat_ruleset = ntset;
 	return error;
 }
 
@@ -544,7 +547,7 @@ npf_mk_natlist(npf_t *npf, nvlist_t *npf_dict, npf_tableset_t *tblset,
  */
 static int __noinline
 npf_mk_connlist(npf_t *npf, nvlist_t *npf_dict, nvlist_t *errdict,
-    npf_ruleset_t *natlist, npf_conndb_t **conndb)
+    npf_config_t *nc, npf_conndb_t **conndb)
 {
 	const nvlist_t * const *conns;
 	npf_conndb_t *cd;
@@ -561,7 +564,7 @@ npf_mk_connlist(npf_t *npf, nvlist_t *npf_dict, nvlist_t *errdict,
 		const nvlist_t *conn = conns[i];
 
 		/* Construct and insert the connection. */
-		error = npf_conn_import(npf, cd, conn, natlist);
+		error = npf_conn_import(npf, cd, conn, nc->nat_ruleset);
 		if (error) {
 			NPF_ERR_DEBUG(errdict);
 			break;
@@ -583,15 +586,13 @@ npf_mk_connlist(npf_t *npf, nvlist_t *npf_dict, nvlist_t *errdict,
 static int
 npfctl_load_nvlist(npf_t *npf, nvlist_t *npf_dict, nvlist_t *errdict)
 {
-	npf_tableset_t *tblset = NULL;
-	npf_ruleset_t *ntset = NULL;
-	npf_rprocset_t *rpset = NULL;
-	npf_ruleset_t *rlset = NULL;
+	npf_config_t *nc;
 	npf_conndb_t *conndb = NULL;
 	uint64_t ver;
 	bool flush;
 	int error;
 
+	nc = npf_config_create();
 	ver = dnvlist_get_number(npf_dict, "version", UINT64_MAX);
 	if (ver != NPF_VERSION) {
 		error = EPROGMISMATCH;
@@ -605,55 +606,41 @@ npfctl_load_nvlist(npf_t *npf, nvlist_t *npf_dict, nvlist_t *errdict)
 	if (error) {
 		goto fail;
 	}
-	error = npf_mk_tables(npf, npf_dict, errdict, &tblset);
+	error = npf_mk_tables(npf, npf_dict, errdict, nc);
 	if (error) {
 		goto fail;
 	}
-	error = npf_mk_rprocs(npf, npf_dict, errdict, &rpset);
+	error = npf_mk_rprocs(npf, npf_dict, errdict, nc);
 	if (error) {
 		goto fail;
 	}
-	error = npf_mk_natlist(npf, npf_dict, tblset, errdict, &ntset);
+	error = npf_mk_natlist(npf, npf_dict, errdict, nc);
 	if (error) {
 		goto fail;
 	}
-	error = npf_mk_rules(npf, npf_dict, errdict, rpset, &rlset);
+	error = npf_mk_rules(npf, npf_dict, errdict, nc);
 	if (error) {
 		goto fail;
 	}
-	error = npf_mk_connlist(npf, npf_dict, errdict, ntset, &conndb);
+	error = npf_mk_connlist(npf, npf_dict, errdict, nc, &conndb);
 	if (error) {
 		goto fail;
 	}
+
+	flush = dnvlist_get_bool(npf_dict, "flush", false);
+	nc->default_pass = flush;
 
 	/*
 	 * Finally - perform the load.
 	 */
-	flush = dnvlist_get_bool(npf_dict, "flush", false);
-	npf_config_load(npf, rlset, tblset, ntset, rpset, conndb, flush);
+	npf_config_load(npf, nc, conndb, flush);
 	npf_mk_params(npf, npf_dict, errdict, true /* set the params */);
 
 	/* Done.  Since data is consumed now, we shall not destroy it. */
-	tblset = NULL;
-	rpset = NULL;
-	rlset = NULL;
-	ntset = NULL;
+	nc = NULL;
 fail:
-	/*
-	 * Note: the rulesets must be destroyed first, in order to drop
-	 * any references to the tableset.
-	 */
-	if (rlset) {
-		npf_ruleset_destroy(rlset);
-	}
-	if (ntset) {
-		npf_ruleset_destroy(ntset);
-	}
-	if (rpset) {
-		npf_rprocset_destroy(rpset);
-	}
-	if (tblset) {
-		npf_tableset_destroy(tblset);
+	if (nc) {
+		npf_config_destroy(nc);
 	}
 	nvlist_destroy(npf_dict);
 	return error;
@@ -687,6 +674,7 @@ npfctl_load(npf_t *npf, u_long cmd, void *data)
 int
 npfctl_save(npf_t *npf, u_long cmd, void *data)
 {
+	npf_config_t *nc;
 	nvlist_t *npf_dict;
 	int error;
 
@@ -696,24 +684,24 @@ npfctl_save(npf_t *npf, u_long cmd, void *data)
 	/*
 	 * Serialise the whole NPF config, including connections.
 	 */
-	npf_config_enter(npf);
+	nc = npf_config_enter(npf);
 	error = npf_conndb_export(npf, npf_dict);
 	if (error) {
 		goto out;
 	}
-	error = npf_ruleset_export(npf, npf_config_ruleset(npf), "rules", npf_dict);
+	error = npf_ruleset_export(npf, nc->ruleset, "rules", npf_dict);
 	if (error) {
 		goto out;
 	}
-	error = npf_ruleset_export(npf, npf_config_natset(npf), "nat", npf_dict);
+	error = npf_ruleset_export(npf, nc->nat_ruleset, "nat", npf_dict);
 	if (error) {
 		goto out;
 	}
-	error = npf_tableset_export(npf, npf_config_tableset(npf), npf_dict);
+	error = npf_tableset_export(npf, nc->tableset, npf_dict);
 	if (error) {
 		goto out;
 	}
-	error = npf_rprocset_export(npf_config_rprocs(npf), npf_dict);
+	error = npf_rprocset_export(nc->rule_procs, npf_dict);
 	if (error) {
 		goto out;
 	}
@@ -721,7 +709,7 @@ npfctl_save(npf_t *npf, u_long cmd, void *data)
 	if (error) {
 		goto out;
 	}
-	nvlist_add_bool(npf_dict, "active", npf_pfil_registered_p());
+	nvlist_add_bool(npf_dict, "active", npf_active_p());
 	error = npf_nvlist_copyout(npf, data, npf_dict);
 	npf_dict = NULL;
 out:
@@ -729,6 +717,59 @@ out:
 	if (npf_dict) {
 		nvlist_destroy(npf_dict);
 	}
+	return error;
+}
+
+/*
+ * npfctl_table_replace_nvlist: atomically replace a table's contents
+ * with the passed table data.
+ */
+static int __noinline
+npfctl_table_replace_nvlist(npf_t *npf, nvlist_t *npf_dict, nvlist_t *errdict)
+{
+	npf_table_t *tbl, *gc_tbl = NULL;
+	npf_config_t *nc;
+	int error = 0;
+
+	nc = npf_config_enter(npf);
+	error = npf_mk_table(npf, npf_dict, errdict, nc->tableset, &tbl, true);
+	if (error) {
+		goto err;
+	}
+	gc_tbl = npf_tableset_swap(nc->tableset, tbl);
+	if (gc_tbl == NULL) {
+		error = EINVAL;
+		gc_tbl = tbl;
+		goto err;
+	}
+	npf_config_sync(npf);
+err:
+	npf_config_exit(npf);
+	if (gc_tbl) {
+		npf_table_destroy(gc_tbl);
+	}
+	return error;
+}
+
+int
+npfctl_table_replace(npf_t *npf, u_long cmd, void *data)
+{
+	nvlist_t *request, *response;
+	int error;
+
+	/*
+	 * Retrieve the configuration and check the version.
+	 * Construct a response with error reporting.
+	 */
+	error = npf_nvlist_copyin(npf, data, &request);
+	if (error) {
+		return error;
+	}
+	response = nvlist_create(0);
+	error = npfctl_table_replace_nvlist(npf, request, response);
+	nvlist_add_number(response, "errno", error);
+	error = npf_nvlist_copyout(npf, data, response);
+	nvlist_destroy(request);
 	return error;
 }
 
@@ -765,6 +806,7 @@ npfctl_rule(npf_t *npf, u_long cmd, void *data)
 	npf_ruleset_t *rlset;
 	npf_rule_t *rl = NULL;
 	const char *ruleset_name;
+	npf_config_t *nc;
 	uint32_t rcmd;
 	int error = 0;
 	bool natset;
@@ -774,15 +816,15 @@ npfctl_rule(npf_t *npf, u_long cmd, void *data)
 		return error;
 	}
 	rcmd = dnvlist_get_number(npf_rule, "command", 0);
-	natset = dnvlist_get_bool(npf_rule, "nat-rule", false);
+	natset = dnvlist_get_bool(npf_rule, "nat-ruleset", false);
 	ruleset_name = dnvlist_get_string(npf_rule, "ruleset-name", NULL);
 	if (!ruleset_name) {
 		error = EINVAL;
 		goto out;
 	}
 
-	npf_config_enter(npf);
-	rlset = natset ? npf_config_natset(npf) : npf_config_ruleset(npf);
+	nc = npf_config_enter(npf);
+	rlset = natset ? nc->nat_ruleset : nc->ruleset;
 	switch (rcmd) {
 	case NPF_CMD_RULE_ADD: {
 		retdict = nvlist_create(0);
@@ -791,7 +833,7 @@ npfctl_rule(npf_t *npf, u_long cmd, void *data)
 			 * Translation rule.
 			 */
 			error = npf_mk_singlenat(npf, npf_rule, rlset,
-			    npf_config_tableset(npf), retdict, &rl);
+			    nc->tableset, retdict, &rl);
 		} else {
 			/*
 			 * Standard rule.
@@ -873,7 +915,7 @@ npfctl_table(npf_t *npf, void *data)
 {
 	const npf_ioctl_table_t *nct = data;
 	char tname[NPF_TABLE_MAXNAMELEN];
-	npf_tableset_t *ts;
+	npf_config_t *nc;
 	npf_table_t *t;
 	int error;
 
@@ -882,9 +924,8 @@ npfctl_table(npf_t *npf, void *data)
 		return error;
 	}
 
-	npf_config_enter(npf);
-	ts = npf_config_tableset(npf);
-	if ((t = npf_tableset_getbyname(ts, tname)) == NULL) {
+	nc = npf_config_enter(npf);
+	if ((t = npf_tableset_getbyname(nc->tableset, tname)) == NULL) {
 		npf_config_exit(npf);
 		return EINVAL;
 	}

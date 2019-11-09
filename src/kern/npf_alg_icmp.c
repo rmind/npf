@@ -33,7 +33,7 @@
 
 #ifdef _KERNEL
 #include <sys/cdefs.h>
-__KERNEL_RCSID(0, "$NetBSD: npf_alg_icmp.c,v 1.31 2018/09/29 14:41:36 rmind Exp $");
+__KERNEL_RCSID(0, "$NetBSD: npf_alg_icmp.c,v 1.32 2019/07/23 00:52:01 rmind Exp $");
 
 #include <sys/param.h>
 #include <sys/module.h>

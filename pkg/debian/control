@@ -7,11 +7,15 @@ Build-Depends:
  libtool,
  flex,
  byacc,
+ libssl-dev,
+ libjemalloc-dev,
+ libpcap0.8-dev,
  libnv-dev,
  libbpfjit-dev,
  libqsbr-dev,
  liblpm-dev,
- libcdb-dev
+ libcdb-dev,
+ libthmap-dev
 Standards-Version: 3.9.1
 Homepage: https://github.com/rmind/npf
 License: BSD-2-clause

@@ -55,7 +55,8 @@ OBJS=		$(shell awk '/^file/ { print $$2 }' files.npf | \
 		    egrep -v '^(npf_os|npf_ext_|npf_ifaddr|if_npflog|lpm)')
 
 OBJS+=		stand/bpf_filter.o
-OBJS+=		stand/murmurhash.o stand/tls_pth.o stand/misc.o
+OBJS+=		stand/murmurhash.o stand/tls_pth.o
+OBJS+=		stand/ebr_wrappers.o stand/misc.o
 
 #
 # Flags for the library target

@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2015 The NetBSD Foundation, Inc.
+ * Copyright (c) 2019 The NetBSD Foundation, Inc.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -24,21 +24,64 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <sys/cdefs.h>
 #include <stdbool.h>
+#include <assert.h>
 
-struct npf;
+#include <qsbr/ebr.h>
 
-bool	npf_active_p(void);
-void	npf_ifaddr_syncall(struct npf *);
+#include "../npf_impl.h"
 
-bool
-npf_active_p(void)
+/*
+ * EBR wrappers.
+ */
+
+ebr_t *
+npf_ebr_create(void)
 {
-	return true;
+	return ebr_create();
 }
 
 void
-npf_ifaddr_syncall(struct npf *npf)
+npf_ebr_destroy(ebr_t *ebr)
 {
-	(void)npf;
+	return ebr_destroy(ebr);
+}
+
+void
+npf_ebr_register(ebr_t *ebr)
+{
+	ebr_register(ebr);
+}
+
+void
+npf_ebr_unregister(ebr_t *ebr)
+{
+	ebr_unregister(ebr);
+}
+
+int
+npf_ebr_enter(ebr_t *ebr)
+{
+	ebr_enter(ebr);
+	return NPF_DIAG_MAGIC_VAL;
+}
+
+void
+npf_ebr_exit(ebr_t *ebr, int s)
+{
+	assert(s == NPF_DIAG_MAGIC_VAL);
+	ebr_exit(ebr);
+}
+
+void
+npf_ebr_full_sync(ebr_t *ebr)
+{
+	ebr_full_sync(ebr, 1);
+}
+
+bool
+npf_ebr_incrit_p(ebr_t *ebr)
+{
+	return ebr_incrit_p(ebr);
 }

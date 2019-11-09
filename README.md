@@ -3,15 +3,16 @@
 [![Build Status](https://travis-ci.org/rmind/npf.svg?branch=master)](https://travis-ci.org/rmind/npf)
 
 NPF is a layer 3 packet filter, supporting stateful packet inspection,
-IPv6, NAT, IP sets, extensions and many more.  It was designed with a focus
-on high performance, scalability, multi-threading and modularity.  NPF was
-written from scratch in 2009.  It is written in C99 and distributed under
-the 2-clause BSD license.
+IPv6, NAT, IP sets, extensions and many more.
+It uses [BPF](https://en.wikipedia.org/wiki/Berkeley_Packet_Filter) as its
+core engine and it was designed with a focus on high performance, scalability,
+multi-threading and modularity.  NPF was written from scratch in 2009.  It is
+written in C99 and distributed under the 2-clause BSD license.
 
 NPF is provided as a **userspace library** to be used in a bespoke application
-to process packets. Typically, in combination with such frameworks like
-[Data Plane Development Kit (DPDK)](https://www.dpdk.org/) or
-[netmap](https://www.freebsd.org/cgi/man.cgi?query=netmap&sektion=4).
+to process packets. It can run on Linux, typically, in combination with such
+frameworks like [Data Plane Development Kit (DPDK)](https://www.dpdk.org/)
+or [netmap](https://www.freebsd.org/cgi/man.cgi?query=netmap&sektion=4).
 
 ## Features
 

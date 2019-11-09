@@ -29,8 +29,8 @@
 
 /*
  * This file contains wrappers of the kernel interfaces for the
- * standalone version of NPF.  These wrappers use inteded to be portable,
- * using the standard C99 or POSIX interfaces.
+ * standalone version of NPF.  These wrappers use intended to be
+ * portable, using the standard C99 or POSIX interfaces.
  */
 
 #include <sys/cdefs.h>
@@ -135,23 +135,6 @@ npfkern_pthread_cond_timedwait(pthread_cond_t *t, pthread_mutex_t *l,
 #define	cv_destroy(c)		pthread_cond_destroy(c)
 
 /*
- * Passive serialization based on EBR.
- */
-typedef ebr_t *			pserialize_t;
-
-#define	pserialize_create()	ebr_create()
-#define	pserialize_destroy(p)	ebr_destroy(p)
-#define	pserialize_register(p)	ebr_register(p)
-#define	pserialize_unregister(p) ebr_unregister(p)
-#define	pserialize_perform(p)	ebr_full_sync(p, 1)
-#define	pserialize_read_enter()	NPF_DIAG_MAGIC_VAL
-#ifdef NDEBUG
-#define	pserialize_read_exit(s)	(void)(s);
-#else
-#define	pserialize_read_exit(s)	assert((s) == NPF_DIAG_MAGIC_VAL)
-#endif
-
-/*
  * Atomic operations and memory barriers.
  */
 
@@ -170,6 +153,7 @@ again:
 }
 
 #define	membar_sync()		__sync_synchronize()
+#define	membar_consumer()	__sync_synchronize()
 #define	membar_producer()	__sync_synchronize()
 #define	atomic_inc_uint(x)	__sync_fetch_and_add((x), 1)
 #define	atomic_inc_uint_nv(x)	__sync_add_and_fetch((x), 1)
@@ -396,7 +380,9 @@ npfkern_kpause(const char *wmesg, bool intr, int timo, kmutex_t *mtx)
 #define PFIL_IFADDR	0x00000008
 #define PFIL_IFNET	0x00000010
 
-#define	pfil_head_t	void
+#ifndef PACKET_TAG_NPF
+#define	PACKET_TAG_NPF	10
+#endif
 
 #define	MAX_TCPOPTLEN	40
 
@@ -482,8 +468,6 @@ typedef int modcmd_t;
 #ifndef EPROGMISMATCH
 #define	EPROGMISMATCH		ENOTSUP
 #endif
-
-#define	ffs32(x)		ffs(x)
 
 struct cpu_info { unsigned id; };
 
