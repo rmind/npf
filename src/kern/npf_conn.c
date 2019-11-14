@@ -496,9 +496,14 @@ err:
 void
 npf_conn_destroy(npf_t *npf, npf_conn_t *con)
 {
+	npf_alg_t *alg;
 	const unsigned idx __unused = NPF_CONNCACHE(con->c_alen);
 
 	KASSERT(con->c_refcnt == 0);
+
+	/* execute NAT ALG destroy callback */
+	if (con->c_nat != NULL && (alg = npf_nat_getalg(con->c_nat)) != NULL)
+		npf_alg_destroy(npf, alg, con);
 
 	if (con->c_nat) {
 		/* Release any NAT structures. */

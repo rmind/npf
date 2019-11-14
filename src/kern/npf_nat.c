@@ -597,6 +597,35 @@ npf_nat_algo(npf_cache_t *npc, const npf_natpolicy_t *np, bool forw)
 }
 
 /*
+ * Associate NAT policy with a existing connection
+ */
+int
+npf_nat_share_policy(npf_cache_t *npc, npf_conn_t *con, npf_nat_t *src_nt)
+{
+	npf_nat_t *nt;
+	npf_natpolicy_t *np;
+	int ret;
+
+	np = src_nt->nt_natpolicy;
+
+	/* Create a new NAT entry. */
+	nt = npf_nat_create(npc, np, con);
+	if (__predict_false(nt == NULL))
+		return ENOMEM;
+	atomic_inc_uint(&np->n_refcnt);
+
+	/* Associate the NAT translation entry with the connection. */
+	ret = npf_conn_setnat(npc, con, nt, np->n_type);
+	if (__predict_false(ret)) {
+		/* Will release the reference. */
+		npf_nat_destroy(nt);
+		return ret;
+	}
+
+	return 0;
+}
+
+/*
  * npf_do_nat:
  *
  *	- Inspect packet for a NAT policy, unless a connection with a NAT
@@ -739,6 +768,30 @@ npf_nat_setalg(npf_nat_t *nt, npf_alg_t *alg, uintptr_t arg)
 {
 	nt->nt_alg = alg;
 	nt->nt_alg_arg = arg;
+}
+
+npf_alg_t *
+npf_nat_getalg(const npf_nat_t *nt)
+{
+	return nt->nt_alg;
+}
+
+uintptr_t
+npf_nat_get_alg_arg(const npf_nat_t *nt)
+{
+	return nt->nt_alg_arg;
+}
+
+void
+npf_nat_set_alg_arg(npf_nat_t *nt, uintptr_t arg)
+{
+	nt->nt_alg_arg = arg;
+}
+
+void *
+npf_nat_cas_alg_arg(npf_nat_t *nt, uintptr_t old_arg, uintptr_t new_arg)
+{
+	return (void *)atomic_cas_64(&nt->nt_alg_arg, old_arg, new_arg);
 }
 
 /*

@@ -67,6 +67,12 @@ struct npf_algset {
 #define	NPF_ALG_PREF	"npf_alg_"
 #define	NPF_ALG_PREFLEN	(sizeof(NPF_ALG_PREF) - 1)
 
+static inline npfa_funcs_t *
+npf_alg_get_funcs(npf_t *npf, npf_alg_t *alg)
+{
+	return &npf->algset->alg_funcs[alg->na_slot];
+}
+
 void
 npf_alg_init(npf_t *npf)
 {
@@ -161,6 +167,7 @@ npf_alg_register(npf_t *npf, const char *name, const npfa_funcs_t *funcs)
 	afuncs->match = funcs->match;
 	afuncs->translate = funcs->translate;
 	afuncs->inspect = funcs->inspect;
+	afuncs->destroy = funcs->destroy;
 
 	aset->alg_count = MAX(aset->alg_count, i + 1);
 	npf_config_exit(npf);
@@ -243,20 +250,19 @@ npf_alg_match(npf_cache_t *npc, npf_nat_t *nt, int di)
 void
 npf_alg_exec(npf_cache_t *npc, npf_nat_t *nt, bool forw)
 {
-	npf_t *npf = npc->npc_ctx;
-	npf_algset_t *aset = npf->algset;
 	int s;
-
-	KASSERTMSG(npf_iscached(npc, NPC_IP46), "expecting protocol number");
+	npf_t *npf = npc->npc_ctx;
+	npf_alg_t *alg;
 
 	s = npf_ebr_enter(npf->ebr);
-	for (unsigned i = 0; i < aset->alg_count; i++) {
-		const npfa_funcs_t *f = &aset->alg_funcs[i];
-
-		if (f->translate) {
-			f->translate(npc, nt, forw);
-		}
+	
+	alg = npf_nat_getalg(nt);
+	if (alg != NULL) {
+		npfa_funcs_t *funcs = npf_alg_get_funcs(npf, alg);
+		if (funcs->translate != NULL)
+			funcs->translate(npc, nt, forw);
 	}
+
 	npf_ebr_exit(npf->ebr, s);
 }
 
@@ -321,4 +327,13 @@ npf_alg_export(npf_t *npf, nvlist_t *npf_dict)
 		nvlist_destroy(algdict);
 	}
 	return 0;
+}
+
+void
+npf_alg_destroy(npf_t *npf, npf_alg_t *alg, npf_conn_t *con)
+{
+	npfa_funcs_t *alg_funcs = npf_alg_get_funcs(npf, alg);
+
+	if (alg_funcs->destroy != NULL)
+		alg_funcs->destroy(npf, con);
 }

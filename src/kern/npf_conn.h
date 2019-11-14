@@ -114,7 +114,10 @@ npf_connkey_t *	npf_conn_getforwkey(npf_conn_t *);
 npf_connkey_t *	npf_conn_getbackkey(npf_conn_t *, unsigned);
 void		npf_conn_adjkey(npf_connkey_t *, const npf_addr_t *,
 		    const uint16_t, const int);
-
+unsigned	npf_connkey_setkey(npf_connkey_t *, uint16_t, const void *,
+    const uint16_t *, unsigned, bool);
+void		npf_connkey_getkey(const npf_connkey_t *, uint16_t *, npf_addr_t *,
+    uint16_t *, uint16_t *);
 unsigned	npf_connkey_import(const nvlist_t *, npf_connkey_t *);
 nvlist_t *	npf_connkey_export(const npf_connkey_t *);
 void		npf_connkey_print(const npf_connkey_t *);

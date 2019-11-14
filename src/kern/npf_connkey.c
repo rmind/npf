@@ -66,8 +66,8 @@ __KERNEL_RCSID(0, "$NetBSD: npf_connkey.c,v 1.1 2019/07/23 00:52:01 rmind Exp $"
 #include "npf_conn.h"
 #include "npf_impl.h"
 
-static inline unsigned
-connkey_setkey(npf_connkey_t *key, uint16_t proto, const void *ipv,
+inline unsigned
+npf_connkey_setkey(npf_connkey_t *key, uint16_t proto, const void *ipv,
     const uint16_t *id, unsigned alen, bool forw)
 {
 	const npf_addr_t * const *ips = ipv;
@@ -99,8 +99,8 @@ connkey_setkey(npf_connkey_t *key, uint16_t proto, const void *ipv,
 	}
 }
 
-static inline void
-connkey_getkey(const npf_connkey_t *key, uint16_t *proto, npf_addr_t *ips,
+void
+npf_connkey_getkey(const npf_connkey_t *key, uint16_t *proto, npf_addr_t *ips,
     uint16_t *id, uint16_t *alen)
 {
 	const uint32_t *k = key->ck_key;
@@ -190,11 +190,17 @@ npf_conn_conkey(const npf_cache_t *npc, npf_connkey_t *key, const bool forw)
 			break;
 		}
 		return 0;
+	case IPPROTO_GRE:
+		if (npf_iscached(npc, NPC_ENHANCED_GRE | NPC_ALG_PPTP_GRE_CTX)) {
+			npf_pptp_conn_conkey(npc, id, forw);
+			break;
+		}
+		return 0;
 	default:
 		/* Unsupported protocol. */
 		return 0;
 	}
-	return connkey_setkey(key, proto, npc->npc_ips, id, alen, forw);
+	return npf_connkey_setkey(key, proto, npc->npc_ips, id, alen, forw);
 }
 
 /*
@@ -231,7 +237,7 @@ npf_connkey_export(const npf_connkey_t *key)
 	nvlist_t *kdict;
 
 	kdict = nvlist_create(0);
-	connkey_getkey(key, &proto, ips, ids, &alen);
+	npf_connkey_getkey(key, &proto, ips, ids, &alen);
 	nvlist_add_number(kdict, "proto", proto);
 	nvlist_add_number(kdict, "sport", ids[NPF_SRC]);
 	nvlist_add_number(kdict, "dport", ids[NPF_DST]);
@@ -255,7 +261,7 @@ npf_connkey_import(const nvlist_t *kdict, npf_connkey_t *key)
 	if (alen1 == 0 || alen1 > sizeof(npf_addr_t) || alen1 != alen2) {
 		return 0;
 	}
-	return connkey_setkey(key, proto, ips, ids, alen1, true);
+	return npf_connkey_setkey(key, proto, ips, ids, alen1, true);
 }
 
 #if defined(DDB) || defined(_NPF_TESTING)
@@ -266,7 +272,7 @@ npf_connkey_print(const npf_connkey_t *key)
 	uint16_t proto, ids[2], alen;
 	npf_addr_t ips[2];
 
-	connkey_getkey(key, &proto, ips, ids, &alen);
+	npf_connkey_getkey(key, &proto, ips, ids, &alen);
 	printf("\tforw %s:%d", npf_addr_dump(&ips[0], alen), ids[0]);
 	printf("-> %s:%d\n", npf_addr_dump(&ips[1], alen), ids[1]);
 }
