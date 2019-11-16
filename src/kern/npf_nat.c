@@ -597,31 +597,29 @@ npf_nat_algo(npf_cache_t *npc, const npf_natpolicy_t *np, bool forw)
 }
 
 /*
- * Associate NAT policy with a existing connection
+ * Associate NAT policy with an existing connection state.
  */
 int
 npf_nat_share_policy(npf_cache_t *npc, npf_conn_t *con, npf_nat_t *src_nt)
 {
+	npf_natpolicy_t *np = src_nt->nt_natpolicy;
 	npf_nat_t *nt;
-	npf_natpolicy_t *np;
 	int ret;
-
-	np = src_nt->nt_natpolicy;
 
 	/* Create a new NAT entry. */
 	nt = npf_nat_create(npc, np, con);
-	if (__predict_false(nt == NULL))
+	if (__predict_false(nt == NULL)) {
 		return ENOMEM;
+	}
 	atomic_inc_uint(&np->n_refcnt);
 
 	/* Associate the NAT translation entry with the connection. */
 	ret = npf_conn_setnat(npc, con, nt, np->n_type);
 	if (__predict_false(ret)) {
 		/* Will release the reference. */
-		npf_nat_destroy(nt);
+		npf_nat_destroy(con, nt);
 		return ret;
 	}
-
 	return 0;
 }
 
@@ -712,7 +710,7 @@ npf_do_nat(npf_cache_t *npc, npf_conn_t *con, const int di)
 	error = npf_conn_setnat(npc, con, nt, np->n_type);
 	if (error) {
 		/* Will release the reference. */
-		npf_nat_destroy(nt);
+		npf_nat_destroy(con, nt);
 		goto out;
 	}
 
@@ -798,10 +796,16 @@ npf_nat_cas_alg_arg(npf_nat_t *nt, uintptr_t old_arg, uintptr_t new_arg)
  * npf_nat_destroy: destroy NAT structure (performed on connection expiration).
  */
 void
-npf_nat_destroy(npf_nat_t *nt)
+npf_nat_destroy(npf_conn_t *con, npf_nat_t *nt)
 {
 	npf_natpolicy_t *np = nt->nt_natpolicy;
 	npf_t *npf = np->n_npfctx;
+	npf_alg_t *alg;
+
+	/* Execute the ALG destroy callback, if any. */
+	if ((alg = npf_nat_getalg(nt)) != NULL) {
+		npf_alg_destroy(npf, alg, nt, con);
+	}
 
 	/* Return taken port to the portmap. */
 	if ((np->n_flags & NPF_NAT_PORTMAP) != 0 && nt->nt_tport) {

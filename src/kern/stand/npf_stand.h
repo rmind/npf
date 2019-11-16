@@ -110,7 +110,7 @@ npfkern_nvlist_copy(const void *a, const void *b, size_t c)
 #define	mutex_init(l, t, i)	pthread_mutex_init(l, NULL)
 #define	mutex_enter(l)		pthread_mutex_lock(l)
 #define	mutex_exit(l)		pthread_mutex_unlock(l)
-#define	mutex_owned(l)		true
+#define	mutex_owned(l)		((uintptr_t)(l) != (uintptr_t)0)
 #define	mutex_destroy(l)	pthread_mutex_destroy(l)
 
 static inline int

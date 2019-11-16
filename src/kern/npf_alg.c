@@ -67,12 +67,6 @@ struct npf_algset {
 #define	NPF_ALG_PREF	"npf_alg_"
 #define	NPF_ALG_PREFLEN	(sizeof(NPF_ALG_PREF) - 1)
 
-static inline npfa_funcs_t *
-npf_alg_get_funcs(npf_t *npf, npf_alg_t *alg)
-{
-	return &npf->algset->alg_funcs[alg->na_slot];
-}
-
 void
 npf_alg_init(npf_t *npf)
 {
@@ -250,19 +244,20 @@ npf_alg_match(npf_cache_t *npc, npf_nat_t *nt, int di)
 void
 npf_alg_exec(npf_cache_t *npc, npf_nat_t *nt, bool forw)
 {
-	int s;
 	npf_t *npf = npc->npc_ctx;
+	npf_algset_t *aset = npf->algset;
 	npf_alg_t *alg;
+	int s;
 
 	s = npf_ebr_enter(npf->ebr);
-	
 	alg = npf_nat_getalg(nt);
 	if (alg != NULL) {
-		npfa_funcs_t *funcs = npf_alg_get_funcs(npf, alg);
-		if (funcs->translate != NULL)
-			funcs->translate(npc, nt, forw);
-	}
+		const npfa_funcs_t *f = &aset->alg_funcs[alg->na_slot];
 
+		if (f->translate != NULL) {
+			f->translate(npc, nt, forw);
+		}
+	}
 	npf_ebr_exit(npf->ebr, s);
 }
 
@@ -330,10 +325,12 @@ npf_alg_export(npf_t *npf, nvlist_t *npf_dict)
 }
 
 void
-npf_alg_destroy(npf_t *npf, npf_alg_t *alg, npf_conn_t *con)
+npf_alg_destroy(npf_t *npf, npf_alg_t *alg, npf_nat_t *nat, npf_conn_t *con)
 {
-	npfa_funcs_t *alg_funcs = npf_alg_get_funcs(npf, alg);
+	npf_algset_t *aset = npf->algset;
+	const npfa_funcs_t *f = &aset->alg_funcs[alg->na_slot];
 
-	if (alg_funcs->destroy != NULL)
-		alg_funcs->destroy(npf, con);
+	if (f->destroy != NULL) {
+		f->destroy(npf, nat, con);
+	}
 }

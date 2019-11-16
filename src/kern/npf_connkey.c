@@ -66,7 +66,7 @@ __KERNEL_RCSID(0, "$NetBSD: npf_connkey.c,v 1.1 2019/07/23 00:52:01 rmind Exp $"
 #include "npf_conn.h"
 #include "npf_impl.h"
 
-inline unsigned
+unsigned
 npf_connkey_setkey(npf_connkey_t *key, uint16_t proto, const void *ipv,
     const uint16_t *id, unsigned alen, bool forw)
 {
@@ -190,12 +190,14 @@ npf_conn_conkey(const npf_cache_t *npc, npf_connkey_t *key, const bool forw)
 			break;
 		}
 		return 0;
+#ifdef PPTP_ALG
 	case IPPROTO_GRE:
 		if (npf_iscached(npc, NPC_ENHANCED_GRE | NPC_ALG_PPTP_GRE_CTX)) {
 			npf_pptp_conn_conkey(npc, id, forw);
 			break;
 		}
 		return 0;
+#endif
 	default:
 		/* Unsupported protocol. */
 		return 0;
