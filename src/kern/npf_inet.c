@@ -623,10 +623,12 @@ again:
 		    sizeof(struct icmp6_hdr));
 		l4flags = NPC_LAYER4 | NPC_ICMP;
 		break;
+#ifdef PPTP_ALG
 	case IPPROTO_GRE:
 		/* Cache: layer 4 - GRE. */
 		l4flags = npf_pptp_gre_cache(npc, nbuf, hlen);
 		break;
+#endif
 	default:
 		l4flags = 0;
 		break;

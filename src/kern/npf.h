@@ -142,8 +142,10 @@ int		nbuf_find_tag(nbuf_t *, uint32_t *);
 
 #define	NPC_FMTERR	0x200	/* Format error. */
 
+// #ifdef PPTP_ALG
 #define	NPC_ENHANCED_GRE	0x400	/* Enhanced GRE header */
 #define	NPC_ALG_PPTP_GRE_CTX	0x800	/* PPTP GRE context */
+// #endif
 
 #define	NPC_IP46	(NPC_IP4|NPC_IP6)
 
@@ -170,7 +172,7 @@ typedef struct {
 		struct ip6_hdr *	v6;
 	} npc_ip;
 
-	/* TCP, UDP, ICMP */
+	/* TCP, UDP, ICMP or other protocols. */
 	union {
 		struct tcphdr *		tcp;
 		struct udphdr *		udp;
