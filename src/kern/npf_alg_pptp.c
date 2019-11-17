@@ -42,7 +42,6 @@ __KERNEL_RCSID(0, "$NetBSD$");
 #include <net/pfil.h>
 #endif
 
-#define __NPF_CONN_PRIVATE
 #include "npf_impl.h"
 #include "npf_conn.h"
 
@@ -56,7 +55,7 @@ typedef struct {
 
 static npf_pptp_alg_t		pptp_alg	__cacheline_aligned;
 
-#define	PPTP_SERVER_PORT		1723
+#define	PPTP_SERVER_PORT		htons(1723)
 
 #define	PPTP_OUTGOING_CALL_MIN_LEN	32
 
@@ -127,37 +126,27 @@ typedef struct {
 } __packed pptp_outgoing_call_reply_t;
 
 /*
- * PPTP ALG captured GRE state.
+ * PPTP GRE connection state.
  */
 
 #define	CLIENT_CALL_ID			0
 #define	SERVER_CALL_ID			1
 #define	CALL_ID_COUNT			2
 
-typedef struct {
-	uint16_t	call_id[CALL_ID_COUNT];
-} __packed pptp_gre_ctx_t;
-
-/*
- * PPTP GRE connection state.
- */
-
-#define	GRE_STATE_ESTABLISHED		0x1
-#define	GRE_STATE_FREESLOT		0x2
+#define	GRE_STATE_USED			0x1
+#define	GRE_STATE_ESTABLISHED		0x2
 
 typedef union {
-	struct {
-		/*
-		 * - GRE context: client and server call IDs.
-		 * - Original client call ID.
-		 *
-		 * Note: call ID values are in the network byte order.
-		 */
-		pptp_gre_ctx_t	ctx;
-		uint16_t	orig_client_call_id;
-		uint16_t	flags;
-	};
-	uint64_t		u64;
+	/*
+	 * - Client and server call IDs.
+	 * - Original client call ID.
+	 * - State flags.
+	 *
+	 * Note: call ID values are in the network byte order.
+	 */
+	uint16_t	call_id[CALL_ID_COUNT];
+	uint16_t	orig_client_call_id;
+	uint16_t	flags;
 } pptp_gre_state_t;
 
 /*
@@ -182,9 +171,14 @@ static void		pptp_tcp_ctx_free(pptp_tcp_ctx_t *);
 int
 npf_pptp_gre_cache(npf_cache_t *npc, nbuf_t *nbuf, unsigned hlen)
 {
-	gre_hdr_t *gre_hdr = nbuf_advance(nbuf, hlen, sizeof(gre_hdr_t));
-	unsigned ver = ntohs(gre_hdr->flags_ver) & GRE_VER_FLD_MASK;
+	gre_hdr_t *gre_hdr;
+	unsigned ver;
 
+	gre_hdr = nbuf_advance(nbuf, hlen, sizeof(gre_hdr_t));
+	if (__predict_false(gre_hdr == NULL)) {
+		return 0;
+	}
+	ver = ntohs(gre_hdr->flags_ver) & GRE_VER_FLD_MASK;
 	if (ver == GRE_ENHANCED_HDR_VER) {
 		npc->npc_l4.hdr = nbuf_ensure_contig(nbuf, sizeof(pptp_gre_hdr_t));
 		return NPC_LAYER4 | NPC_ENHANCED_GRE;
@@ -198,17 +192,16 @@ npf_pptp_conn_conkey(const npf_cache_t *npc, uint16_t *id, bool forw)
 	KASSERT(npf_iscached(npc, NPC_ENHANCED_GRE));
 
 	if (npf_iscached(npc, NPC_ALG_PPTP_GRE_CTX)) {
-		const pptp_gre_ctx_t *pptp_gre_ctx;
+		const pptp_gre_state_t *gre_state = npc->npc_l4.hdr;
 
-		pptp_gre_ctx = npc->npc_l4.hdr;
 		if (forw) {
 			/* PPTP client -> PPTP server. */
-			id[NPF_SRC] = pptp_gre_ctx->call_id[SERVER_CALL_ID];
+			id[NPF_SRC] = gre_state->call_id[SERVER_CALL_ID];
 			id[NPF_DST] = 0; /* not used */
 		} else {
 			/* PPTP client <- PPTP server */
 			id[NPF_SRC] = 0; /* not used */
-			id[NPF_DST] = pptp_gre_ctx->call_id[CLIENT_CALL_ID];
+			id[NPF_DST] = gre_state->call_id[CLIENT_CALL_ID];
 		}
 	} else {
 		const pptp_gre_hdr_t *pptp_gre_hdr;
@@ -237,7 +230,7 @@ pptp_gre_establish_state(npf_cache_t *npc, const int di,
     pptp_gre_state_t *gre_state, npf_nat_t *pptp_tcp_nt)
 {
 	npf_conn_t *con = NULL;
-	int ret;
+	npf_nat_t *nt;
 
 	/* Establish a state for the GRE connection. */
 	con = npf_conn_establish(npc, di, true);
@@ -247,17 +240,17 @@ pptp_gre_establish_state(npf_cache_t *npc, const int di,
 	/*
 	 * Create a new nat entry for created GRE connection.  Use the
 	 * same NAT policy as the parent PPTP TCP control connection uses.
-	 * Associate created NAT entry with the GRE connection.
+	 * Associate the created NAT entry with the GRE connection.
 	 */
-	ret = npf_nat_share_policy(npc, con, pptp_tcp_nt);
-	if (ret) {
+	nt = npf_nat_share_policy(npc, con, pptp_tcp_nt);
+	if (nt == NULL) {
 		npf_conn_expire(con);
 		npf_conn_release(con);
-		return ret;
+		return ENOMEM;
 	}
 
 	/* Associate GRE ALG with the GRE connection. */
-	npf_nat_setalg(con->c_nat, pptp_alg.gre, (uintptr_t)gre_state->u64);
+	npf_nat_setalg(nt, pptp_alg.gre, (uintptr_t)(const void *)gre_state);
 
 	/* Make GRE connection state active and passing. */
 	npf_conn_setpass(con, NULL, NULL);
@@ -283,7 +276,7 @@ pptp_gre_destroy_state(npf_t *npf, pptp_gre_state_t *gre_state, npf_addr_t **ips
 		npf_connkey_t key;
 
 		/* Initialise the forward GRE connection key. */
-		ids[NPF_SRC] = gre_state->ctx.call_id[SERVER_CALL_ID];
+		ids[NPF_SRC] = gre_state->call_id[SERVER_CALL_ID];
 		ids[NPF_DST] = 0;
 		npf_connkey_setkey((void *)&key, IPPROTO_GRE, ips, ids,
 		    sizeof(uint32_t), true);
@@ -302,75 +295,65 @@ pptp_gre_destroy_state(npf_t *npf, pptp_gre_state_t *gre_state, npf_addr_t **ips
 		}
 		gre_state->flags &= ~GRE_STATE_ESTABLISHED;
 
-	} else if (gre_state->ctx.call_id[CLIENT_CALL_ID] != 0) {
+	} else if (gre_state->call_id[CLIENT_CALL_ID] != 0) {
 		/*
 		 * Return translated call ID value back to the portmap.
 		 */
-		pptp_call_id_put(ips[NPF_DST], gre_state->ctx.call_id[CLIENT_CALL_ID]);
+		pptp_call_id_put(ips[NPF_DST], gre_state->call_id[CLIENT_CALL_ID]);
 	}
 
-	/* Mark the slot as free. */
-	gre_state->flags |= GRE_STATE_FREESLOT;
+	/* Mark the entry as unused. */
+	gre_state->flags &= ~GRE_STATE_USED;
 }
 
 /*
- * pptp_gre_get_state: find a free GRE state slot or reuse one with
- * the same orig_client_call_id.  Note: there can be only one slot
+ * pptp_gre_get_state: find a free GRE state entry or reuse one with
+ * the same orig_client_call_id.  Note: there can be only one entry
  * with the same orig_client_call_id.
  *
- * => Returns NULL if there are no empty slots (or a slot to re-use);
- * => Otherwise, return a reference to a slot marked as used and where
+ * => Returns NULL if there are no empty entries (or an entry to re-use);
+ * => Otherwise, return a reference to a entry marked as used and where
  *    the client call ID and translated client call ID valued are stored.
  */
 static pptp_gre_state_t *
 pptp_gre_get_state(npf_cache_t *npc, pptp_tcp_ctx_t *tcp_ctx,
     uint16_t client_call_id, uint16_t trans_client_call_id)
 {
-	pptp_gre_state_t *gre_state, *empty_slot = NULL, old_reused_slot;
-	bool reuse_slot = false;
+	pptp_gre_state_t *gre_state = NULL;
 
 	/*
-	 * Scan all slots to ensure that there is no one using the call ID.
+	 * Scan all state entries to check if the given call ID is used.
 	 */
 	mutex_enter(&tcp_ctx->lock);
 	for (unsigned i = 0; i < PPTP_MAX_GRE_PER_CLIENT; i++) {
-		gre_state = &tcp_ctx->gre_conns[i];
+		pptp_gre_state_t *gre_state_iter = &tcp_ctx->gre_conns[i];
+
+		if ((gre_state_iter->flags & GRE_STATE_USED) == 0) {
+			/* Unused state entry; remember it. */
+			gre_state = gre_state_iter;
+			continue;
+		}
 
 		/*
 		 * If call ID is already in use, then expire the associated
-		 * GRE connection and re-use this GRE state slot.
+		 * GRE connection and re-use this GRE state entry.
 		 */
-		if (gre_state->flags & GRE_STATE_FREESLOT) {
-			/* Empty slot. */
-			empty_slot = gre_state;
-		}
-		else if (gre_state->orig_client_call_id == client_call_id) {
-			reuse_slot = true;
-			old_reused_slot.u64 = gre_state->u64;
+		if (gre_state_iter->orig_client_call_id == client_call_id) {
+			pptp_gre_destroy_state(npc->npc_ctx,
+			    gre_state_iter, npc->npc_ips);
+			KASSERT((gre_state_iter->flags & GRE_STATE_USED) == 0);
+			gre_state = gre_state_iter;
 			break;
 		}
 	}
-
-	/* Use empty slot or reuse a slot with the same client call ID. */
-	if (reuse_slot || empty_slot != NULL) {
-		pptp_gre_state_t new_gre_state;
-
-		if (!reuse_slot) {
-			gre_state = empty_slot;
-		}
-		new_gre_state.orig_client_call_id = client_call_id;
-		new_gre_state.ctx.call_id[CLIENT_CALL_ID] = trans_client_call_id;
-		new_gre_state.ctx.call_id[SERVER_CALL_ID] = 0;
-		new_gre_state.flags = 0;
-		gre_state->u64 = new_gre_state.u64;
+	if (gre_state) {
+		gre_state->orig_client_call_id = client_call_id;
+		gre_state->call_id[CLIENT_CALL_ID] = trans_client_call_id;
+		gre_state->call_id[SERVER_CALL_ID] = 0;
+		gre_state->flags = 0;
 	}
 	mutex_exit(&tcp_ctx->lock);
-
-	if (reuse_slot) {
-		pptp_gre_destroy_state(npc->npc_ctx, &old_reused_slot, npc->npc_ips);
-		return gre_state;
-	}
-	return empty_slot;
+	return gre_state;
 }
 
 /*
@@ -385,8 +368,8 @@ pptp_gre_lookup_state(pptp_tcp_ctx_t *tcp_ctx, unsigned which, uint16_t call_id)
 	for (unsigned i = 0; i < PPTP_MAX_GRE_PER_CLIENT; i++) {
 		pptp_gre_state_t *gre_state = &tcp_ctx->gre_conns[i];
 
-		if ((gre_state->flags & GRE_STATE_FREESLOT) == 0 &&
-		    gre_state->ctx.call_id[which] == call_id)
+		if ((gre_state->flags & GRE_STATE_USED) != 0 &&
+		    gre_state->call_id[which] == call_id)
 			return gre_state;
 	}
 	return NULL;
@@ -395,22 +378,13 @@ pptp_gre_lookup_state(pptp_tcp_ctx_t *tcp_ctx, unsigned which, uint16_t call_id)
 static pptp_tcp_ctx_t *
 pptp_tcp_ctx_alloc(npf_nat_t *nt)
 {
-	pptp_tcp_ctx_t *ctx, *oldctx;
+	pptp_tcp_ctx_t *ctx;
 
-	ctx = kmem_intr_zalloc(sizeof(pptp_tcp_ctx_t), KM_SLEEP);
+	ctx = kmem_intr_zalloc(sizeof(pptp_tcp_ctx_t), KM_NOSLEEP);
 	if (ctx == NULL) {
 		return NULL;
 	}
 	mutex_init(&ctx->lock, MUTEX_DEFAULT, IPL_SOFTNET);
-	for (unsigned i = 0; i < PPTP_MAX_GRE_PER_CLIENT; i++) {
-		ctx->gre_conns[i].flags = GRE_STATE_FREESLOT;
-	}
-	oldctx = npf_nat_cas_alg_arg(nt, (uintptr_t)NULL, (uintptr_t)ctx);
-	if (oldctx != NULL) {
-		/* Race: already allocated. */
-		pptp_tcp_ctx_free(oldctx);
-		return oldctx;
-	}
 	return ctx;
 }
 
@@ -430,15 +404,20 @@ pptp_tcp_ctx_free(pptp_tcp_ctx_t *ctx)
 static bool
 pptp_tcp_match(npf_cache_t *npc, npf_nat_t *nt, const int di)
 {
+	pptp_tcp_ctx_t *tcp_ctx;
+
 	KASSERT(npf_iscached(npc, NPC_IP46));
 
 	/* Note: only the outbound NAT is supported */
 	if (di != PFIL_OUT || !npf_iscached(npc, NPC_TCP) ||
-	    npc->npc_l4.tcp->th_dport != htons(PPTP_SERVER_PORT))
+	    npc->npc_l4.tcp->th_dport != PPTP_SERVER_PORT)
 		return false;
 
 	/* Associate with the PPTP TCP ALG. */
-	npf_nat_setalg(nt, pptp_alg.tcp, 0);
+	if ((tcp_ctx = pptp_tcp_ctx_alloc(nt)) == NULL) {
+		return false;
+	}
+	npf_nat_setalg(nt, pptp_alg.tcp, (uintptr_t)(void *)tcp_ctx);
 	return true;
 }
 
@@ -453,7 +432,6 @@ pptp_tcp_translate(npf_cache_t *npc, npf_nat_t *nt, bool forw)
 {
 	nbuf_t *nbuf = npc->npc_nbuf;
 	struct tcphdr *th = npc->npc_l4.tcp;
-	uint32_t tcp_hdr_size;
 	pptp_tcp_ctx_t *tcp_ctx;
 	pptp_msg_hdr_t *pptp;
 	pptp_gre_state_t *gre_state;
@@ -462,18 +440,27 @@ pptp_tcp_translate(npf_cache_t *npc, npf_nat_t *nt, bool forw)
 	npf_addr_t *ip, *ips[2];
 	in_port_t o_port;
 
-	/* Note: only IPv4 is supported. */
-	if (!(npf_iscached(npc, NPC_IP4) && npf_iscached(npc, NPC_TCP) &&
-	    (th->th_dport == htons(PPTP_SERVER_PORT) ||
-	    th->th_sport == htons(PPTP_SERVER_PORT))))
+	/*
+	 * Note: if ALG is associated, then the checks have been already
+	 * performed in pptp_tcp_match().
+	 */
+	if (!npf_nat_getalg(nt)) {
 		return false;
+	}
+	if (th->th_dport != PPTP_SERVER_PORT &&
+	    th->th_sport != PPTP_SERVER_PORT) {
+		return false;
+	}
 
-	tcp_hdr_size = th->th_off << 2;
 	nbuf_reset(nbuf);
-	pptp = nbuf_advance(nbuf, npc->npc_hlen + tcp_hdr_size,
+	pptp = nbuf_advance(nbuf, npc->npc_hlen + ((unsigned)th->th_off << 2),
 	    sizeof(pptp_msg_hdr_t));
 	if (pptp == NULL)
 		return false;
+
+	/* Note: re-fetch the L4 pointer. */
+	npf_recache(npc);
+	th = npc->npc_l4.tcp;
 
 	if (pptp->pptp_msg_type != htons(PPTP_CTRL_MSG) ||
 	    pptp->len < htons(PPTP_OUTGOING_CALL_MIN_LEN) ||
@@ -481,10 +468,8 @@ pptp_tcp_translate(npf_cache_t *npc, npf_nat_t *nt, bool forw)
 		return false;
 
 	/* Get or allocate GRE connection context for the ALG. */
-	tcp_ctx = (pptp_tcp_ctx_t *)npf_nat_get_alg_arg(nt);
-	if (!tcp_ctx && (tcp_ctx = pptp_tcp_ctx_alloc(nt)) == NULL) {
-		return false;
-	}
+	tcp_ctx = (pptp_tcp_ctx_t *)npf_nat_getalgarg(nt);
+	KASSERT(tcp_ctx != NULL);
 
 	switch (ntohs(pptp->ctrl_msg_type)) {
 	case PPTP_OUTGOING_CALL_REQUEST:
@@ -508,7 +493,7 @@ pptp_tcp_translate(npf_cache_t *npc, npf_nat_t *nt, bool forw)
 			return false;
 
 		/*
-		 * Lookup for an empty GRE state slot or reuse one with
+		 * Lookup for an empty GRE state entry or reuse one with
 		 * the same original call ID.
 		 */
 		gre_state = pptp_gre_get_state(npc, tcp_ctx,
@@ -532,29 +517,32 @@ pptp_tcp_translate(npf_cache_t *npc, npf_nat_t *nt, bool forw)
 		}
 		pptp_call_reply = nbuf_ensure_contig(nbuf,
 		    sizeof(pptp_outgoing_call_reply_t));
+		if (!pptp_call_reply) {
+			return false;
+		}
 
 		/* Lookup the GRE connection context. */
 		mutex_enter(&tcp_ctx->lock);
 		gre_state = pptp_gre_lookup_state(tcp_ctx,
 		    CLIENT_CALL_ID, pptp_call_reply->peer_call_id);
-		if (gre_state == NULL || gre_state->ctx.call_id[SERVER_CALL_ID] != 0) {
+		if (gre_state == NULL || gre_state->call_id[SERVER_CALL_ID] != 0) {
 			/*
-			 * Slot is not found or call reply message has been
-			 * already received.
+			 * State entry not found or call reply message
+			 * has been already received.
 			 */
 			mutex_exit(&tcp_ctx->lock);
 			return false;
 		}
 
 		/* Save the server call ID. */
-		gre_state->ctx.call_id[SERVER_CALL_ID]= pptp_call_reply->hdr.call_id;
+		gre_state->call_id[SERVER_CALL_ID]= pptp_call_reply->hdr.call_id;
 
 		/*
 		 * If client and server call IDs have been seen, create
 		 * new GRE connection state entry.
 		 */
-		if (gre_state->ctx.call_id[CLIENT_CALL_ID] != 0 &&
-		    gre_state->ctx.call_id[SERVER_CALL_ID] != 0 &&
+		if (gre_state->call_id[CLIENT_CALL_ID] != 0 &&
+		    gre_state->call_id[SERVER_CALL_ID] != 0 &&
 		    gre_state->orig_client_call_id != 0) {
 			npf_cache_t gre_npc;
 			npf_addr_t *o_addr;
@@ -563,7 +551,7 @@ pptp_tcp_translate(npf_cache_t *npc, npf_nat_t *nt, bool forw)
 			memcpy(&gre_npc, npc, sizeof(npf_cache_t));
 			gre_npc.npc_proto = IPPROTO_GRE;
 			gre_npc.npc_info = NPC_IP46 | NPC_LAYER4 | NPC_ALG_PPTP_GRE_CTX;
-			gre_npc.npc_l4.hdr = (void *)&gre_state->ctx;
+			gre_npc.npc_l4.hdr = (void *)gre_state;
 
 			/* Setup the IP addresses. */
 			npf_nat_getorig(nt, &o_addr, &o_port);
@@ -574,7 +562,11 @@ pptp_tcp_translate(npf_cache_t *npc, npf_nat_t *nt, bool forw)
 			 * Establish the GRE connection state and associate
 			 * the NAT entry.
 			 */
-			pptp_gre_establish_state(&gre_npc, PFIL_OUT, gre_state, nt);
+			if (pptp_gre_establish_state(&gre_npc, PFIL_OUT,
+			    gre_state, nt) != 0) {
+				mutex_exit(&tcp_ctx->lock);
+				return false;
+			}
 		}
 		orig_client_call_id = gre_state->orig_client_call_id;
 		mutex_exit(&tcp_ctx->lock);
@@ -644,7 +636,7 @@ pptp_tcp_destroy(npf_t *npf, npf_nat_t *nt, npf_conn_t *con)
 	uint16_t ids[2], alen, proto;
 	pptp_tcp_ctx_t *tcp_ctx;
 
-	tcp_ctx = (pptp_tcp_ctx_t *)npf_nat_get_alg_arg(nt);
+	tcp_ctx = (pptp_tcp_ctx_t *)npf_nat_getalgarg(nt);
 	if (tcp_ctx == NULL) {
 		return;
 	}
@@ -658,11 +650,11 @@ pptp_tcp_destroy(npf_t *npf, npf_nat_t *nt, npf_conn_t *con)
 	npf_connkey_getkey(fw, &proto, ips, ids, &alen);
 
 	for (unsigned i = 0; i < PPTP_MAX_GRE_PER_CLIENT; i++) {
-		pptp_gre_state_t *gre_state;
+		pptp_gre_state_t *gre_state = &tcp_ctx->gre_conns[i];
 
-		gre_state = &tcp_ctx->gre_conns[i];
-		if ((gre_state->flags & GRE_STATE_FREESLOT) == 0)
+		if (gre_state->flags & GRE_STATE_USED) {
 			pptp_gre_destroy_state(npf, gre_state, ipv);
+		}
 	}
 	pptp_tcp_ctx_free(tcp_ctx);
 }
@@ -676,21 +668,24 @@ static bool
 pptp_gre_translate(npf_cache_t *npc, npf_nat_t *nt, bool forw)
 {
 	nbuf_t *nbuf = npc->npc_nbuf;
+	const pptp_gre_state_t *gre_state;
 	pptp_gre_hdr_t *gre;
-	pptp_gre_state_t gre_state;
 
-	if (forw || !npf_iscached(npc, NPC_IP4 | NPC_ENHANCED_GRE))
+	if (forw || !npf_iscached(npc, NPC_IP4)) {
 		return false;
+	}
+	if (!npf_iscached(npc, NPC_ENHANCED_GRE) || !npf_nat_getalg(nt)) {
+		return false;
+	}
 
 	nbuf_reset(nbuf);
 	gre = nbuf_advance(nbuf, npc->npc_hlen, sizeof(pptp_gre_hdr_t));
 	if (gre == NULL)
 		return false;
 
-	gre_state.u64 = (uint64_t)npf_nat_get_alg_arg(nt);
-	KASSERT(gre->call_id == gre_state.ctx.call_id[CLIENT_CALL_ID]);
-	gre->call_id = gre_state.orig_client_call_id;
-
+	gre_state = (const void *)npf_nat_getalgarg(nt);
+	KASSERT(gre->call_id == gre_state->call_id[CLIENT_CALL_ID]);
+	gre->call_id = gre_state->orig_client_call_id;
 	return true;
 }
 
@@ -702,19 +697,21 @@ pptp_gre_translate(npf_cache_t *npc, npf_nat_t *nt, bool forw)
 static void
 pptp_gre_destroy(npf_t *npf, npf_nat_t *nt, npf_conn_t *con)
 {
-	npf_connkey_t *fw;
-	npf_addr_t ips[2];
-	uint16_t ids[2], alen, proto;
-	pptp_gre_state_t gre_state;
+	const pptp_gre_state_t *gre_state;
+	uint16_t call_id;
 
-	/* Note: only IPv4 is supported. */
-	fw = npf_conn_getforwkey(con);
-	KASSERT(NPF_CONNKEY_ALEN(fw) == sizeof(uint32_t));
-	npf_connkey_getkey(fw, &proto, ips, ids, &alen);
+	gre_state = (const void *)npf_nat_getalgarg(nt);
+	if ((call_id = gre_state->call_id[CLIENT_CALL_ID]) != 0) {
+		const npf_connkey_t *fw;
+		uint16_t ids[2], alen, proto;
+		npf_addr_t ips[2];
 
-	gre_state.u64 = (uint64_t)npf_nat_get_alg_arg(nt);
-	if (gre_state.ctx.call_id[CLIENT_CALL_ID] != 0) {
-		pptp_call_id_put(&ips[NPF_DST], gre_state.ctx.call_id[CLIENT_CALL_ID]);
+		/* Note: only IPv4 is supported. */
+		fw = npf_conn_getforwkey(con);
+		KASSERT(NPF_CONNKEY_ALEN(fw) == sizeof(uint32_t));
+		npf_connkey_getkey(fw, &proto, ips, ids, &alen);
+
+		pptp_call_id_put(&ips[NPF_DST], call_id);
 	}
 }
 
@@ -747,11 +744,12 @@ npf_alg_pptp_init(npf_t *npf)
 	}
 	pptp_alg.tcp = npf_alg_register(npf, "pptp_tcp", &pptp_tcp);
 	if (pptp_alg.tcp == NULL) {
+		npf_alg_pptp_fini(npf);
 		return ENOMEM;
 	}
 	pptp_alg.gre = npf_alg_register(npf, "pptp_gre", &pptp_gre);
 	if (pptp_alg.tcp == NULL) {
-		npf_alg_unregister(npf, pptp_alg.tcp);
+		npf_alg_pptp_fini(npf);
 		return ENOMEM;
 	}
 	return 0;
@@ -760,10 +758,16 @@ npf_alg_pptp_init(npf_t *npf)
 __dso_public int
 npf_alg_pptp_fini(npf_t *npf)
 {
-	KASSERT(pptp_alg.tcp != NULL);
-	KASSERT(pptp_alg.gre != NULL);
-	npf_portmap_destroy(pptp_alg.pm);
-	return npf_alg_unregister(npf, pptp_alg.gre);
+	if (pptp_alg.pm) {
+		npf_portmap_destroy(pptp_alg.pm);
+	}
+	if (pptp_alg.tcp) {
+		npf_alg_unregister(npf, pptp_alg.tcp);
+	}
+	if (pptp_alg.gre) {
+		npf_alg_unregister(npf, pptp_alg.gre);
+	}
+	return 0;
 }
 
 #ifdef _KERNEL
