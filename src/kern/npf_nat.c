@@ -706,17 +706,17 @@ npf_do_nat(npf_cache_t *npc, npf_conn_t *con, const int di)
 		goto out;
 	}
 
+	/* Determine whether any ALG matches. */
+	if (npf_alg_match(npc, nt, di)) {
+		KASSERT(nt->nt_alg != NULL);
+	}
+
 	/* Associate the NAT translation entry with the connection. */
 	error = npf_conn_setnat(npc, con, nt, np->n_type);
 	if (error) {
 		/* Will release the reference. */
 		npf_nat_destroy(con, nt);
 		goto out;
-	}
-
-	/* Determine whether any ALG matches. */
-	if (npf_alg_match(npc, nt, di)) {
-		KASSERT(nt->nt_alg != NULL);
 	}
 
 translate:
