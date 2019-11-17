@@ -234,9 +234,7 @@ npf_alg_match(npf_cache_t *npc, npf_nat_t *nt, int di)
  * npf_alg_exec: execute the ALG translation processors.
  *
  *	The ALG function would perform any additional packet translation
- *	or manipulation here.  The translate function will be called by
- *	once the ALG has been associated with the NAT state through the
- *	npf_alg_match() inspector.
+ *	or manipulation here.
  *
  *	=> This is called when the packet is being translated according
  *	   to the dynamic NAT logic [NAT-TRANSLATE].
@@ -246,15 +244,13 @@ npf_alg_exec(npf_cache_t *npc, npf_nat_t *nt, bool forw)
 {
 	npf_t *npf = npc->npc_ctx;
 	npf_algset_t *aset = npf->algset;
-	npf_alg_t *alg;
 	int s;
 
 	s = npf_ebr_enter(npf->ebr);
-	alg = npf_nat_getalg(nt);
-	if (alg != NULL) {
-		const npfa_funcs_t *f = &aset->alg_funcs[alg->na_slot];
+	for (unsigned i = 0; i < aset->alg_count; i++) {
+		const npfa_funcs_t *f = &aset->alg_funcs[i];
 
-		if (f->translate != NULL) {
+		if (f->translate) {
 			f->translate(npc, nt, forw);
 		}
 	}
