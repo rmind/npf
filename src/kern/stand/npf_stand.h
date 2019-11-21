@@ -165,6 +165,11 @@ again:
 #define	atomic_cas_ptr(p, o, n)	__sync_val_compare_and_swap((p), (o), (n))
 #define	atomic_swap_ptr(x, y)	npfkern_atomic_swap_ptr((x), (y))
 
+#define	atomic_load_relaxed(x)		\
+    atomic_load_explicit((x), memory_order_relaxed)
+#define	atomic_store_relaxed(x, y)	\
+    atomic_store_explicit((x), (y), memory_order_relaxed)
+
 /*
  * Threads.
  */

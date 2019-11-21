@@ -166,6 +166,23 @@
 #define	ASSERT		assert
 
 /*
+ * C11-style memory fences and atomic loads/stores.
+ */
+#ifndef atomic_thread_fence
+#define	memory_order_relaxed	__ATOMIC_RELAXED
+#define	memory_order_acquire	__ATOMIC_ACQUIRE
+#define	memory_order_release	__ATOMIC_RELEASE
+#define	memory_order_seq_cst	__ATOMIC_SEQ_CST
+#define	atomic_thread_fence(m)	__atomic_thread_fence(m)
+#endif
+#ifndef atomic_store_explicit
+#define	atomic_store_explicit	__atomic_store_n
+#endif
+#ifndef atomic_load_explicit
+#define	atomic_load_explicit	__atomic_load_n
+#endif
+
+/*
  * Exponential back-off for the spinning paths.
  */
 #define	SPINLOCK_BACKOFF_MIN	4

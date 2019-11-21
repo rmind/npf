@@ -65,7 +65,7 @@ struct npf_rprocset {
 struct npf_rproc {
 	/* Flags and reference count. */
 	uint32_t		rp_flags;
-	u_int			rp_refcnt;
+	unsigned		rp_refcnt;
 
 	/* Associated extensions and their metadata . */
 	unsigned		rp_ext_count;
@@ -155,12 +155,12 @@ npf_ext_unregister(npf_t *npf, void *extid)
 	/*
 	 * Check if in-use first (re-check with the lock held).
 	 */
-	if (ext->ext_refcnt) {
+	if (atomic_load_relaxed(&ext->ext_refcnt)) {
 		return EBUSY;
 	}
 
 	mutex_enter(&npf->ext_lock);
-	if (ext->ext_refcnt) {
+	if (atomic_load_relaxed(&ext->ext_refcnt)) {
 		mutex_exit(&npf->ext_lock);
 		return EBUSY;
 	}
@@ -328,8 +328,8 @@ npf_rproc_getname(const npf_rproc_t *rp)
 void
 npf_rproc_release(npf_rproc_t *rp)
 {
+	KASSERT(atomic_load_relaxed(&rp->rp_refcnt) > 0);
 
-	KASSERT(rp->rp_refcnt > 0);
 	if (atomic_dec_uint_nv(&rp->rp_refcnt) != 0) {
 		return;
 	}
@@ -366,13 +366,14 @@ npf_rproc_run(npf_cache_t *npc, npf_rproc_t *rp, const npf_match_info_t *mi,
 	const unsigned extcount = rp->rp_ext_count;
 
 	KASSERT(!nbuf_flag_p(npc->npc_nbuf, NBUF_DATAREF_RESET));
-	KASSERT(rp->rp_refcnt > 0);
+	KASSERT(atomic_load_relaxed(&rp->rp_refcnt) > 0);
 
 	for (unsigned i = 0; i < extcount; i++) {
 		const npf_ext_t *ext = rp->rp_ext[i];
 		const npf_ext_ops_t *extops = ext->ext_ops;
 
-		KASSERT(ext->ext_refcnt > 0);
+		KASSERT(atomic_load_relaxed(&ext->ext_refcnt) > 0);
+
 		if (!extops->proc(npc, rp->rp_ext_meta[i], mi, decision)) {
 			return false;
 		}

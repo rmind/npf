@@ -47,7 +47,7 @@
 
 #ifdef _KERNEL
 #include <sys/cdefs.h>
-__KERNEL_RCSID(0, "$NetBSD: npf_conf.c,v 1.13 2019/07/23 00:52:01 rmind Exp $");
+__KERNEL_RCSID(0, "$NetBSD$");
 
 #include <sys/param.h>
 #include <sys/types.h>
@@ -136,7 +136,7 @@ npf_config_load(npf_t *npf, npf_config_t *nc, npf_conndb_t *conns, bool flush)
 	 * - Scan and use matching NAT policies to preserve the connections.
 	 */
 	mutex_enter(&npf->config_lock);
-	if ((onc = npf->config) != NULL) {
+	if ((onc = atomic_load_relaxed(&npf->config)) != NULL) {
 		npf_ruleset_reload(npf, nc->ruleset, onc->ruleset, load);
 		npf_tableset_reload(npf, nc->tableset, onc->tableset);
 		npf_ruleset_reload(npf, nc->nat_ruleset, onc->nat_ruleset, load);
@@ -146,7 +146,7 @@ npf_config_load(npf_t *npf, npf_config_t *nc, npf_conndb_t *conns, bool flush)
 	 * Set the new config and release the lock.
 	 */
 	membar_sync();
-	npf->config = nc;
+	atomic_store_relaxed(&npf->config, nc);
 	if (onc == NULL) {
 		/* Initial load, done. */
 		npf_ifmap_flush(npf);
@@ -221,12 +221,14 @@ npf_config_sync(npf_t *npf)
 int
 npf_config_read_enter(npf_t *npf)
 {
+	/* Note: issues an acquire fence. */
 	return npf_ebr_enter(npf->ebr);
 }
 
 void
 npf_config_read_exit(npf_t *npf, int s)
 {
+	/* Note: issues a release fence. */
 	npf_ebr_exit(npf->ebr, s);
 }
 
@@ -237,27 +239,31 @@ npf_config_read_exit(npf_t *npf, int s)
 npf_ruleset_t *
 npf_config_ruleset(npf_t *npf)
 {
+	npf_config_t *config = atomic_load_relaxed(&npf->config);
 	KASSERT(npf_config_locked_p(npf) || npf_ebr_incrit_p(npf->ebr));
-	return npf->config->ruleset;
+	return config->ruleset;
 }
 
 npf_ruleset_t *
 npf_config_natset(npf_t *npf)
 {
+	npf_config_t *config = atomic_load_relaxed(&npf->config);
 	KASSERT(npf_config_locked_p(npf) || npf_ebr_incrit_p(npf->ebr));
-	return npf->config->nat_ruleset;
+	return config->nat_ruleset;
 }
 
 npf_tableset_t *
 npf_config_tableset(npf_t *npf)
 {
+	npf_config_t *config = atomic_load_relaxed(&npf->config);
 	KASSERT(npf_config_locked_p(npf) || npf_ebr_incrit_p(npf->ebr));
-	return npf->config->tableset;
+	return config->tableset;
 }
 
 bool
 npf_default_pass(npf_t *npf)
 {
+	npf_config_t *config = atomic_load_relaxed(&npf->config);
 	KASSERT(npf_config_locked_p(npf) || npf_ebr_incrit_p(npf->ebr));
-	return npf->config->default_pass;
+	return config->default_pass;
 }

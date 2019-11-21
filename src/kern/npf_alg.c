@@ -33,7 +33,7 @@
 
 #ifdef _KERNEL
 #include <sys/cdefs.h>
-__KERNEL_RCSID(0, "$NetBSD: npf_alg.c,v 1.20 2019/07/23 00:52:01 rmind Exp $");
+__KERNEL_RCSID(0, "$NetBSD$");
 
 #include <sys/param.h>
 #include <sys/types.h>
@@ -156,14 +156,18 @@ npf_alg_register(npf_t *npf, const char *name, const npfa_funcs_t *funcs)
 	alg->na_name = name;
 	alg->na_slot = i;
 
-	/* Assign the functions. */
+	/*
+	 * Assign the functions.  Make sure the 'destroy' gets visible first.
+	 */
 	afuncs = &aset->alg_funcs[i];
-	afuncs->match = funcs->match;
-	afuncs->translate = funcs->translate;
-	afuncs->inspect = funcs->inspect;
-	afuncs->destroy = funcs->destroy;
+	atomic_store_relaxed(&afuncs->destroy, funcs->destroy);
+	membar_producer();
+	atomic_store_relaxed(&afuncs->translate, funcs->translate);
+	atomic_store_relaxed(&afuncs->inspect, funcs->inspect);
+	atomic_store_relaxed(&afuncs->match, funcs->match);
+	membar_producer();
 
-	aset->alg_count = MAX(aset->alg_count, i + 1);
+	atomic_store_relaxed(&aset->alg_count, MAX(aset->alg_count, i + 1));
 	npf_config_exit(npf);
 
 	return alg;
@@ -182,9 +186,9 @@ npf_alg_unregister(npf_t *npf, npf_alg_t *alg)
 	/* Deactivate the functions first. */
 	npf_config_enter(npf);
 	afuncs = &aset->alg_funcs[i];
-	afuncs->match = NULL;
-	afuncs->translate = NULL;
-	afuncs->inspect = NULL;
+	atomic_store_relaxed(&afuncs->match, NULL);
+	atomic_store_relaxed(&afuncs->translate, NULL);
+	atomic_store_relaxed(&afuncs->inspect, NULL);
 	npf_ebr_full_sync(npf->ebr);
 
 	/*
@@ -192,7 +196,7 @@ npf_alg_unregister(npf_t *npf, npf_alg_t *alg)
 	 * as the following will invoke it for the relevant connections.
 	 */
 	npf_ruleset_freealg(npf_config_natset(npf), alg);
-	afuncs->destroy = NULL;
+	atomic_store_relaxed(&afuncs->destroy, NULL);
 	alg->na_name = NULL;
 	npf_config_exit(npf);
 
@@ -217,15 +221,19 @@ npf_alg_match(npf_cache_t *npc, npf_nat_t *nt, int di)
 	npf_t *npf = npc->npc_ctx;
 	npf_algset_t *aset = npf->algset;
 	bool match = false;
+	unsigned count;
 	int s;
 
 	KASSERTMSG(npf_iscached(npc, NPC_IP46), "expecting protocol number");
 
 	s = npf_ebr_enter(npf->ebr);
-	for (unsigned i = 0; i < aset->alg_count; i++) {
+	count = atomic_load_relaxed(&aset->alg_count);
+	for (unsigned i = 0; i < count; i++) {
 		const npfa_funcs_t *f = &aset->alg_funcs[i];
+		bool (*match_func)(npf_cache_t *, npf_nat_t *, int);
 
-		if (f->match && f->match(npc, nt, di)) {
+		match_func = atomic_load_relaxed(&f->match);
+		if (match_func && match_func(npc, nt, di)) {
 			match = true;
 			break;
 		}
@@ -248,14 +256,18 @@ npf_alg_exec(npf_cache_t *npc, npf_nat_t *nt, bool forw)
 {
 	npf_t *npf = npc->npc_ctx;
 	npf_algset_t *aset = npf->algset;
+	unsigned count;
 	int s;
 
 	s = npf_ebr_enter(npf->ebr);
-	for (unsigned i = 0; i < aset->alg_count; i++) {
+	count = atomic_load_relaxed(&aset->alg_count);
+	for (unsigned i = 0; i < count; i++) {
 		const npfa_funcs_t *f = &aset->alg_funcs[i];
+		bool (*translate_func)(npf_cache_t *, npf_nat_t *, bool);
 
-		if (f->translate) {
-			f->translate(npc, nt, forw);
+		translate_func = atomic_load_relaxed(&f->translate);
+		if (translate_func) {
+			translate_func(npc, nt, forw);
 		}
 	}
 	npf_ebr_exit(npf->ebr, s);
@@ -284,19 +296,37 @@ npf_alg_conn(npf_cache_t *npc, int di)
 	npf_t *npf = npc->npc_ctx;
 	npf_algset_t *aset = npf->algset;
 	npf_conn_t *con = NULL;
+	unsigned count;
 	int s;
 
 	s = npf_ebr_enter(npf->ebr);
-	for (unsigned i = 0; i < aset->alg_count; i++) {
+	count = atomic_load_relaxed(&aset->alg_count);
+	for (unsigned i = 0; i < count; i++) {
 		const npfa_funcs_t *f = &aset->alg_funcs[i];
+		npf_conn_t *(*inspect_func)(npf_cache_t *, int);
 
-		if (!f->inspect)
-			continue;
-		if ((con = f->inspect(npc, di)) != NULL)
+		inspect_func = atomic_load_relaxed(&f->inspect);
+		if (inspect_func && (con = inspect_func(npc, di)) != NULL) {
 			break;
+		}
 	}
 	npf_ebr_exit(npf->ebr, s);
 	return con;
+}
+
+/*
+ * npf_alg_destroy: free the ALG structure associated with the NAT entry.
+ */
+void
+npf_alg_destroy(npf_t *npf, npf_alg_t *alg, npf_nat_t *nat, npf_conn_t *con)
+{
+	npf_algset_t *aset = npf->algset;
+	const npfa_funcs_t *f = &aset->alg_funcs[alg->na_slot];
+	void (*destroy_func)(npf_t *, npf_nat_t *, npf_conn_t *);
+
+	if ((destroy_func = atomic_load_relaxed(&f->destroy)) != NULL) {
+		destroy_func(npf, nat, con);
+	}
 }
 
 /*
@@ -322,15 +352,4 @@ npf_alg_export(npf_t *npf, nvlist_t *npf_dict)
 		nvlist_destroy(algdict);
 	}
 	return 0;
-}
-
-void
-npf_alg_destroy(npf_t *npf, npf_alg_t *alg, npf_nat_t *nat, npf_conn_t *con)
-{
-	npf_algset_t *aset = npf->algset;
-	const npfa_funcs_t *f = &aset->alg_funcs[alg->na_slot];
-
-	if (f->destroy != NULL) {
-		f->destroy(npf, nat, con);
-	}
 }

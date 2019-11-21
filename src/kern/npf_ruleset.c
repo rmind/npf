@@ -33,7 +33,7 @@
 
 #ifdef _KERNEL
 #include <sys/cdefs.h>
-__KERNEL_RCSID(0, "$NetBSD: npf_ruleset.c,v 1.48 2019/07/23 00:52:01 rmind Exp $");
+__KERNEL_RCSID(0, "$NetBSD$");
 
 #include <sys/param.h>
 #include <sys/types.h>
@@ -263,17 +263,17 @@ npf_ruleset_add(npf_ruleset_t *rlset, const char *rname, npf_rule_t *rl)
 			it = it->r_next;
 		}
 		if (target) {
-			rl->r_next = target->r_next;
+			atomic_store_relaxed(&rl->r_next, target->r_next);
 			membar_producer();
-			target->r_next = rl;
+			atomic_store_relaxed(&target->r_next, rl);
 			break;
 		}
 		/* FALLTHROUGH */
 
 	case NPF_PRI_FIRST:
-		rl->r_next = rg->r_subset;
+		atomic_store_relaxed(&rl->r_next, rg->r_subset);
 		membar_producer();
-		rg->r_subset = rl;
+		atomic_store_relaxed(&rg->r_subset, rl);
 		break;
 	}
 
@@ -515,7 +515,7 @@ npf_ruleset_reload(npf_t *npf, npf_ruleset_t *newset,
 	}
 
 	/*
-	 * If performing the load of connections then NAT policies may
+	 * If performing the load of connections then NAT policies might
 	 * already have translated connections associated with them and
 	 * we should not share or inherit anything.
 	 */
@@ -836,13 +836,14 @@ npf_rule_inspect(const npf_rule_t *rl, bpf_args_t *bc_args,
  */
 static inline npf_rule_t *
 npf_rule_reinspect(const npf_rule_t *rg, bpf_args_t *bc_args,
-    const int di_mask, const u_int ifid)
+    const int di_mask, const unsigned ifid)
 {
 	npf_rule_t *final_rl = NULL, *rl;
 
 	KASSERT(NPF_DYNAMIC_GROUP_P(rg->r_attr));
 
-	for (rl = rg->r_subset; rl; rl = rl->r_next) {
+	rl = atomic_load_relaxed(&rg->r_subset);
+	for (; rl; rl = atomic_load_relaxed(&rl->r_next)) {
 		KASSERT(!final_rl || rl->r_priority >= final_rl->r_priority);
 		if (!npf_rule_inspect(rl, bc_args, di_mask, ifid)) {
 			continue;

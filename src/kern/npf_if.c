@@ -72,7 +72,8 @@ typedef struct npf_ifmap {
 
 #define	NPF_IFMAP_NOID			(0U)
 #define	NPF_IFMAP_SLOT2ID(npf, slot)	((npf)->ifmap_off + (slot) + 1)
-#define	NPF_IFMAP_ID2SLOT(npf, id)	((id) - (npf)->ifmap_off - 1)
+#define	NPF_IFMAP_ID2SLOT(npf, id)	\
+    ((id) - atomic_load_relaxed(&(npf)->ifmap_off) - 1)
 
 void
 npf_ifmap_init(npf_t *npf, const npf_ifops_t *ifops)
