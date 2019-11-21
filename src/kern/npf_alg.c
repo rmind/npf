@@ -187,8 +187,12 @@ npf_alg_unregister(npf_t *npf, npf_alg_t *alg)
 	afuncs->inspect = NULL;
 	npf_ebr_full_sync(npf->ebr);
 
-	/* Finally, unregister the ALG. */
+	/*
+	 * Finally, unregister the ALG.  We leave the 'destroy' callback
+	 * as the following will invoke it for the relevant connections.
+	 */
 	npf_ruleset_freealg(npf_config_natset(npf), alg);
+	afuncs->destroy = NULL;
 	alg->na_name = NULL;
 	npf_config_exit(npf);
 

@@ -312,6 +312,7 @@ npf_nat_freealg(npf_natpolicy_t *np, npf_alg_t *alg)
 	mutex_enter(&np->n_lock);
 	LIST_FOREACH(nt, &np->n_nat_list, nt_entry) {
 		if (nt->nt_alg == alg) {
+			npf_alg_destroy(np->n_npfctx, alg, nt, nt->nt_conn);
 			nt->nt_alg = NULL;
 		}
 	}
@@ -793,6 +794,7 @@ npf_nat_destroy(npf_conn_t *con, npf_nat_t *nt)
 	/* Execute the ALG destroy callback, if any. */
 	if ((alg = npf_nat_getalg(nt)) != NULL) {
 		npf_alg_destroy(npf, alg, nt, con);
+		nt->nt_alg = NULL;
 	}
 
 	/* Return taken port to the portmap. */
