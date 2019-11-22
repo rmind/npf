@@ -67,7 +67,7 @@
 
 #ifdef _KERNEL
 #include <sys/cdefs.h>
-__KERNEL_RCSID(0, "$NetBSD: npf_nat.c,v 1.47 2019/08/11 20:26:34 rmind Exp $");
+__KERNEL_RCSID(0, "$NetBSD$");
 
 #include <sys/param.h>
 #include <sys/types.h>
@@ -286,7 +286,7 @@ npf_nat_freepolicy(npf_natpolicy_t *np)
 	 * Disassociate all entries from the policy.  At this point,
 	 * new entries can no longer be created for this policy.
 	 */
-	while (np->n_refcnt) {
+	while (atomic_load_relaxed(&np->n_refcnt)) {
 		mutex_enter(&np->n_lock);
 		LIST_FOREACH(nt, &np->n_nat_list, nt_entry) {
 			con = nt->nt_conn;
@@ -806,7 +806,7 @@ npf_nat_destroy(npf_conn_t *con, npf_nat_t *nt)
 
 	mutex_enter(&np->n_lock);
 	LIST_REMOVE(nt, nt_entry);
-	KASSERT(np->n_refcnt > 0);
+	KASSERT(atomic_load_relaxed(&np->n_refcnt) > 0);
 	atomic_dec_uint(&np->n_refcnt);
 	mutex_exit(&np->n_lock);
 	pool_cache_put(nat_cache, nt);

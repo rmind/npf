@@ -46,7 +46,7 @@
 
 #ifdef _KERNEL
 #include <sys/cdefs.h>
-__KERNEL_RCSID(0, "$NetBSD: npf_conndb.c,v 1.6 2019/07/23 00:52:01 rmind Exp $");
+__KERNEL_RCSID(0, "$NetBSD$");
 
 #include <sys/param.h>
 #include <sys/types.h>
@@ -226,8 +226,8 @@ npf_conndb_enqueue(npf_conndb_t *cd, npf_conn_t *con)
 	npf_conn_t *head;
 
 	do {
-		head = cd->cd_new;
-		con->c_next = head;
+		head = atomic_load_relaxed(&cd->cd_new);
+		atomic_store_relaxed(&con->c_next, head);
 	} while (atomic_cas_ptr(&cd->cd_new, head, con) != head);
 }
 
@@ -243,7 +243,7 @@ npf_conndb_update(npf_conndb_t *cd)
 
 	con = atomic_swap_ptr(&cd->cd_new, NULL);
 	while (con) {
-		npf_conn_t *next = con->c_next; // union
+		npf_conn_t *next = atomic_load_relaxed(&con->c_next); // union
 		LIST_INSERT_HEAD(&cd->cd_list, con, c_entry);
 		con = next;
 	}
@@ -282,6 +282,8 @@ npf_conndb_gc_incr(npf_t *npf, npf_conndb_t *cd, const time_t now)
 	const npf_conndb_params_t *params = npf->params[NPF_PARAMS_CONNDB];
 	unsigned target = params->gc_step;
 	npf_conn_t *con;
+
+	KASSERT(mutex_owned(&npf->conn_lock));
 
 	/*
 	 * Second, start from the "last" (marker) connection.
@@ -396,7 +398,9 @@ npf_conndb_gc(npf_t *npf, npf_conndb_t *cd, bool flush, bool sync)
 		 * Destroy only if removed and no references.  Otherwise,
 		 * just do it next time, unless we are destroying all.
 		 */
-		if (__predict_false(con->c_refcnt)) {
+		const unsigned refcnt = atomic_load_relaxed(&con->c_refcnt);
+
+		if (__predict_false(refcnt)) {
 			if (!flush) {
 				break;
 			}
