@@ -59,6 +59,7 @@ __KERNEL_RCSID(0, "$NetBSD: npf_state.c,v 1.22 2019/07/23 00:52:01 rmind Exp $")
  */
 typedef struct {
 	int		timeouts[NPF_ANY_CONN_NSTATES];
+	int		gre_timeout;
 } npf_state_params_t;
 
 /*
@@ -115,12 +116,14 @@ npf_state_sysinit(npf_t *npf)
 			.default_val = 60,
 			.min = 0, .max = INT_MAX
 		},
+#ifdef PPTP_ALG
 		{
 			"state.generic.timeout.gre",
-			&params->timeouts[NPF_ANY_CONN_GRE],
+			&params->gre_timeout,
 			.default_val = 24 * 60 * 60,
 			.min = 0, .max = INT_MAX
 		},
+#endif
 	};
 	npf_param_register(npf, param_map, __arraycount(param_map));
 	npf_state_tcp_sysinit(npf);
@@ -159,7 +162,13 @@ npf_state_init(npf_cache_t *npc, npf_state_t *nst)
 		break;
 	case IPPROTO_UDP:
 	case IPPROTO_ICMP:
+<<<<<<< HEAD
 	case IPPROTO_GRE:
+=======
+#ifdef PPTP_ALG
+	case IPPROTO_GRE:
+#endif
+>>>>>>> b20b57f50b678be55ef51acd7bb4f843de635622
 		/* Generic. */
 		nst->nst_state = npf_generic_fsm[nst->nst_state][NPF_FLOW_FORW];
 		ret = true;
@@ -197,7 +206,13 @@ npf_state_inspect(npf_cache_t *npc, npf_state_t *nst, const bool forw)
 		break;
 	case IPPROTO_UDP:
 	case IPPROTO_ICMP:
+<<<<<<< HEAD
 	case IPPROTO_GRE:
+=======
+#ifdef PPTP_ALG
+	case IPPROTO_GRE:
+#endif
+>>>>>>> b20b57f50b678be55ef51acd7bb4f843de635622
 		/* Generic. */
 		nst->nst_state = npf_generic_fsm[nst->nst_state][di];
 		ret = true;
@@ -231,10 +246,19 @@ npf_state_etime(npf_t *npf, const npf_state_t *nst, const int proto)
 		params = npf->params[NPF_PARAMS_GENERIC_STATE];
 		timeout = params->timeouts[state];
 		break;
+<<<<<<< HEAD
 	case IPPROTO_GRE:
 		params = npf->params[NPF_PARAMS_GENERIC_STATE];
 		timeout = params->timeouts[NPF_ANY_CONN_GRE];
 		break;
+=======
+#ifdef PPTP_ALG
+	case IPPROTO_GRE:
+		params = npf->params[NPF_PARAMS_GENERIC_STATE];
+		timeout = params->gre_timeout;
+		break;
+#endif
+>>>>>>> b20b57f50b678be55ef51acd7bb4f843de635622
 	default:
 		KASSERT(false);
 	}

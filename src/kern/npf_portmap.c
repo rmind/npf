@@ -247,7 +247,7 @@ bitmap_isset(const bitmap_t *bm, unsigned bit)
 
 	KASSERT(bit < PORTMAP_MAX_BITS);
 	i = bit >> PORTMAP_L0_SHIFT;
-	bval = bm->bits0[i];
+	bval = atomic_load_relaxed(&bm->bits0[i]);
 
 	/*
 	 * Empty check.  Note: we can test the whole word against zero,
@@ -280,7 +280,7 @@ again:
 	KASSERT(bit < PORTMAP_MAX_BITS);
 	i = bit >> PORTMAP_L0_SHIFT;
 	chunk_bit = bit & PORTMAP_L0_MASK;
-	bval = bm->bits0[i]; // atomic fetch
+	bval = atomic_load_relaxed(&bm->bits0[i]);
 
 	if ((bval & PORTMAP_L1_TAG) == 0) {
 		unsigned n = 0, bitvals[5];
@@ -339,7 +339,7 @@ again:
 	i = chunk_bit >> PORTMAP_L1_SHIFT;
 	b = UINT64_C(1) << (chunk_bit & PORTMAP_L1_MASK);
 
-	oval = bm1->bits1[i]; // atomic fetch
+	oval = atomic_load_relaxed(&bm1->bits1[i]);
 	if (oval & b) {
 		return false;
 	}
@@ -379,7 +379,7 @@ again:
 	i = chunk_bit >> PORTMAP_L1_SHIFT;
 	b = UINT64_C(1) << (chunk_bit & PORTMAP_L1_MASK);
 
-	oval = bm1->bits1[i]; // atomic fetch
+	oval = atomic_load_relaxed(&bm1->bits1[i]);
 	if ((oval & b) == 0) {
 		return false;
 	}
@@ -433,7 +433,6 @@ npf_portmap_autoget(npf_portmap_t *pm, unsigned alen, const npf_addr_t *addr)
 	}
 	return bm;
 }
-
 
 /*
  * npf_portmap_flush: free all bitmaps and remove all addresses.

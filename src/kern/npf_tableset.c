@@ -46,7 +46,7 @@
 
 #ifdef _KERNEL
 #include <sys/cdefs.h>
-__KERNEL_RCSID(0, "$NetBSD: npf_tableset.c,v 1.33 2019/07/23 00:52:01 rmind Exp $");
+__KERNEL_RCSID(0, "$NetBSD$");
 
 #include <sys/param.h>
 #include <sys/types.h>
@@ -199,6 +199,7 @@ npf_tableset_swap(npf_tableset_t *ts, npf_table_t *newt)
 
 	newt->t_refcnt = oldt->t_refcnt;
 	oldt->t_refcnt = 0;
+	membar_producer();
 
 	return atomic_swap_ptr(&ts->ts_map[tid], newt);
 }
@@ -221,10 +222,10 @@ npf_tableset_getbyname(npf_tableset_t *ts, const char *name)
 }
 
 npf_table_t *
-npf_tableset_getbyid(npf_tableset_t *ts, u_int tid)
+npf_tableset_getbyid(npf_tableset_t *ts, unsigned tid)
 {
 	if (__predict_true(tid < ts->ts_nitems)) {
-		return ts->ts_map[tid];
+		return atomic_load_relaxed(&ts->ts_map[tid]);
 	}
 	return NULL;
 }

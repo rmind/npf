@@ -67,7 +67,7 @@
 
 #ifdef _KERNEL
 #include <sys/cdefs.h>
-__KERNEL_RCSID(0, "$NetBSD: npf_nat.c,v 1.47 2019/08/11 20:26:34 rmind Exp $");
+__KERNEL_RCSID(0, "$NetBSD$");
 
 #include <sys/param.h>
 #include <sys/types.h>
@@ -286,7 +286,7 @@ npf_nat_freepolicy(npf_natpolicy_t *np)
 	 * Disassociate all entries from the policy.  At this point,
 	 * new entries can no longer be created for this policy.
 	 */
-	while (np->n_refcnt) {
+	while (atomic_load_relaxed(&np->n_refcnt)) {
 		mutex_enter(&np->n_lock);
 		LIST_FOREACH(nt, &np->n_nat_list, nt_entry) {
 			con = nt->nt_conn;
@@ -312,6 +312,7 @@ npf_nat_freealg(npf_natpolicy_t *np, npf_alg_t *alg)
 	mutex_enter(&np->n_lock);
 	LIST_FOREACH(nt, &np->n_nat_list, nt_entry) {
 		if (nt->nt_alg == alg) {
+			npf_alg_destroy(np->n_npfctx, alg, nt, nt->nt_conn);
 			nt->nt_alg = NULL;
 		}
 	}
@@ -597,32 +598,30 @@ npf_nat_algo(npf_cache_t *npc, const npf_natpolicy_t *np, bool forw)
 }
 
 /*
- * Associate NAT policy with a existing connection
+ * Associate NAT policy with an existing connection state.
  */
-int
+npf_nat_t *
 npf_nat_share_policy(npf_cache_t *npc, npf_conn_t *con, npf_nat_t *src_nt)
 {
+	npf_natpolicy_t *np = src_nt->nt_natpolicy;
 	npf_nat_t *nt;
-	npf_natpolicy_t *np;
 	int ret;
-
-	np = src_nt->nt_natpolicy;
 
 	/* Create a new NAT entry. */
 	nt = npf_nat_create(npc, np, con);
-	if (__predict_false(nt == NULL))
-		return ENOMEM;
+	if (__predict_false(nt == NULL)) {
+		return NULL;
+	}
 	atomic_inc_uint(&np->n_refcnt);
 
 	/* Associate the NAT translation entry with the connection. */
 	ret = npf_conn_setnat(npc, con, nt, np->n_type);
 	if (__predict_false(ret)) {
 		/* Will release the reference. */
-		npf_nat_destroy(nt);
-		return ret;
+		npf_nat_destroy(con, nt);
+		return NULL;
 	}
-
-	return 0;
+	return nt;
 }
 
 /*
@@ -708,17 +707,17 @@ npf_do_nat(npf_cache_t *npc, npf_conn_t *con, const int di)
 		goto out;
 	}
 
+	/* Determine whether any ALG matches. */
+	if (npf_alg_match(npc, nt, di)) {
+		KASSERT(nt->nt_alg != NULL);
+	}
+
 	/* Associate the NAT translation entry with the connection. */
 	error = npf_conn_setnat(npc, con, nt, np->n_type);
 	if (error) {
 		/* Will release the reference. */
-		npf_nat_destroy(nt);
+		npf_nat_destroy(con, nt);
 		goto out;
-	}
-
-	/* Determine whether any ALG matches. */
-	if (npf_alg_match(npc, nt, di)) {
-		KASSERT(nt->nt_alg != NULL);
 	}
 
 translate:
@@ -777,31 +776,26 @@ npf_nat_getalg(const npf_nat_t *nt)
 }
 
 uintptr_t
-npf_nat_get_alg_arg(const npf_nat_t *nt)
+npf_nat_getalgarg(const npf_nat_t *nt)
 {
 	return nt->nt_alg_arg;
-}
-
-void
-npf_nat_set_alg_arg(npf_nat_t *nt, uintptr_t arg)
-{
-	nt->nt_alg_arg = arg;
-}
-
-void *
-npf_nat_cas_alg_arg(npf_nat_t *nt, uintptr_t old_arg, uintptr_t new_arg)
-{
-	return (void *)atomic_cas_64(&nt->nt_alg_arg, old_arg, new_arg);
 }
 
 /*
  * npf_nat_destroy: destroy NAT structure (performed on connection expiration).
  */
 void
-npf_nat_destroy(npf_nat_t *nt)
+npf_nat_destroy(npf_conn_t *con, npf_nat_t *nt)
 {
 	npf_natpolicy_t *np = nt->nt_natpolicy;
 	npf_t *npf = np->n_npfctx;
+	npf_alg_t *alg;
+
+	/* Execute the ALG destroy callback, if any. */
+	if ((alg = npf_nat_getalg(nt)) != NULL) {
+		npf_alg_destroy(npf, alg, nt, con);
+		nt->nt_alg = NULL;
+	}
 
 	/* Return taken port to the portmap. */
 	if ((np->n_flags & NPF_NAT_PORTMAP) != 0 && nt->nt_tport) {
@@ -812,7 +806,7 @@ npf_nat_destroy(npf_nat_t *nt)
 
 	mutex_enter(&np->n_lock);
 	LIST_REMOVE(nt, nt_entry);
-	KASSERT(np->n_refcnt > 0);
+	KASSERT(atomic_load_relaxed(&np->n_refcnt) > 0);
 	atomic_dec_uint(&np->n_refcnt);
 	mutex_exit(&np->n_lock);
 	pool_cache_put(nat_cache, nt);

@@ -110,7 +110,7 @@ npfkern_nvlist_copy(const void *a, const void *b, size_t c)
 #define	mutex_init(l, t, i)	pthread_mutex_init(l, NULL)
 #define	mutex_enter(l)		pthread_mutex_lock(l)
 #define	mutex_exit(l)		pthread_mutex_unlock(l)
-#define	mutex_owned(l)		true
+#define	mutex_owned(l)		((uintptr_t)(l) != (uintptr_t)0)
 #define	mutex_destroy(l)	pthread_mutex_destroy(l)
 
 static inline int
@@ -164,6 +164,11 @@ again:
 #define	atomic_cas_64(p, o, n)	__sync_val_compare_and_swap((p), (o), (n))
 #define	atomic_cas_ptr(p, o, n)	__sync_val_compare_and_swap((p), (o), (n))
 #define	atomic_swap_ptr(x, y)	npfkern_atomic_swap_ptr((x), (y))
+
+#define	atomic_load_relaxed(x)		\
+    atomic_load_explicit((x), memory_order_relaxed)
+#define	atomic_store_relaxed(x, y)	\
+    atomic_store_explicit((x), (y), memory_order_relaxed)
 
 /*
  * Threads.

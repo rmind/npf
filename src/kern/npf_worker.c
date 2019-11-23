@@ -29,7 +29,7 @@
 
 #ifdef _KERNEL
 #include <sys/cdefs.h>
-__KERNEL_RCSID(0, "$NetBSD: npf_worker.c,v 1.6 2019/01/19 21:19:32 rmind Exp $");
+__KERNEL_RCSID(0, "$NetBSD$");
 
 #include <sys/param.h>
 #include <sys/types.h>
@@ -47,7 +47,7 @@ typedef struct npf_worker {
 	kmutex_t		worker_lock;
 	kcondvar_t		worker_cv;
 	npf_workfunc_t		work_funcs[NPF_MAX_WORKS];
-	bool			worker_exit;
+	unsigned		worker_exit; // bool
 	lwp_t *			worker_lwp;
 	npf_t *			instances;
 } npf_worker_t;
@@ -125,7 +125,7 @@ npf_worker_signal(npf_t *npf)
 static bool
 npf_worker_testset(npf_worker_t *wrk, npf_workfunc_t find, npf_workfunc_t set)
 {
-	for (u_int i = 0; i < NPF_MAX_WORKS; i++) {
+	for (unsigned i = 0; i < NPF_MAX_WORKS; i++) {
 		if (wrk->work_funcs[i] == find) {
 			wrk->work_funcs[i] = set;
 			return true;
@@ -189,12 +189,12 @@ npf_worker(void *arg)
 
 	KASSERT(wrk != NULL);
 
-	while (!wrk->worker_exit) {
+	while (!atomic_load_relaxed(&wrk->worker_exit)) {
 		npf_t *npf;
 
 		npf = wrk->instances;
 		while (npf) {
-			u_int i = NPF_MAX_WORKS;
+			unsigned i = NPF_MAX_WORKS;
 			npf_workfunc_t work;
 
 			if (!npf->sync_registered) {
@@ -211,8 +211,9 @@ npf_worker(void *arg)
 			/* Next .. */
 			npf = npf->worker_entry;
 		}
-		if (wrk->worker_exit)
+		if (atomic_load_relaxed(&wrk->worker_exit)) {
 			break;
+		}
 
 		/* Sleep and periodically wake up, unless we get notified. */
 		mutex_enter(&wrk->worker_lock);
