@@ -51,8 +51,7 @@ __KERNEL_RCSID(0, "$NetBSD: npf_state.c,v 1.22 2019/07/23 00:52:01 rmind Exp $")
 #define	NPF_ANY_CONN_CLOSED		0
 #define	NPF_ANY_CONN_NEW		1
 #define	NPF_ANY_CONN_ESTABLISHED	2
-#define  NPF_ANY_CONN_GRE		3
-#define	NPF_ANY_CONN_NSTATES		4
+#define	NPF_ANY_CONN_NSTATES		3
 
 /*
  * Parameters.
