@@ -135,6 +135,8 @@ typedef struct {
 
 #define	GRE_STATE_USED			0x1
 #define	GRE_STATE_ESTABLISHED		0x2
+#define	GRE_STATE_ORIGIN_CLIENT_CALL_ID		0x4
+#define	GRE_STATE_SERVER_CALL_ID		0x8
 
 typedef union {
 	/*
@@ -338,7 +340,8 @@ pptp_gre_get_state(npf_cache_t *npc, pptp_tcp_ctx_t *tcp_ctx,
 		 * If call ID is already in use, then expire the associated
 		 * GRE connection and re-use this GRE state entry.
 		 */
-		if (gre_state_iter->orig_client_call_id == client_call_id) {
+		if (gre_state_iter->orig_client_call_id == client_call_id &&
+		    (gre_state_iter->flags & GRE_STATE_ORIGIN_CLIENT_CALL_ID)) {
 			pptp_gre_destroy_state(npc->npc_ctx,
 			    gre_state_iter, npc->npc_ips);
 			KASSERT((gre_state_iter->flags & GRE_STATE_USED) == 0);
@@ -349,8 +352,7 @@ pptp_gre_get_state(npf_cache_t *npc, pptp_tcp_ctx_t *tcp_ctx,
 	if (gre_state) {
 		gre_state->orig_client_call_id = client_call_id;
 		gre_state->call_id[CLIENT_CALL_ID] = trans_client_call_id;
-		gre_state->call_id[SERVER_CALL_ID] = 0;
-		gre_state->flags = 0;
+		gre_state->flags = GRE_STATE_ORIGIN_CLIENT_CALL_ID;
 	}
 	mutex_exit(&tcp_ctx->lock);
 	return gre_state;
@@ -369,7 +371,9 @@ pptp_gre_lookup_state(pptp_tcp_ctx_t *tcp_ctx, unsigned which, uint16_t call_id)
 		pptp_gre_state_t *gre_state = &tcp_ctx->gre_conns[i];
 
 		if ((gre_state->flags & GRE_STATE_USED) != 0 &&
-		    gre_state->call_id[which] == call_id)
+		    gre_state->call_id[which] == call_id &&
+		    (which == CLIENT_CALL_ID ||
+		        (gre_state->flags & GRE_STATE_SERVER_CALL_ID) != 0))
 			return gre_state;
 	}
 	return NULL;
@@ -525,7 +529,7 @@ pptp_tcp_translate(npf_cache_t *npc, npf_nat_t *nt, bool forw)
 		mutex_enter(&tcp_ctx->lock);
 		gre_state = pptp_gre_lookup_state(tcp_ctx,
 		    CLIENT_CALL_ID, pptp_call_reply->peer_call_id);
-		if (gre_state == NULL || gre_state->call_id[SERVER_CALL_ID] != 0) {
+		if (gre_state == NULL || (gre_state->flags & GRE_STATE_SERVER_CALL_ID)) {
 			/*
 			 * State entry not found or call reply message
 			 * has been already received.
@@ -536,14 +540,15 @@ pptp_tcp_translate(npf_cache_t *npc, npf_nat_t *nt, bool forw)
 
 		/* Save the server call ID. */
 		gre_state->call_id[SERVER_CALL_ID]= pptp_call_reply->hdr.call_id;
+		gre_state->flags |= GRE_STATE_SERVER_CALL_ID;
 
 		/*
 		 * If client and server call IDs have been seen, create
 		 * new GRE connection state entry.
 		 */
 		if (gre_state->call_id[CLIENT_CALL_ID] != 0 &&
-		    gre_state->call_id[SERVER_CALL_ID] != 0 &&
-		    gre_state->orig_client_call_id != 0) {
+		    (gre_state->flags &
+		      (GRE_STATE_SERVER_CALL_ID | GRE_STATE_ORIGIN_CLIENT_CALL_ID))) {
 			npf_cache_t gre_npc;
 			npf_addr_t *o_addr;
 
