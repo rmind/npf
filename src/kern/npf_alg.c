@@ -67,12 +67,6 @@ struct npf_algset {
 #define	NPF_ALG_PREF	"npf_alg_"
 #define	NPF_ALG_PREFLEN	(sizeof(NPF_ALG_PREF) - 1)
 
-static inline npfa_funcs_t *
-npf_alg_get_funcs(npf_t *npf, npf_alg_t *alg)
-{
-	return &npf->algset->alg_funcs[alg->na_slot];
-}
-
 void
 npf_alg_init(npf_t *npf)
 {
@@ -276,7 +270,6 @@ npf_alg_exec(npf_cache_t *npc, npf_nat_t *nt, bool forw)
 			translate_func(npc, nt, forw);
 		}
 	}
-
 	npf_ebr_exit(npf->ebr, s);
 }
 
@@ -359,13 +352,4 @@ npf_alg_export(npf_t *npf, nvlist_t *npf_dict)
 		nvlist_destroy(algdict);
 	}
 	return 0;
-}
-
-void
-npf_alg_destroy(npf_t *npf, npf_alg_t *alg, npf_conn_t *con)
-{
-	npfa_funcs_t *alg_funcs = npf_alg_get_funcs(npf, alg);
-
-	if (alg_funcs->destroy != NULL)
-		alg_funcs->destroy(npf, con);
 }

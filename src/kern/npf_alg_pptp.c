@@ -113,72 +113,12 @@ typedef struct {
 	uint32_t	max_bps;
 	uint32_t	bearer_type;
 	uint16_t	framing_type;
+	/* ... */
 } __packed pptp_outgoing_call_req_t;
 
 typedef struct {
 	pptp_msg_hdr_t	hdr;
 	uint16_t	peer_call_id;
-	uint8_t	result_code;
-	uint8_t	err_code;
-	uint16_t	cause_code;
-	/* etc */
-} __packed pptp_outgoing_call_reply_t;
-
-/*
- * pptp gre connection slot
- */
-typedef union {
-	struct {
-		/* all call id values use network byte order */
-		pptp_gre_context_t	ctx; /* client and server call ids */
-		uint16_t		orig_client_call_id; /* original client call id */
-		uint16_t		flags;
-	};
-
-	uint64_t	u64;
-} pptp_gre_con_slot_t;
-
-/*
- * TCP PPTP NAT ALG datum.
- * Associated with a tcp connection via
- * npf_nat::nt_alg_arg
- */
-typedef struct {
-	pptp_gre_con_slot_t	gre_con_slots[PPTP_MAX_GRE_PER_CLIENT];
-	/* lock to protect gre connection slots */
-	kmutex_t	lock;
-} pptp_gre_conns_t;
-
-/*
- * npfa_icmp_match: matching inspector determines ALG case and associates
- * our ALG with the NAT entry.
- */
-static bool
-npfa_pptp_tcp_match(npf_cache_t *npc, npf_nat_t *nt, int di)
-{
-	KASSERT(npf_iscached(npc, NPC_IP46));
-
-	/* note: only the outbound NAT is supported */
-	if (di != PFIL_OUT || !npf_iscached(npc, NPC_TCP) ||
-			  npc->npc_l4.tcp->th_dport != htons(PPTP_SERVER_PORT))
-		return false;
-
-	/* Associate ALG with translation entry. */
-	npf_nat_setalg(nt, pptp_alg.alg_pptp_tcp, 0);
-	return true;
-}
-
-static int
-npfa_pptp_gre_establish_gre_conn(npf_cache_t *npc, int di,
-    pptp_gre_con_slot_t *gre_slot, npf_nat_t *pptp_tcp_nt)
-{
-	npf_conn_t *con = NULL;
-	int ret;
-
-	KASSERT(mutex_owned(&gre_conns->lock));
-
-	/* establish new gre connection state */
-=======
 	uint8_t		result_code;
 	uint8_t		err_code;
 	uint16_t	cause_code;

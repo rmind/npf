@@ -162,13 +162,9 @@ npf_state_init(npf_cache_t *npc, npf_state_t *nst)
 		break;
 	case IPPROTO_UDP:
 	case IPPROTO_ICMP:
-<<<<<<< HEAD
-	case IPPROTO_GRE:
-=======
 #ifdef PPTP_ALG
 	case IPPROTO_GRE:
 #endif
->>>>>>> b20b57f50b678be55ef51acd7bb4f843de635622
 		/* Generic. */
 		nst->nst_state = npf_generic_fsm[nst->nst_state][NPF_FLOW_FORW];
 		ret = true;
@@ -206,13 +202,9 @@ npf_state_inspect(npf_cache_t *npc, npf_state_t *nst, const bool forw)
 		break;
 	case IPPROTO_UDP:
 	case IPPROTO_ICMP:
-<<<<<<< HEAD
-	case IPPROTO_GRE:
-=======
 #ifdef PPTP_ALG
 	case IPPROTO_GRE:
 #endif
->>>>>>> b20b57f50b678be55ef51acd7bb4f843de635622
 		/* Generic. */
 		nst->nst_state = npf_generic_fsm[nst->nst_state][di];
 		ret = true;
