@@ -246,19 +246,12 @@ npf_state_etime(npf_t *npf, const npf_state_t *nst, const int proto)
 		params = npf->params[NPF_PARAMS_GENERIC_STATE];
 		timeout = params->timeouts[state];
 		break;
-<<<<<<< HEAD
-	case IPPROTO_GRE:
-		params = npf->params[NPF_PARAMS_GENERIC_STATE];
-		timeout = params->timeouts[NPF_ANY_CONN_GRE];
-		break;
-=======
 #ifdef PPTP_ALG
 	case IPPROTO_GRE:
 		params = npf->params[NPF_PARAMS_GENERIC_STATE];
 		timeout = params->gre_timeout;
 		break;
 #endif
->>>>>>> b20b57f50b678be55ef51acd7bb4f843de635622
 	default:
 		KASSERT(false);
 	}
