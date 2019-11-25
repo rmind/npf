@@ -139,7 +139,7 @@ typedef struct {
 
 #define	GRE_STATE_USED			0x1
 #define	GRE_STATE_ESTABLISHED		0x2
-#define	GRE_STATE_SERVER_CALL_ID		0x4
+#define	GRE_STATE_SERVER_CALL_ID	0x4
 
 typedef struct {
 	/*
@@ -527,7 +527,8 @@ pptp_tcp_translate(npf_cache_t *npc, npf_nat_t *nt, bool forw)
 		mutex_enter(&tcp_ctx->lock);
 		gre_state = pptp_gre_lookup_state(tcp_ctx,
 		    CLIENT_CALL_ID, pptp_call_reply->peer_call_id);
-		if (gre_state == NULL || (gre_state->flags & GRE_STATE_SERVER_CALL_ID)) {
+		if (gre_state == NULL ||
+		    (gre_state->flags & GRE_STATE_SERVER_CALL_ID) != 0) {
 			/*
 			 * State entry not found or call reply message
 			 * has been already received.
