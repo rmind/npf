@@ -521,6 +521,8 @@ pptp_tcp_translate(npf_cache_t *npc, npf_nat_t *nt, bool forw)
 		if (pptp->len < sizeof(pptp_outgoing_call_reply_t)) {
 			return false;
 		}
+		CTASSERT(sizeof(pptp_outgoing_call_reply_t) <=
+		    sizeof(pptp_msg_hdr_t) + PPTP_MIN_MSG_SIZE);
 		pptp_call_reply = (pptp_outgoing_call_reply_t *)pptp;
 
 		/* Lookup the GRE connection context. */
