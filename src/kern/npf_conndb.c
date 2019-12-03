@@ -373,7 +373,7 @@ npf_conndb_gc(npf_t *npf, npf_conndb_t *cd, bool flush, bool sync)
 	 * Note: drop the conn_lock (see the lock order).
 	 */
 	gcref = thmap_stage_gc(cd->cd_map);
-	if (sync) {
+	if (sync && (gcref || !LIST_EMPTY(&cd->cd_gclist))) {
 		npf_config_enter(npf);
 		npf_config_sync(npf);
 		npf_config_exit(npf);
