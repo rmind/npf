@@ -1,8 +1,15 @@
-NJOBS:=	$(shell getconf _NPROCESSORS_ONLN)
+SYSARCH:=	$(shell uname -m)
+
+ifeq ($(SYSARCH),x86_64)
+NJOBS:=		$(shell getconf _NPROCESSORS_ONLN)
+MKFLAGS=	-j $(NJOBS)
+else
+MKFLAGS=
+endif
 
 all:
-	make -j $(NJOBS) -C kern lib
-	make -j $(NJOBS) -C libnpf lib
+	make $(MKFLAGS) -C kern lib
+	make $(MKFLAGS) -C libnpf lib
 
 install:
 	make -C kern install

@@ -3,28 +3,26 @@
 # This file is in the Public Domain.
 #
 
+SYSNAME:=	$(shell uname -s)
+SYSARCH:=	$(shell uname -m)
+
 CFLAGS+=	-std=c99 -O2 -g -Wall -Wextra -Werror
 CFLAGS+=	-D_POSIX_C_SOURCE=200809L
 CFLAGS+=	-D_GNU_SOURCE -D_DEFAULT_SOURCE
 CFLAGS+=	-I stand -D_NPF_STANDALONE -D__RCSID\(x\)=
 CFLAGS+=	-Wno-unused-local-typedefs -Wno-unused-parameter
 
-SYSNAME:=	$(shell uname -s)
-
 #
 # Extended warning flags.
 #
 CFLAGS+=	-Wno-unknown-warning-option # gcc vs clang
-
 CFLAGS+=	-Wstrict-prototypes -Wmissing-prototypes -Wpointer-arith
 CFLAGS+=	-Wmissing-declarations -Wredundant-decls -Wnested-externs
 CFLAGS+=	-Wshadow -Wcast-qual -Wcast-align -Wwrite-strings
 CFLAGS+=	-Wold-style-definition
 CFLAGS+=	-Wsuggest-attribute=noreturn #-Wjump-misses-init
-
-# New GCC 6/7 flags:
-#CFLAGS+=	-Wduplicated-cond -Wmisleading-indentation -Wnull-dereference
-#CFLAGS+=	-Wduplicated-branches -Wrestrict
+CFLAGS+=	-Wduplicated-cond -Wmisleading-indentation -Wnull-dereference
+CFLAGS+=	-Wduplicated-branches -Wrestrict
 
 #
 # WARNING: All symbols must be hidden by default to not conflict with
@@ -32,8 +30,12 @@ CFLAGS+=	-Wsuggest-attribute=noreturn #-Wjump-misses-init
 #
 ifeq ($(DEBUG),1)
 CFLAGS+=	-Og -DDEBUG -fno-omit-frame-pointer -D_NPF_TESTING
-CFLAGS+=	-fsanitize=address
-LDFLAGS+=	-fsanitize=address
+ifeq ($(SYSARCH),x86_64)
+ifeq ($(CC),gcc) # XXX clang
+CFLAGS+=	-fsanitize=address -fsanitize=undefined
+LDFLAGS+=	-fsanitize=address -fsanitize=undefined
+endif
+endif
 OBJDIR=		debug
 else
 CFLAGS+=	-fvisibility=hidden
@@ -41,6 +43,7 @@ CFLAGS+=	-DNDEBUG
 OBJDIR=		build
 endif
 
+CFLAGS+=	-pthread
 LDFLAGS+=	-lpthread -lnv -lqsbr -lthmap -llpm -lcdb -lbpfjit
 ifeq ($(SYSNAME),Linux)
 LDFLAGS+=	-ljemalloc
@@ -87,7 +90,7 @@ $(OBJDIR)/%.lo: %.c
 	libtool --mode=compile --tag CC $(CC) $(CFLAGS) -c -o $@ $<
 
 $(LIB).la: $(addprefix $(OBJDIR)/,$(shell echo $(OBJS) | sed 's/\.o/\.lo/g'))
-	libtool --mode=link --tag CC $(CC) $(LDFLAGS) -o $@ $^
+	libtool --mode=link --tag CC $(CC) -o $@ $^ $(LDFLAGS)
 
 install/%.la: %.la
 	mkdir -p $(ILIBDIR)
