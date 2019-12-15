@@ -125,6 +125,10 @@ typedef struct {
 	/* ... */
 } __packed pptp_outgoing_call_reply_t;
 
+#define PPTP_MIN_MSG_SIZE (MIN(\
+	sizeof(pptp_outgoing_call_req_t) - sizeof(pptp_msg_hdr_t), \
+	sizeof(pptp_outgoing_call_reply_t) - sizeof(pptp_msg_hdr_t)))
+
 /*
  * PPTP GRE connection state.
  */
@@ -135,8 +139,9 @@ typedef struct {
 
 #define	GRE_STATE_USED			0x1
 #define	GRE_STATE_ESTABLISHED		0x2
+#define	GRE_STATE_SERVER_CALL_ID	0x4
 
-typedef union {
+typedef struct {
 	/*
 	 * - Client and server call IDs.
 	 * - Original client call ID.
@@ -349,8 +354,7 @@ pptp_gre_get_state(npf_cache_t *npc, pptp_tcp_ctx_t *tcp_ctx,
 	if (gre_state) {
 		gre_state->orig_client_call_id = client_call_id;
 		gre_state->call_id[CLIENT_CALL_ID] = trans_client_call_id;
-		gre_state->call_id[SERVER_CALL_ID] = 0;
-		gre_state->flags = 0;
+		gre_state->flags = GRE_STATE_USED;
 	}
 	mutex_exit(&tcp_ctx->lock);
 	return gre_state;
@@ -369,7 +373,9 @@ pptp_gre_lookup_state(pptp_tcp_ctx_t *tcp_ctx, unsigned which, uint16_t call_id)
 		pptp_gre_state_t *gre_state = &tcp_ctx->gre_conns[i];
 
 		if ((gre_state->flags & GRE_STATE_USED) != 0 &&
-		    gre_state->call_id[which] == call_id)
+		    gre_state->call_id[which] == call_id &&
+		    (which == CLIENT_CALL_ID ||
+		        (gre_state->flags & GRE_STATE_SERVER_CALL_ID) != 0))
 			return gre_state;
 	}
 	return NULL;
@@ -454,7 +460,7 @@ pptp_tcp_translate(npf_cache_t *npc, npf_nat_t *nt, bool forw)
 
 	nbuf_reset(nbuf);
 	pptp = nbuf_advance(nbuf, npc->npc_hlen + ((unsigned)th->th_off << 2),
-	    sizeof(pptp_msg_hdr_t));
+	    sizeof(pptp_msg_hdr_t) + PPTP_MIN_MSG_SIZE);
 	if (pptp == NULL)
 		return false;
 
@@ -515,37 +521,34 @@ pptp_tcp_translate(npf_cache_t *npc, npf_nat_t *nt, bool forw)
 		if (pptp->len < sizeof(pptp_outgoing_call_reply_t)) {
 			return false;
 		}
-		pptp_call_reply = nbuf_ensure_contig(nbuf,
-		    sizeof(pptp_outgoing_call_reply_t));
-		if (!pptp_call_reply) {
-			return false;
-		}
+		CTASSERT(sizeof(pptp_outgoing_call_reply_t) <=
+		    sizeof(pptp_msg_hdr_t) + PPTP_MIN_MSG_SIZE);
+		pptp_call_reply = (pptp_outgoing_call_reply_t *)pptp;
 
 		/* Lookup the GRE connection context. */
 		mutex_enter(&tcp_ctx->lock);
 		gre_state = pptp_gre_lookup_state(tcp_ctx,
 		    CLIENT_CALL_ID, pptp_call_reply->peer_call_id);
-		if (gre_state == NULL || gre_state->call_id[SERVER_CALL_ID] != 0) {
+		if (gre_state == NULL ||
+		    (gre_state->flags & GRE_STATE_SERVER_CALL_ID) != 0) {
 			/*
 			 * State entry not found or call reply message
 			 * has been already received.
 			 */
 			mutex_exit(&tcp_ctx->lock);
 			return false;
-		}
-
-		/* Save the server call ID. */
-		gre_state->call_id[SERVER_CALL_ID]= pptp_call_reply->hdr.call_id;
-
-		/*
-		 * If client and server call IDs have been seen, create
-		 * new GRE connection state entry.
-		 */
-		if (gre_state->call_id[CLIENT_CALL_ID] != 0 &&
-		    gre_state->call_id[SERVER_CALL_ID] != 0 &&
-		    gre_state->orig_client_call_id != 0) {
+		} else {
 			npf_cache_t gre_npc;
 			npf_addr_t *o_addr;
+
+			/* Save the server call ID. */
+			gre_state->call_id[SERVER_CALL_ID]= pptp_call_reply->hdr.call_id;
+			gre_state->flags |= GRE_STATE_SERVER_CALL_ID;
+
+			/*
+			 * Client and server call IDs have been seen, create
+			 * new GRE connection state entry.
+			 */
 
 			/* Create PPTP GRE context cache. */
 			memcpy(&gre_npc, npc, sizeof(npf_cache_t));
