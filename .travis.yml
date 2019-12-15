@@ -1,17 +1,39 @@
-sudo: required
-dist: trusty
-
 language: c
 
 compiler:
   - gcc
   - clang
 
+dist: bionic
+sudo: required
+
+matrix:
+  include:
+    - os: linux
+      arch: amd64
+    - os: linux
+      arch: arm64
+    - os: linux
+      arch: ppc64le
+
+addons:
+  apt:
+    update: true
+    packages:
+    - build-essential
+    - fakeroot
+    - debhelper
+    - libtool
+    - libtool-bin
+    - libjemalloc-dev
+    - libpcap-dev
+    - byacc
+    - flex
+    - liblua5.1-0-dev
+
 install:
-  # build essentials
-  - sudo apt-get install -y build-essential fakeroot debhelper
-  - sudo apt-get install -y make libtool libjemalloc-dev libpcap-dev
-  - sudo apt-get install -y byacc flex liblua5.1-0-dev
+  # prefer BSD yacc
+  - sudo update-alternatives --set yacc /usr/bin/byacc
   # libnv
   - git clone https://github.com/rmind/nvlist
   - (cd nvlist/pkg && make deb && sudo dpkg -i ../libnv*.deb)
