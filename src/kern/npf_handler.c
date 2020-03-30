@@ -135,10 +135,10 @@ npfk_packet_handler(npf_t *npf, struct mbuf **mp, ifnet_t *ifp, int di)
 	 * Initialise packet information cache.
 	 * Note: it is enough to clear the info bits.
 	 */
-	npc.npc_ctx = npf;
 	nbuf_init(npf, &nbuf, *mp, ifp);
+	memset(&npc, 0, sizeof(npf_cache_t));
+	npc.npc_ctx = npf;
 	npc.npc_nbuf = &nbuf;
-	npc.npc_info = 0;
 
 	mi.mi_di = di;
 	mi.mi_rid = 0;

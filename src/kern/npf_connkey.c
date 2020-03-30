@@ -56,7 +56,7 @@
 
 #ifdef _KERNEL
 #include <sys/cdefs.h>
-__KERNEL_RCSID(0, "$NetBSD: npf_connkey.c,v 1.1 2019/07/23 00:52:01 rmind Exp $");
+__KERNEL_RCSID(0, "$NetBSD$");
 
 #include <sys/param.h>
 #include <sys/types.h>
@@ -97,6 +97,27 @@ npf_connkey_setkey(npf_connkey_t *key, uint16_t proto, const void *ipv,
 		memcpy(&k[2 + nwords], ips[idst], alen);
 		return (2 + (nwords * 2)) * sizeof(uint32_t);
 	}
+}
+
+static unsigned
+npf_connkey_copy(const npf_connkey_t *skey, npf_connkey_t *dkey, bool invert)
+{
+	const unsigned klen = NPF_CONNKEY_LEN(skey);
+	const uint32_t *sk = skey->ck_key;
+	uint32_t *dk = dkey->ck_key;
+
+	if (invert) {
+		const unsigned alen = NPF_CONNKEY_ALEN(skey);
+		const unsigned nwords = alen >> 2;
+
+		dk[0] = sk[1];
+		dk[1] = (sk[1] >> 16) | (sk[1] << 16);
+		memcpy(&dk[2], &sk[2 + nwords], alen);
+		memcpy(&dk[2 + nwords], &sk[2], alen);
+	} else {
+		memcpy(dk, sk, klen);
+	}
+	return klen;
 }
 
 void
@@ -161,6 +182,13 @@ npf_conn_conkey(const npf_cache_t *npc, npf_connkey_t *key, const bool forw)
 	const struct udphdr *uh;
 	uint16_t id[2] = { 0, 0 };
 
+	if (npc->npc_ckey) {
+		/*
+		 * Request to override the connection key.
+		 */
+		return npf_connkey_copy(npc->npc_ckey, key, !forw);
+	}
+
 	switch (proto) {
 	case IPPROTO_TCP:
 		KASSERT(npf_iscached(npc, NPC_TCP));
@@ -190,14 +218,6 @@ npf_conn_conkey(const npf_cache_t *npc, npf_connkey_t *key, const bool forw)
 			break;
 		}
 		return 0;
-#ifdef PPTP_ALG
-	case IPPROTO_GRE:
-		if (npf_iscached(npc, NPC_ENHANCED_GRE | NPC_ALG_PPTP_GRE_CTX)) {
-			npf_pptp_conn_conkey(npc, id, forw);
-			break;
-		}
-		return 0;
-#endif
 	default:
 		/* Unsupported protocol. */
 		return 0;

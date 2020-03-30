@@ -164,8 +164,8 @@ static bool
 checkresult(bool verbose, unsigned i, struct mbuf *m, ifnet_t *ifp, int error)
 {
 	const struct test_case *t = &test_cases[i];
-	npf_cache_t npc = { .npc_info = 0, .npc_ctx = npf_getkernctx() };
 	const int af = t->af;
+	npf_cache_t npc;
 	nbuf_t nbuf;
 
 	if (verbose) {
@@ -176,7 +176,10 @@ checkresult(bool verbose, unsigned i, struct mbuf *m, ifnet_t *ifp, int error)
 	}
 
 	nbuf_init(npf_getkernctx(), &nbuf, m, ifp);
+	memset(&npc, 0, sizeof(npf_cache_t));
+	npc.npc_ctx = npf_getkernctx();
 	npc.npc_nbuf = &nbuf;
+
 	if (!npf_cache_all(&npc)) {
 		printf("error: could not fetch the packet data");
 		return false;

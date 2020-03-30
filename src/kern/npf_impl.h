@@ -514,12 +514,6 @@ npf_conn_t *	npf_alg_conn(npf_cache_t *, int);
 int		npf_alg_export(npf_t *, nvlist_t *);
 void		npf_alg_destroy(npf_t *, npf_alg_t *, npf_nat_t *, npf_conn_t *);
 
-// #ifdef PPTP_ALG
-/* PPTP ALG interface */
-void		npf_pptp_conn_conkey(const npf_cache_t *, uint16_t *, bool);
-int		npf_pptp_gre_cache(npf_cache_t *, nbuf_t *, unsigned);
-// #endif
-
 /* Wrappers for the reclamation mechanism. */
 ebr_t *		npf_ebr_create(void);
 void		npf_ebr_destroy(ebr_t *);

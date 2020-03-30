@@ -142,12 +142,9 @@ int		nbuf_find_tag(nbuf_t *, uint32_t *);
 
 #define	NPC_FMTERR	0x200	/* Format error. */
 
-// #ifdef PPTP_ALG
-#define	NPC_ENHANCED_GRE	0x400	/* Enhanced GRE header */
-#define	NPC_ALG_PPTP_GRE_CTX	0x800	/* PPTP GRE context */
-// #endif
-
 #define	NPC_IP46	(NPC_IP4|NPC_IP6)
+
+struct npf_connkey;
 
 typedef struct {
 	/* NPF context, information flags and the nbuf. */
@@ -180,6 +177,13 @@ typedef struct {
 		struct icmp6_hdr *	icmp6;
 		void *			hdr;
 	} npc_l4;
+
+	/*
+	 * Override the connection key, if not NULL.  This affects the
+	 * behaviour of npf_conn_lookup() and npf_conn_establish().
+	 * Note: npc_ckey is of npf_connkey_t type.
+	 */
+	const void *		npc_ckey;
 } npf_cache_t;
 
 static inline bool
