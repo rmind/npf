@@ -203,9 +203,9 @@ npfa_icmp_inspect(npf_cache_t *npc, npf_cache_t *enpc)
 	if (!nbuf_advance(nbuf, npc->npc_hlen, 0)) {
 		return false;
 	}
+	memset(enpc, 0, sizeof(npf_cache_t));
 	enpc->npc_ctx = npc->npc_ctx;
 	enpc->npc_nbuf = nbuf;
-	enpc->npc_info = 0;
 
 	/*
 	 * Inspect the ICMP packet.  The relevant data might be in the
