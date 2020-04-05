@@ -220,5 +220,10 @@ npf_worker(void *arg)
 		cv_timedwait(&wrk->worker_cv, &wrk->worker_lock, W_INTERVAL);
 		mutex_exit(&wrk->worker_lock);
 	}
+	for (npf_t *npf = wrk->instances; npf; npf = npf->worker_entry) {
+		if (npf->sync_registered) {
+			npfk_thread_unregister(npf);
+		}
+	}
 	kthread_exit(0);
 }

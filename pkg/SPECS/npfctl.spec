@@ -11,12 +11,12 @@ Source0:	npfctl.tar.gz
 BuildRequires:	make
 BuildRequires:	libtool
 BuildRequires:	openssl-devel
-BuildRequires:	libnv
 BuildRequires:	flex
 BuildRequires:	byacc
+BuildRequires:	libnpf
 
 Requires:	libnv
-Requires:	npf
+Requires:	libnpf
 
 %description
 NPF is a layer 3 packet filter, supporting IPv4 and IPv6 as well as layer
