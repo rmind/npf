@@ -11,3 +11,4 @@ RUN dnf install -y man-pages net-tools tcpdump traceroute mtr
 RUN dnf install -y nmap-ncat socat nmap telnet curl bind-utils
 
 WORKDIR /app
+COPY ./app/run_host.sh /app/

@@ -8,22 +8,22 @@ services:
       dockerfile: app/conf/npf.Dockerfile
     image: npf
 
-  npf-router-dev:
-    build:
-      context: ..
-      dockerfile: app/conf/npf-router.Dockerfile
-      target: npf-dpdk-builder
-    image: npf_router_dev
-    privileged: true
-    depends_on:
-      - npf
-    hostname: npf-router-dev
-    networks:
-      default:
-      testnet:
-        ipv4_address: 10.0.0.2
-    volumes:
-      - ../:/src
+  #npf-router-dev:
+  #  build:
+  #    context: ..
+  #    dockerfile: app/conf/npf-router.Dockerfile
+  #    target: npf-dpdk-builder
+  #  image: npf_router_dev
+  #  privileged: true
+  #  depends_on:
+  #    - npf
+  #  hostname: npf-router-dev
+  #  networks:
+  #    default:
+  #    testnet:
+  #      ipv4_address: 10.0.0.2
+  #  volumes:
+  #    - ../:/src
 
   npf-router:
     build:
@@ -51,12 +51,10 @@ services:
     networks:
       testnet:
         ipv4_address: 10.0.0.3
-    #depends_on:
-    #  - npf-router
+    depends_on:
+      - npf-router
     command:
-      - "sh"
-      - "-c"
-      - "ping -i 60 -W 30 10.0.0.2"
+      - "/app/run_host.sh"
 
 networks:
   testnet:
