@@ -1,6 +1,6 @@
 # NPF: stateful packet filter supporting NAT, IP sets, etc
 
-[![Build Status](https://travis-ci.org/rmind/npf.svg?branch=master)](https://travis-ci.org/rmind/npf)
+[![Build Status](https://travis-ci.com/rmind/npf.svg?branch=master)](https://travis-ci.com/rmind/npf)
 
 NPF is a layer 3 packet filter, supporting stateful packet inspection,
 IPv6, NAT, IP sets, extensions and many more.
@@ -36,6 +36,11 @@ Some key features are:
 For a full set of features and their description, see the NPF documentation
 and other manual pages.
 
+## Usage
+
+You can try **[NPF-Router](app)** as a demo NPF+DPDK application, running a
+virtual test network with Docker containers.
+
 ## Documentation
 
 See on [Github Pages](http://rmind.github.io/npf).
@@ -43,12 +48,12 @@ Source in the [docs](docs) directory.
 
 ## Dependencies
 
-- libnv: `git clone https://github.com/rmind/nvlist`
-- thmap: `git clone https://github.com/rmind/thmap`
-- libqsbr: `git clone https://github.com/rmind/libqsbr`
-- liblpm: `git clone https://github.com/rmind/liblpm`
-- bpfjit: `git clone https://github.com/rmind/bpfjit`
-- libcdb: `git clone https://github.com/rmind/libcdb`
+- [libnv](https://github.com/rmind/nvlist): `git clone https://github.com/rmind/nvlist`
+- [thmap](https://github.com/rmind/thmap): `git clone https://github.com/rmind/thmap`
+- [libqsbr](https://github.com/rmind/libqsbr): `git clone https://github.com/rmind/libqsbr`
+- [liblpm](https://github.com/rmind/liblpm): `git clone https://github.com/rmind/liblpm`
+- [bpfjit](https://github.com/rmind/bpfjit): `git clone https://github.com/rmind/bpfjit`
+- [libcdb](https://github.com/rmind/libcdb): `git clone https://github.com/rmind/libcdb`
 
 Each repository provides the build files for RPM (`cd pkg && make rpm`)
 and DEB (`cd pkg && make deb`) packages.  You can also check the
@@ -56,14 +61,15 @@ and DEB (`cd pkg && make deb`) packages.  You can also check the
 
 ## Source code structure
 
-    docs/               - documentation
+    app/                - NPF-Router demo application (NPF + DPDK + Docker)
+    docs/               - documentation source
     src/                - root source code directory
         kern/           - the kernel component (npfkern library)
         libnpf/         - library to manage the NPF configuration
         npfctl/         - command line user interface to control NPF
         npftest/        - unit tests and a tool to debug NPF
-    dpdk/               - DPDK integration code and a demo
     pkg/                - packaging files (RPM and DEB)
+    misc/               - auxiliary helper scripts
 
 ## Packages
 

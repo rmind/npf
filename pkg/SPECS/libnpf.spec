@@ -16,6 +16,7 @@ BuildRequires:	libqsbr
 BuildRequires:	libthmap
 BuildRequires:	liblpm >= 0.2.0
 BuildRequires:	libcdb
+BuildRequires:	jemalloc-devel
 
 Requires:	libnv
 Requires:	libbpfjit
