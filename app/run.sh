@@ -50,11 +50,6 @@ router_configure()
 	npfctl debug /etc/npf.conf /tmp/npf.nvlist | tail -n1
 }
 
-run_gdb()
-{
-	gdb -ex=run --args ./npf_router --vdev=net_tap0,remote=eth0 --vdev=net_tap1,remote=eth1
-}
-
 run()
 {
 	/app/npf_router \
@@ -64,4 +59,4 @@ run()
 
 system_configure
 router_configure
-#run
+run

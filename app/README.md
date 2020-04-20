@@ -5,8 +5,8 @@ It illustrates how NPF can be integrated with the Intel DPDK framework.
 Together with _docker-compose_, it can also be used to spawn a virtual test
 network for basic NPF functionality testing.
 
-**WARNING**: This is a demo application which is not designed for the
-maximum performance.
+**WARNING**: This is an application for demos and testing: do not expect
+compliance with the standards, security or maximum performance.
 
 # Running
 

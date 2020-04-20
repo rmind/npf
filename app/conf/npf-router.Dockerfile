@@ -13,8 +13,12 @@ RUN dnf install -y gcc make gdb libasan dpdk-devel libibverbs
 #
 # Build the application.
 #
+RUN mkdir -p /build/bin
 COPY . /build/npf
-#RUN cd /build/npf/app/src && make
+
+RUN cd /build/npf/app/src && make && \
+    DESTDIR="/build/bin" BINDIR="" make install
+RUN cp /build/npf/app/run.sh /build/bin/
 
 ##########################################################################
 # Create a separate NPF-router image.
@@ -24,4 +28,4 @@ RUN dnf install -y epel-release kernel-modules kernel-modules-extra
 RUN dnf install -y net-tools traceroute dpdk libibverbs
 
 WORKDIR /app
-#COPY --from=npf-dpdk-builder /app/* /app/
+COPY --from=npf-dpdk-builder /build/bin/* /app/
