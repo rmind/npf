@@ -476,8 +476,8 @@ typedef int modcmd_t;
 
 struct cpu_info { unsigned id; };
 
-#define	_IOR(g,n,t)		0
-#define	_IOW(g,n,t)		0
-#define	_IOWR(g,n,t)		0
+#define	_IOR(g,n,t)		((n) - 100)
+#define	_IOW(g,n,t)		((n) - 100)
+#define	_IOWR(g,n,t)		((n) - 100)
 
 #endif

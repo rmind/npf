@@ -33,7 +33,7 @@
 
 #ifdef _KERNEL
 #include <sys/cdefs.h>
-__KERNEL_RCSID(0, "$NetBSD: npf_os.c,v 1.13 2019/08/10 21:13:54 rmind Exp $");
+__KERNEL_RCSID(0, "$NetBSD$");
 
 #ifdef _KERNEL_OPT
 #include "pf.h"
@@ -83,6 +83,8 @@ MODULE(MODULE_CLASS_MISC, npf, "bpf");
 /* This module autoloads via /dev/npf so it needs to be a driver */
 MODULE(MODULE_CLASS_DRIVER, npf, "bpf");
 #endif
+
+#define	NPF_IOCTL_DATA_LIMIT	(4 * 1024 * 1024)
 
 static int	npf_pfil_register(bool);
 static void	npf_pfil_unregister(bool);
@@ -253,6 +255,7 @@ static int
 npf_dev_ioctl(dev_t dev, u_long cmd, void *data, int flag, lwp_t *l)
 {
 	npf_t *npf = npf_getkernctx();
+	nvlist_t *req, *resp;
 	int error;
 
 	/* Available only for super-user. */
@@ -262,38 +265,30 @@ npf_dev_ioctl(dev_t dev, u_long cmd, void *data, int flag, lwp_t *l)
 	}
 
 	switch (cmd) {
-	case IOC_NPF_TABLE:
-		error = npfctl_table(npf, data);
-		break;
-	case IOC_NPF_RULE:
-		error = npfctl_rule(npf, cmd, data);
-		break;
-	case IOC_NPF_STATS:
-		error = npf_stats_export(npf, data);
-		break;
-	case IOC_NPF_SAVE:
-		error = npfctl_save(npf, cmd, data);
-		break;
-	case IOC_NPF_SWITCH:
-		error = npfctl_switch(data);
-		break;
-	case IOC_NPF_LOAD:
-		error = npfctl_load(npf, cmd, data);
-		break;
-	case IOC_NPF_CONN_LOOKUP:
-		error = npfctl_conn_lookup(npf, cmd, data);
-		break;
-	case IOC_NPF_TABLE_REPLACE:
-		error = npfctl_table_replace(npf, cmd, data);
-		break;
 	case IOC_NPF_VERSION:
 		*(int *)data = NPF_VERSION;
-		error = 0;
-		break;
-	default:
-		error = ENOTTY;
-		break;
+		return 0;
+
+	case IOC_NPF_SWITCH:
+		return npfctl_switch(data);
+
+	case IOC_NPF_TABLE:
+		return npfctl_table(npf, data);
+
+	case IOC_NPF_STATS:
+		return npf_stats_export(npf, data);
 	}
+
+	error = nvlist_copyin(data, &req, NPF_IOCTL_DATA_LIMIT);
+	if (__predict_false(error)) {
+		return error;
+	}
+	resp = nvlist_create(0);
+	npfctl_run_op(npf, cmd, req, resp);
+	error = nvlist_copyout(data, resp);
+	nvlist_destroy(resp);
+	nvlist_destroy(req);
+
 	return error;
 }
 

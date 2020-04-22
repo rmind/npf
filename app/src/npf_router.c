@@ -5,6 +5,9 @@
  * Use is subject to license terms, as specified in the LICENSE file.
  */
 
+#include <sys/socket.h>
+#include <sys/un.h>
+
 #include <stdio.h>
 #include <stdbool.h>
 #include <unistd.h>
@@ -19,11 +22,6 @@
 #include <rte_ether.h>
 #include <rte_ip.h>
 
-#include <sys/stat.h>	// XXX load_npf_config
-#include <sys/mman.h>	// XXX load_npf_config
-#include <fcntl.h>	// XXX load_npf_config
-#include <npf.h>	// XXX load_npf_config
-
 #include "npf_router.h"
 #include "utils.h"
 
@@ -33,8 +31,8 @@
 
 static volatile sig_atomic_t	stop = false;
 
-static void	router_destroy(npf_router_t *);
 static int	worker_fini(void *);
+static void	router_destroy(npf_router_t *);
 
 static void
 sighandler(int sig)
@@ -152,6 +150,31 @@ worker_run(void *arg)
 	return 0;
 }
 
+static int
+config_listen(const char *sockpath)
+{
+	struct sockaddr_un addr;
+	int sock;
+
+	if ((sock = socket(AF_UNIX, SOCK_STREAM, 0)) == -1) {
+		return -1;
+	}
+
+	memset(&addr, 0, sizeof(addr));
+	strncpy(addr.sun_path, sockpath, sizeof(addr.sun_path) - 1);
+	addr.sun_family = AF_UNIX;
+
+	if (bind(sock, (struct sockaddr *)&addr, sizeof(addr)) == -1) {
+		close(sock);
+		return -1;
+	}
+	if (listen(sock, 1024) == -1) {
+		close(sock);
+		return -1;
+	}
+	return sock;
+}
+
 static npf_router_t *
 router_create(void)
 {
@@ -200,6 +223,10 @@ router_create(void)
 	if (npf_alg_icmp_init(router->npf) != 0) {
 		goto err;
 	}
+	router->config_sock = config_listen(NPF_CONFSOCK_PATH);
+	if (router->config_sock == -1) {
+		goto err;
+	}
 	router->rtable = route_table_create();
 	if (!router->rtable) {
 		goto err;
@@ -213,6 +240,9 @@ err:
 static void
 router_destroy(npf_router_t *router)
 {
+	if (router->config_sock > 0) {
+		close(router->config_sock);
+	}
 	for (unsigned i = 0; i < MAX_IFNET_IDS; i++) {
 		ifnet_t *ifp;
 
@@ -230,55 +260,6 @@ router_destroy(npf_router_t *router)
 	}
 	npfk_sysfini();
 	rte_free(router);
-}
-
-static int
-load_npf_config(npf_t *npf)
-{
-	const char config_nvlist_path[] = "/tmp/npf.nvlist";
-	npf_error_t errinfo;
-	nl_config_t *ncf;
-	void *config_ref;
-	struct stat sb;
-	size_t blen;
-	void *blob;
-	int fd;
-
-	/*
-	 * FIXME/XXX: Rework all this.
-	 * Read 'npfctl debug' dump in the /tmp/npf.nvlist file.
-	 */
-
-	if ((fd = open(config_nvlist_path, O_RDONLY)) == -1) {
-		return -1;
-	}
-	if (stat(config_nvlist_path, &sb) == -1 || (blen = sb.st_size) == 0) {
-		close(fd);
-		return -1;
-	}
-	blob = mmap(NULL, blen, PROT_READ, MAP_FILE | MAP_PRIVATE, fd, 0);
-	if (blob == MAP_FAILED) {
-		close(fd);
-		return -1;
-	}
-	close(fd);
-
-	ncf = npf_config_import(blob, blen);
-	munmap(blob, blen);
-	if (ncf == NULL) {
-		return -1;
-	}
-
-	/*
-	 * - Build the config: we get a reference for loading.
-	 * - Load the config to the NPF instance.
-	 * - Note: npf_load() will consume the config.
-	 */
-	config_ref = npf_config_build(ncf);
-	if (npfk_load(npf, config_ref, &errinfo) != 0) {
-		return -1;
-	}
-	return 0;
 }
 
 int
@@ -306,9 +287,6 @@ main(int argc, char **argv)
 	 */
 	if (load_config(router) == -1) {
 		errx(EXIT_FAILURE, "failed to load the configuration");
-	}
-	if (load_npf_config(router->npf) == -1) {
-		errx(EXIT_FAILURE, "failed to load the npf.conf");
 	}
 
 	/*
@@ -352,6 +330,26 @@ main(int argc, char **argv)
 	puts("- Starting router");
 	RTE_LCORE_FOREACH_SLAVE(lcore_id) {
 		rte_eal_remote_launch(worker_run, router, lcore_id);
+	}
+
+	/*
+	 * Master process will handle the configuration updates.
+	 */
+	while (!stop) {
+		int sock;
+
+		sock = accept(router->config_sock, NULL, NULL);
+		if (sock == -1) {
+			if (errno == EINVAL) {
+				continue;
+			}
+			err(EXIT_FAILURE, "accept");
+		}
+		puts("- Reloading NPF config");
+		if (npfk_socket_load(router->npf, sock) == -1) {
+			warnx("npfk_socket_load");
+		}
+		close(sock);
 	}
 	rte_eal_mp_wait_lcore();
 

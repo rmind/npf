@@ -333,7 +333,7 @@ npf_alg_destroy(npf_t *npf, npf_alg_t *alg, npf_nat_t *nat, npf_conn_t *con)
  * npf_alg_export: serialise the configuration of ALGs.
  */
 int
-npf_alg_export(npf_t *npf, nvlist_t *npf_dict)
+npf_alg_export(npf_t *npf, nvlist_t *nvl)
 {
 	npf_algset_t *aset = npf->algset;
 
@@ -348,7 +348,7 @@ npf_alg_export(npf_t *npf, nvlist_t *npf_dict)
 		}
 		algdict = nvlist_create(0);
 		nvlist_add_string(algdict, "name", alg->na_name);
-		nvlist_append_nvlist_array(npf_dict, "algs", algdict);
+		nvlist_append_nvlist_array(nvl, "algs", algdict);
 		nvlist_destroy(algdict);
 	}
 	return 0;

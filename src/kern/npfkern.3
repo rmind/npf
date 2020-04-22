@@ -1,5 +1,5 @@
 .\"
-.\" Copyright (c) 2015-2019 Mindaugas Rasiukevicius <rmind at netbsd org>
+.\" Copyright (c) 2015-2020 Mindaugas Rasiukevicius <rmind at netbsd org>
 .\" All rights reserved.
 .\"
 .\" Redistribution and use in source and binary forms, with or without
@@ -23,7 +23,7 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.Dd February 26, 2019
+.Dd April 22, 2020
 .Dt libnpfkern 3
 .Os
 .Sh NAME
@@ -44,6 +44,8 @@
 "const npf_ifops_t *ifops"
 .Ft int
 .Fn npfk_load "npf_t *npf" "void *ref" "npf_error_t *err"
+.Ft int
+.Fn npfk_socket_load "npf_t *npf" "int sock"
 .Ft void
 .Fn npfk_gc "npf_t *npf"
 .Ft void
@@ -125,12 +127,12 @@ This routine should only be used if the instance was created with
 flag.
 .\" ---
 .It Fn npfk_destroy "npf"
-Destroy the instance of the NPF kernel compaining, freeing all resources
+Destroy the instance of the NPF kernel component, freeing all resources
 used by it.
 .\" ---
 .It Fn npfk_load "npf" "ref" "err"
 Load a new configuration into the NPF instance.
-The new configuration is specified by a
+The new configuration is specified by the
 .Fa ref
 parameter.
 It is a reference to the configuration built by the
@@ -140,10 +142,25 @@ function from the
 library.
 .Pp
 Returns zero on success and error number on failure.
+The configuration structure referenced by
+.Fa ref
+will be left unmodified.
 In a case of failure, additionally returns extra information in a
 structure specified by the
 .Fa err
 parameter.
+.\" ---
+.It Fn npfk_socket_load "npf" "sock"
+Load a new configuration into the NPF instance.
+The new configuration should be passed through a socket, specified by the
+.Fa sock
+parameter.
+It should be sent using the
+.Fn npf_config_submit
+function (with file descriptor being a socket) from the
+.Xr libnpf 3
+library.
+Returns zero on success and -1 on failure.
 .\" ---
 .It Fn npfk_thread_register "npf"
 Register a "processing context" i.e. a thread which will perform the
@@ -186,7 +203,7 @@ This function returns zero if the packet was "passed" and error number
 otherwise.
 A regular "block" is indicated by the
 .Dv ENETUNREACH
-error nubmer.
+error number.
 .\" ---
 .It Fn npfk_ifmap_attach "npf" "ifp"
 Attach the virtual network interface to the NPF instance.

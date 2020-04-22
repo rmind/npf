@@ -1,4 +1,4 @@
-.\"	$NetBSD: libnpf.3,v 1.9 2019/07/23 14:18:20 wiz Exp $
+.\"	$NetBSD$
 .\"
 .\" Copyright (c) 2011-2019 The NetBSD Foundation, Inc.
 .\" All rights reserved.
@@ -281,7 +281,8 @@ If the value of
 is
 .Dv NULL ,
 then insert into the main ruleset.
-The rule must not be referenced after insertion.
+The rule will be consumed (the relevant resourced will be freed) and it
+must not be referenced after insertion.
 .\" ---
 .It Fn npf_rule_exists_p "ncf" "name"
 Check whether the rule with a given name is already in the configuration.

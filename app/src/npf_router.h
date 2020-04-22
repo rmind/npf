@@ -23,6 +23,8 @@ struct worker;
 
 typedef struct route_table route_table_t;
 
+#define	NPF_CONFSOCK_PATH	"/dev/npf"
+
 #define	MAX_IFNET_IDS		(32) // XXX: hardcoded, e.g. worker_t::bitmap
 
 /*
@@ -58,6 +60,7 @@ typedef struct ifnet {
 
 typedef struct npf_router {
 	npf_t *			npf;
+	int			config_sock;
 	struct rte_mempool *	mbuf_pool;
 	unsigned		pktqueue_size;
 	route_table_t *		rtable;

@@ -142,7 +142,7 @@ CTASSERT(PFIL_ALL == (0x001 | 0x002));
 
 enum { CONN_TRACKING_OFF, CONN_TRACKING_ON };
 
-static nvlist_t *npf_conn_export(npf_t *, npf_conn_t *);
+static int npf_conn_export(npf_t *, npf_conn_t *, nvlist_t *);
 
 /*
  * npf_conn_sys{init,fini}: initialise/destroy connection tracking.
@@ -750,7 +750,7 @@ npf_conn_worker(npf_t *npf)
  * Note: this is expected to be an expensive operation.
  */
 int
-npf_conndb_export(npf_t *npf, nvlist_t *npf_dict)
+npf_conndb_export(npf_t *npf, nvlist_t *nvl)
 {
 	npf_conn_t *head, *con;
 	npf_conndb_t *conn_db;
@@ -768,12 +768,14 @@ npf_conndb_export(npf_t *npf, nvlist_t *npf_dict)
 	head = npf_conndb_getlist(conn_db);
 	con = head;
 	while (con) {
-		nvlist_t *cdict;
+		nvlist_t *con_nvl;
 
-		if ((cdict = npf_conn_export(npf, con)) != NULL) {
-			nvlist_append_nvlist_array(npf_dict, "conn-list", cdict);
-			nvlist_destroy(cdict);
+		con_nvl = nvlist_create(0);
+		if (npf_conn_export(npf, con, con_nvl) == 0) {
+			nvlist_append_nvlist_array(nvl, "conn-list", con_nvl);
 		}
+		nvlist_destroy(con_nvl);
+
 		if ((con = npf_conndb_getnext(conn_db, con)) == head) {
 			break;
 		}
@@ -785,45 +787,44 @@ npf_conndb_export(npf_t *npf, nvlist_t *npf_dict)
 /*
  * npf_conn_export: serialise a single connection.
  */
-static nvlist_t *
-npf_conn_export(npf_t *npf, npf_conn_t *con)
+static int
+npf_conn_export(npf_t *npf, npf_conn_t *con, nvlist_t *nvl)
 {
-	nvlist_t *cdict, *kdict;
+	nvlist_t *knvl;
 	npf_connkey_t *fw, *bk;
 	unsigned flags, alen;
 
 	flags = atomic_load_relaxed(&con->c_flags);
 	if ((flags & (CONN_ACTIVE|CONN_EXPIRE)) != CONN_ACTIVE) {
-		return NULL;
+		return ESRCH;
 	}
-	cdict = nvlist_create(0);
-	nvlist_add_number(cdict, "flags", flags);
-	nvlist_add_number(cdict, "proto", con->c_proto);
+	nvlist_add_number(nvl, "flags", flags);
+	nvlist_add_number(nvl, "proto", con->c_proto);
 	if (con->c_ifid) {
 		char ifname[IFNAMSIZ];
 		npf_ifmap_copyname(npf, con->c_ifid, ifname, sizeof(ifname));
-		nvlist_add_string(cdict, "ifname", ifname);
+		nvlist_add_string(nvl, "ifname", ifname);
 	}
-	nvlist_add_binary(cdict, "state", &con->c_state, sizeof(npf_state_t));
+	nvlist_add_binary(nvl, "state", &con->c_state, sizeof(npf_state_t));
 
 	fw = npf_conn_getforwkey(con);
 	alen = NPF_CONNKEY_ALEN(fw);
 	KASSERT(alen == con->c_alen);
 	bk = npf_conn_getbackkey(con, alen);
 
-	kdict = npf_connkey_export(fw);
-	nvlist_move_nvlist(cdict, "forw-key", kdict);
+	knvl = npf_connkey_export(fw);
+	nvlist_move_nvlist(nvl, "forw-key", knvl);
 
-	kdict = npf_connkey_export(bk);
-	nvlist_move_nvlist(cdict, "back-key", kdict);
+	knvl = npf_connkey_export(bk);
+	nvlist_move_nvlist(nvl, "back-key", knvl);
 
 	/* Let the address length be based on on first key. */
-	nvlist_add_number(cdict, "alen", alen);
+	nvlist_add_number(nvl, "alen", alen);
 
 	if (con->c_nat) {
-		npf_nat_export(cdict, con->c_nat);
+		npf_nat_export(nvl, con->c_nat);
 	}
-	return cdict;
+	return 0;
 }
 
 /*
@@ -913,18 +914,22 @@ err:
 	return EINVAL;
 }
 
+/*
+ * npf_conn_find: lookup a connection in the list of connections
+ */
 int
-npf_conn_find(npf_t *npf, const nvlist_t *idict, nvlist_t **odict)
+npf_conn_find(npf_t *npf, const nvlist_t *nvl, nvlist_t *outnvl)
 {
-	const nvlist_t *kdict;
+	const nvlist_t *knvl;
 	npf_conndb_t *conn_db;
 	npf_conn_t *con;
 	npf_connkey_t key;
 	uint16_t dir;
+	int error;
 	bool forw;
 
-	kdict = dnvlist_get_nvlist(idict, "key", NULL);
-	if (!kdict || !npf_connkey_import(kdict, &key)) {
+	knvl = dnvlist_get_nvlist(nvl, "key", NULL);
+	if (!knvl || !npf_connkey_import(knvl, &key)) {
 		return EINVAL;
 	}
 	conn_db = atomic_load_relaxed(&npf->conn_db);
@@ -932,14 +937,14 @@ npf_conn_find(npf_t *npf, const nvlist_t *idict, nvlist_t **odict)
 	if (con == NULL) {
 		return ESRCH;
 	}
-	dir = dnvlist_get_number(idict, "direction", 0);
+	dir = dnvlist_get_number(nvl, "direction", 0);
 	if (!npf_conn_check(con, NULL, dir, true)) {
 		atomic_dec_uint(&con->c_refcnt);
 		return ESRCH;
 	}
-	*odict = npf_conn_export(npf, con);
+	error = npf_conn_export(npf, con, outnvl);
 	atomic_dec_uint(&con->c_refcnt);
-	return *odict ? 0 : ENOSPC;
+	return error;
 }
 
 #if defined(DDB) || defined(_NPF_TESTING)

@@ -300,11 +300,7 @@ void		npf_worker_signal(npf_t *);
 void		npf_worker_register(npf_t *, npf_workfunc_t);
 void		npf_worker_unregister(npf_t *, npf_workfunc_t);
 
-int		npfctl_save(npf_t *, u_long, void *);
-int		npfctl_load(npf_t *, u_long, void *);
-int		npfctl_rule(npf_t *, u_long, void *);
-int		npfctl_conn_lookup(npf_t *, u_long, void *);
-int		npfctl_table_replace(npf_t *, u_long, void *);
+int		npfctl_run_op(npf_t *, unsigned, const nvlist_t *, nvlist_t *);
 int		npfctl_table(npf_t *, void *);
 
 void		npf_stats_inc(npf_t *, npf_stats_t);
@@ -414,7 +410,7 @@ int		npf_ruleset_add(npf_ruleset_t *, const char *, npf_rule_t *);
 int		npf_ruleset_remove(npf_ruleset_t *, const char *, uint64_t);
 int		npf_ruleset_remkey(npf_ruleset_t *, const char *,
 		    const void *, size_t);
-nvlist_t *	npf_ruleset_list(npf_t *, npf_ruleset_t *, const char *);
+int		npf_ruleset_list(npf_t *, npf_ruleset_t *, const char *, nvlist_t *);
 int		npf_ruleset_flush(npf_ruleset_t *, const char *);
 void		npf_ruleset_gc(npf_ruleset_t *);
 

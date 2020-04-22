@@ -33,7 +33,7 @@
 
 #ifdef _KERNEL
 #include <sys/cdefs.h>
-__KERNEL_RCSID(0, "$NetBSD: npf_rproc.c,v 1.19 2019/07/23 00:52:01 rmind Exp $");
+__KERNEL_RCSID(0, "$NetBSD$");
 
 #include <sys/param.h>
 #include <sys/types.h>
@@ -260,7 +260,7 @@ npf_rprocset_insert(npf_rprocset_t *rpset, npf_rproc_t *rp)
 }
 
 int
-npf_rprocset_export(const npf_rprocset_t *rpset, nvlist_t *npf_dict)
+npf_rprocset_export(const npf_rprocset_t *rpset, nvlist_t *nvl)
 {
 	const npf_rproc_t *rp;
 
@@ -275,7 +275,7 @@ npf_rprocset_export(const npf_rprocset_t *rpset, nvlist_t *npf_dict)
 #endif
 		nvlist_add_string(rproc, "name", rp->rp_name);
 		nvlist_add_number(rproc, "flags", rp->rp_flags);
-		nvlist_append_nvlist_array(npf_dict, "rprocs", rproc);
+		nvlist_append_nvlist_array(nvl, "rprocs", rproc);
 		nvlist_destroy(rproc);
 	}
 	return 0;

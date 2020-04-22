@@ -84,7 +84,7 @@ nl_config_t *	npf_config_import(const void *, size_t);
 void *		npf_config_export(nl_config_t *, size_t *);
 bool		npf_config_active_p(nl_config_t *);
 bool		npf_config_loaded_p(nl_config_t *);
-void *		npf_config_build(nl_config_t *);
+const void *	npf_config_build(nl_config_t *);
 
 int		npf_alg_load(nl_config_t *, const char *);
 

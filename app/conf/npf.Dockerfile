@@ -31,6 +31,9 @@ RUN cd thmap/pkg && make rpm && rpm -ihv RPMS/*/*.rpm
 # liblpm
 RUN git clone https://github.com/rmind/liblpm
 RUN cd liblpm/pkg && make rpm && rpm -ihv RPMS/*/*.rpm
+# rhashmap
+RUN git clone https://github.com/rmind/rhashmap
+RUN cd rhashmap/pkg && make rpm && rpm -ihv RPMS/*/*.rpm
 # bpfjit
 RUN git clone https://github.com/rmind/bpfjit
 RUN cd bpfjit && make rpm && rpm -ihv RPMS/*/*.rpm
