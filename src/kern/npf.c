@@ -33,7 +33,7 @@
 
 #ifdef _KERNEL
 #include <sys/cdefs.h>
-__KERNEL_RCSID(0, "$NetBSD: npf.c,v 1.39 2019/08/06 11:40:15 christos Exp $");
+__KERNEL_RCSID(0, "$NetBSD$");
 
 #include <sys/param.h>
 #include <sys/types.h>
@@ -116,10 +116,24 @@ npfk_destroy(npf_t *npf)
 	kmem_free(npf, sizeof(npf_t));
 }
 
+
+/*
+ * npfk_load: (re)load the configuration.
+ *
+ * => Will not modify the configuration reference.
+ */
 __dso_public int
-npfk_load(npf_t *npf, void *config_ref, npf_error_t *err)
+npfk_load(npf_t *npf, const void *config_ref, npf_error_t *err)
 {
-	return npfctl_load(npf, 0, config_ref);
+	const nvlist_t *req = (const nvlist_t *)config_ref;
+	nvlist_t *resp;
+	int error;
+
+	resp = nvlist_create(0);
+	error = npfctl_run_op(npf, IOC_NPF_LOAD, req, resp);
+	nvlist_destroy(resp);
+
+	return error;
 }
 
 __dso_public void

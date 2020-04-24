@@ -226,10 +226,10 @@ void		npfctl_setparam(const char *, int);
  * For the systems which do not define TH_ECE and TW_CRW.
  */
 #ifndef TH_ECE
-#define	TH_ECE	  0x40
+#define	TH_ECE		0x40
 #endif
 #ifndef TH_CWR
-#define	TH_CWR	  0x80
+#define	TH_CWR		0x80
 #endif
 
 #endif

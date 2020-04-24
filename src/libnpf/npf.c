@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2010-2019 The NetBSD Foundation, Inc.
+ * Copyright (c) 2010-2020 The NetBSD Foundation, Inc.
  * All rights reserved.
  *
  * This material is based upon work partially supported by The
@@ -28,7 +28,7 @@
  */
 
 #include <sys/cdefs.h>
-__KERNEL_RCSID(0, "$NetBSD: npf.c,v 1.45 2019/01/19 21:19:31 rmind Exp $");
+__KERNEL_RCSID(0, "$NetBSD$");
 
 #include <sys/types.h>
 #include <sys/mman.h>
@@ -227,6 +227,80 @@ _npf_extract_error(nvlist_t *resp, npf_error_t *errinfo)
 }
 
 /*
+ * npf_xfer_fd: transfer the given request and receive a response.
+ *
+ * => Sets the 'operation' key on the 'req' dictionary.
+ * => On success: returns 0 and valid nvlist in 'resp'.
+ * => On failure: returns an error number.
+ */
+static int
+_npf_xfer_fd(int fd, unsigned long cmd, nvlist_t *req, nvlist_t **resp)
+{
+	struct stat st;
+
+	/*
+	 * Set the NPF version and operation.
+	 */
+	if (!nvlist_exists(req, "version")) {
+		nvlist_add_number(req, "version", NPF_VERSION);
+	}
+	nvlist_add_number(req, "operation", cmd);
+
+	/*
+	 * Determine the type of file descriptor:
+	 * - If socket, then perform nvlist_send()/nvlist_recv().
+	 * - If a character device, then use ioctl.
+	 */
+	if (fstat(fd, &st) == -1) {
+		goto err;
+	}
+	switch (st.st_mode & S_IFMT) {
+	case S_IFSOCK:
+		if (nvlist_send(fd, req) == -1) {
+			goto err;
+		}
+		if (resp && (*resp = nvlist_recv(fd, 0)) == NULL) {
+			goto err;
+		}
+		break;
+	case S_IFBLK:
+	case S_IFCHR:
+		if (nvlist_send_ioctl(fd, cmd, req) == -1) {
+			goto err;
+		}
+		if (resp && nvlist_recv_ioctl(fd, cmd, resp) == -1) {
+			goto err;
+		}
+		break;
+	default:
+		errno = ENOTSUP;
+		goto err;
+	}
+	return 0;
+err:
+	return errno ? errno : EINVAL;
+}
+
+/*
+ * npf_xfer_fd_errno: same as npf_xfer_fd(), but on successful retrieval
+ * of the response nvlist, additionally inspects 'errno' and returns it.
+ */
+static int
+_npf_xfer_fd_errno(int fd, unsigned long cmd, nvlist_t *req)
+{
+	nvlist_t *resp;
+	int error;
+
+	error = _npf_xfer_fd(fd, cmd, req, &resp);
+	if (error) {
+		return error;
+	}
+	error = _npf_extract_error(resp, NULL);
+	nvlist_destroy(resp);
+	return error;
+}
+
+/*
  * CONFIGURATION INTERFACE.
  */
 
@@ -247,18 +321,18 @@ npf_config_create(void)
 int
 npf_config_submit(nl_config_t *ncf, int fd, npf_error_t *errinfo)
 {
-	nvlist_t *errnv = NULL;
+	nvlist_t *resp = NULL;
 	int error;
 
 	/* Ensure the config is built. */
 	(void)npf_config_build(ncf);
 
-	if (nvlist_xfer_ioctl(fd, IOC_NPF_LOAD, ncf->ncf_dict, &errnv) == -1) {
-		assert(errnv == NULL);
-		return errno;
+	error = _npf_xfer_fd(fd, IOC_NPF_LOAD, ncf->ncf_dict, &resp);
+	if (error) {
+		return error;
 	}
-	error = _npf_extract_error(errnv, errinfo);
-	nvlist_destroy(errnv);
+	error = _npf_extract_error(resp, errinfo);
+	nvlist_destroy(resp);
 	return error;
 }
 
@@ -266,15 +340,24 @@ nl_config_t *
 npf_config_retrieve(int fd)
 {
 	nl_config_t *ncf;
+	nvlist_t *req, *resp = NULL;
+	int error;
 
 	ncf = calloc(1, sizeof(nl_config_t));
 	if (!ncf) {
 		return NULL;
 	}
-	if (nvlist_recv_ioctl(fd, IOC_NPF_SAVE, &ncf->ncf_dict) == -1) {
+
+	req = nvlist_create(0);
+	error = _npf_xfer_fd(fd, IOC_NPF_SAVE, req, &resp);
+	nvlist_destroy(req);
+
+	if (error || _npf_extract_error(resp, NULL) != 0) {
+		nvlist_destroy(resp);
 		free(ncf);
 		return NULL;
 	}
+	ncf->ncf_dict = resp;
 	return ncf;
 }
 
@@ -332,7 +415,7 @@ npf_config_loaded_p(nl_config_t *ncf)
 	return nvlist_exists_nvlist_array(ncf->ncf_dict, "rules");
 }
 
-void *
+const void *
 npf_config_build(nl_config_t *ncf)
 {
 	_npf_rules_process(ncf, ncf->ncf_dict, "__rules");
@@ -412,24 +495,26 @@ int
 npf_ruleset_add(int fd, const char *rname, nl_rule_t *rl, uint64_t *id)
 {
 	const bool natset = _npf_nat_ruleset_p(rname);
-	nvlist_t *rule_dict = rl->rule_dict;
-	nvlist_t *ret_dict;
+	nvlist_t *rule_nvl = rl->rule_dict, *resp;
+	int error;
 
-	nvlist_add_number(rule_dict, "attr",
-	    NPF_RULE_DYNAMIC | nvlist_take_number(rule_dict, "attr"));
+	nvlist_add_number(rule_nvl, "attr",
+	    NPF_RULE_DYNAMIC | nvlist_take_number(rule_nvl, "attr"));
 
-	if (natset && !dnvlist_get_bool(rule_dict, "nat-rule", false)) {
+	if (natset && !dnvlist_get_bool(rule_nvl, "nat-rule", false)) {
 		errno = EINVAL;
 		return errno;
 	}
-	nvlist_add_string(rule_dict, "ruleset-name", rname);
-	nvlist_add_bool(rule_dict, "nat-ruleset", natset);
-	nvlist_add_number(rule_dict, "command", NPF_CMD_RULE_ADD);
+	nvlist_add_string(rule_nvl, "ruleset-name", rname);
+	nvlist_add_bool(rule_nvl, "nat-ruleset", natset);
+	nvlist_add_number(rule_nvl, "command", NPF_CMD_RULE_ADD);
 
-	if (nvlist_xfer_ioctl(fd, IOC_NPF_RULE, rule_dict, &ret_dict) == -1) {
-		return errno;
+	error = _npf_xfer_fd(fd, IOC_NPF_RULE, rule_nvl, &resp);
+	if (error) {
+		return error;
 	}
-	*id = nvlist_get_number(ret_dict, "id");
+	*id = nvlist_get_number(resp, "id");
+	nvlist_destroy(resp);
 	return 0;
 }
 
@@ -437,50 +522,50 @@ int
 npf_ruleset_remove(int fd, const char *rname, uint64_t id)
 {
 	const bool natset = _npf_nat_ruleset_p(rname);
-	nvlist_t *rule_dict = nvlist_create(0);
+	nvlist_t *rule_nvl = nvlist_create(0);
+	int error;
 
-	nvlist_add_string(rule_dict, "ruleset-name", rname);
-	nvlist_add_bool(rule_dict, "nat-ruleset", natset);
-	nvlist_add_number(rule_dict, "command", NPF_CMD_RULE_REMOVE);
-	nvlist_add_number(rule_dict, "id", id);
+	nvlist_add_string(rule_nvl, "ruleset-name", rname);
+	nvlist_add_bool(rule_nvl, "nat-ruleset", natset);
+	nvlist_add_number(rule_nvl, "command", NPF_CMD_RULE_REMOVE);
+	nvlist_add_number(rule_nvl, "id", id);
 
-	if (nvlist_send_ioctl(fd, IOC_NPF_RULE, rule_dict) == -1) {
-		return errno;
-	}
-	return 0;
+	error = _npf_xfer_fd_errno(fd, IOC_NPF_RULE, rule_nvl);
+	nvlist_destroy(rule_nvl);
+	return error;
 }
 
 int
 npf_ruleset_remkey(int fd, const char *rname, const void *key, size_t len)
 {
 	const bool natset = _npf_nat_ruleset_p(rname);
-	nvlist_t *rule_dict = nvlist_create(0);
+	nvlist_t *rule_nvl = nvlist_create(0);
+	int error;
 
-	nvlist_add_string(rule_dict, "ruleset-name", rname);
-	nvlist_add_bool(rule_dict, "nat-ruleset", natset);
-	nvlist_add_number(rule_dict, "command", NPF_CMD_RULE_REMKEY);
-	nvlist_add_binary(rule_dict, "key", key, len);
+	nvlist_add_string(rule_nvl, "ruleset-name", rname);
+	nvlist_add_bool(rule_nvl, "nat-ruleset", natset);
+	nvlist_add_number(rule_nvl, "command", NPF_CMD_RULE_REMKEY);
+	nvlist_add_binary(rule_nvl, "key", key, len);
 
-	if (nvlist_send_ioctl(fd, IOC_NPF_RULE, rule_dict) == -1) {
-		return errno;
-	}
-	return 0;
+	error = _npf_xfer_fd_errno(fd, IOC_NPF_RULE, rule_nvl);
+	nvlist_destroy(rule_nvl);
+	return error;
 }
 
 int
 npf_ruleset_flush(int fd, const char *rname)
 {
 	const bool natset = _npf_nat_ruleset_p(rname);
-	nvlist_t *rule_dict = nvlist_create(0);
+	nvlist_t *rule_nvl = nvlist_create(0);
+	int error;
 
-	nvlist_add_string(rule_dict, "ruleset-name", rname);
-	nvlist_add_bool(rule_dict, "nat-ruleset", natset);
-	nvlist_add_number(rule_dict, "command", NPF_CMD_RULE_FLUSH);
+	nvlist_add_string(rule_nvl, "ruleset-name", rname);
+	nvlist_add_bool(rule_nvl, "nat-ruleset", natset);
+	nvlist_add_number(rule_nvl, "command", NPF_CMD_RULE_FLUSH);
 
-	if (nvlist_send_ioctl(fd, IOC_NPF_RULE, rule_dict) == -1) {
-		return errno;
-	}
-	return 0;
+	error = _npf_xfer_fd_errno(fd, IOC_NPF_RULE, rule_nvl);
+	nvlist_destroy(rule_nvl);
+	return error;
 }
 
 /*
@@ -705,24 +790,28 @@ int
 _npf_ruleset_list(int fd, const char *rname, nl_config_t *ncf)
 {
 	const bool natset = _npf_nat_ruleset_p(rname);
-	nvlist_t *req, *ret;
+	nvlist_t *req, *resp;
+	int error;
 
 	req = nvlist_create(0);
 	nvlist_add_string(req, "ruleset-name", rname);
 	nvlist_add_bool(req, "nat-ruleset", natset);
 	nvlist_add_number(req, "command", NPF_CMD_RULE_LIST);
 
-	if (nvlist_xfer_ioctl(fd, IOC_NPF_RULE, req, &ret) == -1) {
-		return errno;
+	error = _npf_xfer_fd(fd, IOC_NPF_RULE, req, &resp);
+	nvlist_destroy(req);
+	if (error) {
+		return error;
 	}
-	if (nvlist_exists_nvlist_array(ret, "rules")) {
+
+	if (nvlist_exists_nvlist_array(resp, "rules")) {
 		nvlist_t **rules;
 		size_t n;
 
-		rules = nvlist_take_nvlist_array(ret, "rules", &n);
+		rules = nvlist_take_nvlist_array(resp, "rules", &n);
 		nvlist_move_nvlist_array(ncf->ncf_dict, "rules", rules, n);
 	}
-	nvlist_destroy(ret);
+	nvlist_destroy(resp);
 	return 0;
 }
 
@@ -1108,21 +1197,20 @@ npf_table_insert(nl_config_t *ncf, nl_table_t *tl)
 int
 npf_table_replace(int fd, nl_table_t *tl, npf_error_t *errinfo)
 {
-	nvlist_t *errnv = NULL;
+	nvlist_t *resp = NULL;
 	int error;
 
 	/* Ensure const tables are built. */
 	if ((error = _npf_table_build_const(tl)) != 0) {
 		return error;
 	}
-
-	if (nvlist_xfer_ioctl(fd, IOC_NPF_TABLE_REPLACE,
-	    tl->table_dict, &errnv) == -1) {
-		assert(errnv == NULL);
+	error = _npf_xfer_fd(fd, IOC_NPF_TABLE_REPLACE, tl->table_dict, &resp);
+	if (error) {
+		assert(resp == NULL);
 		return errno;
 	}
-	error = _npf_extract_error(errnv, errinfo);
-	nvlist_destroy(errnv);
+	error = _npf_extract_error(resp, errinfo);
+	nvlist_destroy(resp);
 	return error;
 }
 
@@ -1226,8 +1314,8 @@ npf_nat_lookup(int fd, int af, npf_addr_t *addr[2], in_port_t port[2],
 	conn_res = NULL;
 
 	/* Lookup: retrieve the connection entry. */
-	if (nvlist_xfer_ioctl(fd, IOC_NPF_CONN_LOOKUP, req, &conn_res) == -1) {
-		error = errno;
+	error = _npf_xfer_fd(fd, IOC_NPF_CONN_LOOKUP, req, &conn_res);
+	if (error) {
 		goto out;
 	}
 
@@ -1329,6 +1417,7 @@ npf_conn_list(int fd, npf_conn_func_t func, void *arg)
 		const nvlist_t *conn = conns[i];
 		npf_conn_handle(conn, func, arg);
 	}
+	npf_config_destroy(ncf);
 	return 0;
 }
 

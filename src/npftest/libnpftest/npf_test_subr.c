@@ -90,6 +90,7 @@ npf_test_load(const void *buf, size_t len, bool verbose)
 {
 	nvlist_t *npf_dict;
 	npf_error_t error;
+	int ret;
 
 	npf_dict = nvlist_unpack(buf, len, 0);
 	if (!npf_dict) {
@@ -97,9 +98,9 @@ npf_test_load(const void *buf, size_t len, bool verbose)
 		return EINVAL;
 	}
 	load_npf_config_ifs(npf_dict, verbose);
-
-	// Note: npf_dict will be consumed by npf_load().
-	return npfk_load(npf_getkernctx(), npf_dict, &error);
+	ret = npfk_load(npf_getkernctx(), npf_dict, &error);
+	nvlist_destroy(npf_dict);
+	return ret;
 }
 
 ifnet_t *

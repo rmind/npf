@@ -281,7 +281,7 @@ npf_tableset_reload(npf_t *npf, npf_tableset_t *nts, npf_tableset_t *ots)
 }
 
 int
-npf_tableset_export(npf_t *npf, const npf_tableset_t *ts, nvlist_t *npf_dict)
+npf_tableset_export(npf_t *npf, const npf_tableset_t *ts, nvlist_t *nvl)
 {
 	const npf_table_t *t;
 
@@ -298,7 +298,7 @@ npf_tableset_export(npf_t *npf, const npf_tableset_t *ts, nvlist_t *npf_dict)
 		nvlist_add_number(table, "type", t->t_type);
 		nvlist_add_number(table, "id", tid);
 
-		nvlist_append_nvlist_array(npf_dict, "tables", table);
+		nvlist_append_nvlist_array(nvl, "tables", table);
 		nvlist_destroy(table);
 	}
 	return 0;
