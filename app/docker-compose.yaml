@@ -2,28 +2,23 @@ version: '3.4'
 
 services:
 
-  npf:
+  npf-deps:
     build:
       context: ..
-      dockerfile: app/conf/npf.Dockerfile
-    image: npf
+      dockerfile: app/conf/npf-deps.Dockerfile
+    image: npf-deps
+    volumes:
+      - ../:/src
 
-  #npf-router-dev:
-  #  build:
-  #    context: ..
-  #    dockerfile: app/conf/npf-router.Dockerfile
-  #    target: npf-dpdk-builder
-  #  image: npf_router_dev
-  #  privileged: true
-  #  depends_on:
-  #    - npf
-  #  hostname: npf-router-dev
-  #  networks:
-  #    default:
-  #    testnet:
-  #      ipv4_address: 10.0.0.2
-  #  volumes:
-  #    - ../:/src
+  npf-pkg:
+    build:
+      context: ..
+      dockerfile: app/conf/npf-pkg.Dockerfile
+    depends_on:
+      - npf-deps
+    image: npf-pkg
+    volumes:
+      - ../:/src
 
   npf-router:
     build:
@@ -32,12 +27,14 @@ services:
     image: npf_router
     privileged: true
     depends_on:
-      - npf
+      - npf-pkg
     hostname: npf-router
     networks:
       default:
       testnet:
         ipv4_address: 10.0.0.2
+    volumes:
+      - ../:/src
     command:
       - "/app/run.sh"
 
