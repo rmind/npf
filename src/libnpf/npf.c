@@ -33,6 +33,9 @@ __KERNEL_RCSID(0, "$NetBSD$");
 #include <sys/types.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
+#if !defined(_NPF_STANDALONE)
+#include <sys/ioctl.h>
+#endif
 #include <netinet/in_systm.h>
 #include <netinet/in.h>
 #include <net/if.h>
@@ -237,6 +240,7 @@ static int
 _npf_xfer_fd(int fd, unsigned long cmd, nvlist_t *req, nvlist_t **resp)
 {
 	struct stat st;
+	int kernver;
 
 	/*
 	 * Set the NPF version and operation.
@@ -263,8 +267,16 @@ _npf_xfer_fd(int fd, unsigned long cmd, nvlist_t *req, nvlist_t **resp)
 			goto err;
 		}
 		break;
+#if !defined(_NPF_STANDALONE)
 	case S_IFBLK:
 	case S_IFCHR:
+		if (ioctl(fd, IOC_NPF_VERSION, &kernver) == -1) {
+			goto err;
+		}
+		if (kernver != NPF_VERSION) {
+			errno = EPROGMISMATCH;
+			goto err;
+		}
 		if (nvlist_send_ioctl(fd, cmd, req) == -1) {
 			goto err;
 		}
@@ -272,6 +284,9 @@ _npf_xfer_fd(int fd, unsigned long cmd, nvlist_t *req, nvlist_t **resp)
 			goto err;
 		}
 		break;
+#else
+		(void)kernver;
+#endif
 	default:
 		errno = ENOTSUP;
 		goto err;

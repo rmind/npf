@@ -142,6 +142,12 @@ uint16_t	npfctl_npt66_calcadj(npf_netmask_t, const npf_addr_t *,
 		    const npf_addr_t *);
 int		npfctl_nat_ruleset_p(const char *, bool *);
 
+void		usage(void);
+void		npfctl_rule(int, int, char **);
+void		npfctl_table_replace(int, int, char **);
+void		npfctl_table(int, int, char **);
+int		npfctl_conn_list(int, int, char **);
+
 /*
  * NPF extension loading.
  */
