@@ -1,31 +1,30 @@
 ##########################################################################
 # NPF + DPDK builder
 #
-FROM npf AS npf-dpdk-builder
+FROM npf-pkg AS npf-router-builder
 WORKDIR /build
-
-#
-# Install the build tools.
-#
-RUN dnf install -y epel-release kernel-modules kernel-modules-extra
-RUN dnf install -y gcc make gdb libasan dpdk-devel libibverbs
+COPY . /build/npf
 
 #
 # Build the application.
 #
-RUN mkdir -p /build/bin
-COPY . /build/npf
-
-RUN cd /build/npf/app/src && make && \
+RUN cd /build/npf/app/src && \
+    make && mkdir -p /build/bin && \
     DESTDIR="/build/bin" BINDIR="" make install
 RUN cp /build/npf/app/run.sh /build/bin/
 
 ##########################################################################
 # Create a separate NPF-router image.
 #
-FROM npf AS npf-router
-RUN dnf install -y epel-release kernel-modules kernel-modules-extra
-RUN dnf install -y net-tools traceroute dpdk libibverbs
+
+FROM centos:centos8 AS npf
+RUN dnf install -y epel-release dnf-plugins-core
+RUN dnf config-manager --set-enabled PowerTools
+RUN dnf install -y kernel-modules kernel-modules-extra dpdk libibverbs
+RUN dnf install -y man-pages net-tools traceroute
+
+COPY --from=npf-router-builder /pkg/*.rpm /pkg/
+RUN dnf install -y /pkg/*.x86_64.rpm
 
 WORKDIR /app
-COPY --from=npf-dpdk-builder /build/bin/* /app/
+COPY --from=npf-router-builder /build/bin/* /app/
