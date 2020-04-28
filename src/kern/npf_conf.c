@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2013 The NetBSD Foundation, Inc.
+ * Copyright (c) 2013-2020 The NetBSD Foundation, Inc.
  * All rights reserved.
  *
  * This material is based upon work partially supported by The
@@ -28,21 +28,21 @@
  */
 
 /*
- * NPF config loading mechanism.
+ * NPF configuration loading mechanism.
  *
- * There are few main operations on the config:
- * 1) Read access which is primarily from the npf_packet_handler() et al.
+ * The main operations on the configuration are:
+ * 1) Read access, primarily from the npf_packet_handler() function.
  * 2) Write access on particular set, mainly rule or table updates.
- * 3) Deletion of the config, which is done during the reload operation.
+ * 3) Deletion of the configuration after the reload operation.
  *
- * Synchronisation
+ * Synchronization
  *
- *	For (1) case, passive serialisation is used to allow concurrent
- *	access to the configuration set (ruleset, etc).  It guarantees
- *	that the config will not be destroyed while accessing it.
+ *	For (1) case, EBR is used to allow concurrent access to the
+ *	configuration set (ruleset, etc).  It guarantees that the
+ *	configuration will not be destroyed while accessing it.
  *
  *	Writers, i.e. cases (2) and (3) use mutual exclusion and when
- *	necessary writer-side barrier of the passive serialisation.
+ *	necessary the writer-side barrier of the EBR.
  */
 
 #ifdef _KERNEL
@@ -94,10 +94,18 @@ npf_config_destroy(npf_config_t *nc)
 	 * Note: the rulesets must be destroyed first, in order to drop
 	 * any references to the tableset.
 	 */
-	npf_ruleset_destroy(nc->ruleset);
-	npf_ruleset_destroy(nc->nat_ruleset);
-	npf_rprocset_destroy(nc->rule_procs);
-	npf_tableset_destroy(nc->tableset);
+	if (nc->ruleset) {
+		npf_ruleset_destroy(nc->ruleset);
+	}
+	if (nc->nat_ruleset) {
+		npf_ruleset_destroy(nc->nat_ruleset);
+	}
+	if (nc->rule_procs) {
+		npf_rprocset_destroy(nc->rule_procs);
+	}
+	if (nc->tableset) {
+		npf_tableset_destroy(nc->tableset);
+	}
 	kmem_free(nc, sizeof(npf_config_t));
 }
 
@@ -120,7 +128,7 @@ npf_config_fini(npf_t *npf)
 
 /*
  * npf_config_load: the main routine performing configuration load.
- * Performs the necessary synchronisation and destroys the old config.
+ * Performs the necessary synchronization and destroys the old config.
  */
 void
 npf_config_load(npf_t *npf, npf_config_t *nc, npf_conndb_t *conns, bool flush)
@@ -215,7 +223,7 @@ npf_config_sync(npf_t *npf)
 }
 
 /*
- * Reader-side synchronisation routines.
+ * Reader-side synchronization routines.
  */
 
 int

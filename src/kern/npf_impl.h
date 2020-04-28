@@ -475,10 +475,10 @@ void		npf_portmap_flush(npf_portmap_t *);
 /* NAT. */
 void		npf_nat_sysinit(void);
 void		npf_nat_sysfini(void);
-npf_natpolicy_t *npf_nat_newpolicy(npf_t *, const nvlist_t *, npf_ruleset_t *);
-int		npf_nat_policyexport(const npf_natpolicy_t *, nvlist_t *);
-void		npf_nat_freepolicy(npf_natpolicy_t *);
-bool		npf_nat_cmppolicy(npf_natpolicy_t *, npf_natpolicy_t *);
+npf_natpolicy_t *npf_natpolicy_create(npf_t *, const nvlist_t *, npf_ruleset_t *);
+int		npf_natpolicy_export(const npf_natpolicy_t *, nvlist_t *);
+void		npf_natpolicy_destroy(npf_natpolicy_t *);
+bool		npf_natpolicy_cmp(npf_natpolicy_t *, npf_natpolicy_t *);
 void		npf_nat_setid(npf_natpolicy_t *, uint64_t);
 uint64_t	npf_nat_getid(const npf_natpolicy_t *);
 void		npf_nat_freealg(npf_natpolicy_t *, npf_alg_t *);

@@ -189,7 +189,7 @@ npf_alg_unregister(npf_t *npf, npf_alg_t *alg)
 	atomic_store_relaxed(&afuncs->match, NULL);
 	atomic_store_relaxed(&afuncs->translate, NULL);
 	atomic_store_relaxed(&afuncs->inspect, NULL);
-	npf_ebr_full_sync(npf->ebr);
+	npf_config_sync(npf);
 
 	/*
 	 * Finally, unregister the ALG.  We leave the 'destroy' callback
@@ -226,7 +226,7 @@ npf_alg_match(npf_cache_t *npc, npf_nat_t *nt, int di)
 
 	KASSERTMSG(npf_iscached(npc, NPC_IP46), "expecting protocol number");
 
-	s = npf_ebr_enter(npf->ebr);
+	s = npf_config_read_enter(npf);
 	count = atomic_load_relaxed(&aset->alg_count);
 	for (unsigned i = 0; i < count; i++) {
 		const npfa_funcs_t *f = &aset->alg_funcs[i];
@@ -238,7 +238,7 @@ npf_alg_match(npf_cache_t *npc, npf_nat_t *nt, int di)
 			break;
 		}
 	}
-	npf_ebr_exit(npf->ebr, s);
+	npf_config_read_exit(npf, s);
 	return match;
 }
 
@@ -259,7 +259,7 @@ npf_alg_exec(npf_cache_t *npc, npf_nat_t *nt, bool forw)
 	unsigned count;
 	int s;
 
-	s = npf_ebr_enter(npf->ebr);
+	s = npf_config_read_enter(npf);
 	count = atomic_load_relaxed(&aset->alg_count);
 	for (unsigned i = 0; i < count; i++) {
 		const npfa_funcs_t *f = &aset->alg_funcs[i];
@@ -270,7 +270,7 @@ npf_alg_exec(npf_cache_t *npc, npf_nat_t *nt, bool forw)
 			translate_func(npc, nt, forw);
 		}
 	}
-	npf_ebr_exit(npf->ebr, s);
+	npf_config_read_exit(npf, s);
 }
 
 /*
@@ -299,7 +299,7 @@ npf_alg_conn(npf_cache_t *npc, int di)
 	unsigned count;
 	int s;
 
-	s = npf_ebr_enter(npf->ebr);
+	s = npf_config_read_enter(npf);
 	count = atomic_load_relaxed(&aset->alg_count);
 	for (unsigned i = 0; i < count; i++) {
 		const npfa_funcs_t *f = &aset->alg_funcs[i];
@@ -310,7 +310,7 @@ npf_alg_conn(npf_cache_t *npc, int di)
 			break;
 		}
 	}
-	npf_ebr_exit(npf->ebr, s);
+	npf_config_read_exit(npf, s);
 	return con;
 }
 

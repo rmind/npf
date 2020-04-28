@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2009-2019 The NetBSD Foundation, Inc.
+ * Copyright (c) 2009-2020 The NetBSD Foundation, Inc.
  * All rights reserved.
  *
  * This material is based upon work partially supported by The
@@ -459,7 +459,7 @@ npf_mk_singlenat(npf_t *npf, const nvlist_t *nat, nvlist_t *resp,
 	}
 
 	/* Allocate a new NAT policy and assign it to the rule. */
-	np = npf_nat_newpolicy(npf, nat, ntset);
+	np = npf_natpolicy_create(npf, nat, ntset);
 	if (np == NULL) {
 		NPF_ERR_DEBUG(resp);
 		error = ENOMEM;

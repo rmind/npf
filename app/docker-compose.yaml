@@ -20,6 +20,25 @@ services:
     volumes:
       - ../:/src
 
+  npf-router-dev:
+    build:
+      context: ..
+      dockerfile: app/conf/npf-router.Dockerfile
+      target: npf-router-builder
+    image: npf_router_builder
+    privileged: true
+    depends_on:
+      - npf-pkg
+    hostname: npf-router
+    networks:
+      default:
+      testnet:
+        ipv4_address: 10.0.0.254
+    volumes:
+      - ../:/src
+    command:
+      - "/bin/true"
+
   npf-router:
     build:
       context: ..
@@ -33,8 +52,6 @@ services:
       default:
       testnet:
         ipv4_address: 10.0.0.2
-    volumes:
-      - ../:/src
     command:
       - "/app/run.sh"
 

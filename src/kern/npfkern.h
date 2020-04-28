@@ -85,6 +85,19 @@ void	npfk_stats(npf_t *, uint64_t *);
 void	npfk_stats_clear(npf_t *);
 
 /*
+ * Extensions.
+ */
+
+int	npf_ext_log_init(npf_t *);
+int	npf_ext_log_fini(npf_t *);
+
+int	npf_ext_normalize_init(npf_t *);
+int	npf_ext_normalize_fini(npf_t *);
+
+int	npf_ext_rndblock_init(npf_t *);
+int	npf_ext_rndblock_fini(npf_t *);
+
+/*
  * ALGs.
  */
 

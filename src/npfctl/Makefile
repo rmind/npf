@@ -28,6 +28,8 @@ CFLAGS+=	-Wold-style-definition
 
 ifeq ($(DEBUG),1)
 CFLAGS+=	-Og -DDEBUG -fno-omit-frame-pointer
+CFLAGS+=	-fsanitize=address -fsanitize=undefined
+LDFLAGS+=	-fsanitize=address -fsanitize=undefined
 else
 CFLAGS+=	-DNDEBUG
 endif

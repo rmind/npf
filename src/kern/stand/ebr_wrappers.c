@@ -33,7 +33,7 @@
 #include "../npf_impl.h"
 
 /*
- * EBR wrappers.
+ * Epoch-Based Reclamation (EBR) wrappers.
  */
 
 ebr_t *

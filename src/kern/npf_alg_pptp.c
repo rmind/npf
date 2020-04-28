@@ -275,14 +275,14 @@ pptp_gre_destroy_state(npf_t *npf, pptp_gre_state_t *gre_state, npf_addr_t **ips
 	if (gre_state->flags & GRE_STATE_ESTABLISHED) {
 		npf_connkey_t key;
 
-		/* Initialise the forward GRE connection key. */
+		/* Initialize the forward GRE connection key. */
 		ids[NPF_SRC] = gre_state->call_id[SERVER_CALL_ID];
 		ids[NPF_DST] = 0;
 		npf_connkey_setkey((void *)&key, IPPROTO_GRE, ips, ids,
 		    sizeof(uint32_t), true);
 
 		/* Lookup the associated PPTP GRE connection state. */
-		con = npf_conndb_lookup(npf->conn_db, &key, &forw);
+		con = npf_conndb_lookup(npf, &key, &forw);
 		if (con != NULL) {
 			/*
 			 * Mark the GRE connection as expired.

@@ -55,7 +55,7 @@ endif
 
 OBJS=		$(shell awk '/^file/ { print $$2 }' files.npf | \
 		    sed 's:\(.*\)net/npf/\(.*\).c:\2.o:g' | \
-		    egrep -v '^(npf_os|npf_ext_|npf_ifaddr|if_npflog|lpm)')
+		    egrep -v '^(npf_os|npf_ext_log|npf_ifaddr|if_npflog|lpm)')
 
 OBJS+=		stand/npfkern.o stand/bpf_filter.o
 OBJS+=		stand/murmurhash.o stand/tls_pth.o

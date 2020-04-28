@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2010-2019 The NetBSD Foundation, Inc.
+ * Copyright (c) 2010-2020 The NetBSD Foundation, Inc.
  * All rights reserved.
  *
  * This material is based upon work partially supported by The
@@ -30,6 +30,10 @@
 /*
  * NPF connection storage.
  *
+ * Lock-free connection lookups are protected by EBR with an atomic
+ * reference acquisition before exiting the critical path.  The caller
+ * is responsible for re-checking the connection state.
+ *
  * Warning (not applicable for the userspace npfkern):
  *
  *	thmap is partially lock-free data structure that uses its own
@@ -41,7 +45,8 @@
  *	the same guarantees as a spinning mutex(9) would provide.
  *
  *	This is achieved with SPL routines splsoftnet() and splx() around
- *	the thmap_del() and thmap_put() calls.
+ *	the thmap_del() and thmap_put() calls.  Note: we assume that the
+ *	network stack invokes NPF at IPL_SOFTNET or lower, but not higher.
  */
 
 #ifdef _KERNEL
@@ -143,8 +148,9 @@ npf_conndb_destroy(npf_conndb_t *cd)
  * npf_conndb_lookup: find a connection given the key.
  */
 npf_conn_t *
-npf_conndb_lookup(npf_conndb_t *cd, const npf_connkey_t *ck, bool *forw)
+npf_conndb_lookup(npf_t *npf, const npf_connkey_t *ck, bool *forw)
 {
+	npf_conndb_t *cd = atomic_load_relaxed(&npf->conn_db);
 	const unsigned keylen = NPF_CONNKEY_LEN(ck);
 	npf_conn_t *con;
 	void *val;
@@ -152,8 +158,10 @@ npf_conndb_lookup(npf_conndb_t *cd, const npf_connkey_t *ck, bool *forw)
 	/*
 	 * Lookup the connection key in the key-value map.
 	 */
+	int s = npf_config_read_enter(npf);
 	val = thmap_get(cd->cd_map, ck->ck_key, keylen);
 	if (!val) {
+		npf_config_read_exit(npf, s);
 		return NULL;
 	}
 
@@ -169,6 +177,7 @@ npf_conndb_lookup(npf_conndb_t *cd, const npf_connkey_t *ck, bool *forw)
 	 * Acquire a reference and return the connection.
 	 */
 	atomic_inc_uint(&con->c_refcnt);
+	npf_config_read_exit(npf, s);
 	return con;
 }
 
@@ -401,11 +410,11 @@ npf_conndb_gc(npf_t *npf, npf_conndb_t *cd, bool flush, bool sync)
 		const unsigned refcnt = atomic_load_relaxed(&con->c_refcnt);
 
 		if (__predict_false(refcnt)) {
-			if (!flush) {
-				break;
+			if (flush) {
+				kpause("npfcongc", false, 1, NULL);
+				continue;
 			}
-			kpause("npfcongc", false, 1, NULL);
-			continue;
+			break; // exit the loop
 		}
 		LIST_REMOVE(con, c_entry);
 		npf_conn_destroy(npf, con);
