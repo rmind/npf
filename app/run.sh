@@ -22,7 +22,7 @@ system_configure()
 
 router_configure()
 {
-	[ ! -f /etc/npf-router.conf ] || return;
+	[ ! -f /etc/npf-router.conf ] || return 0;
 
 	echo "ifconfig dtap0 $(get_eth_addr eth0)" >> /etc/npf-router.conf
 	echo "ifconfig dtap1 $(get_eth_addr eth1)" >> /etc/npf-router.conf
