@@ -17,7 +17,12 @@ Spin up the test network:
 docker-compose up
 ```
 
-Enter the router:
+(Re)load NPF configuration:
+```shell
+docker-compose exec npf-router npfctl reload
+```
+
+Enter the router shell:
 ```shell
 docker-compose exec npf-router bash -i
 ```

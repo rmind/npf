@@ -323,10 +323,7 @@ npfctl_open_dev(const char *path)
 	struct stat st;
 	int fd;
 
-	if ((fd = open(path, O_RDONLY)) == -1) {
-		err(EXIT_FAILURE, "cannot open '%s'", path);
-	}
-	if (fstat(fd, &st) == -1) {
+	if (lstat(path, &st) == -1) {
 		err(EXIT_FAILURE, "fstat");
 	}
 	if (st.st_mode & S_IFMT) {
@@ -341,6 +338,10 @@ npfctl_open_dev(const char *path)
 
 		if (connect(fd, (struct sockaddr *)&addr, sizeof(addr)) == -1) {
 			err(EXIT_FAILURE, "connect");
+		}
+	} else {
+		if ((fd = open(path, O_RDONLY)) == -1) {
+			err(EXIT_FAILURE, "cannot open '%s'", path);
 		}
 	}
 	return fd;

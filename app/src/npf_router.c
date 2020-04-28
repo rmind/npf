@@ -156,6 +156,10 @@ config_listen(const char *sockpath)
 	struct sockaddr_un addr;
 	int sock;
 
+	if (unlink(sockpath) == -1 && errno != ENOENT) {
+		return -1;
+	}
+
 	if ((sock = socket(AF_UNIX, SOCK_STREAM, 0)) == -1) {
 		return -1;
 	}
@@ -340,7 +344,7 @@ main(int argc, char **argv)
 
 		sock = accept(router->config_sock, NULL, NULL);
 		if (sock == -1) {
-			if (errno == EINVAL) {
+			if (errno == EINTR) {
 				continue;
 			}
 			err(EXIT_FAILURE, "accept");
