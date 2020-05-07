@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2009-2019 The NetBSD Foundation, Inc.
+ * Copyright (c) 2009-2020 The NetBSD Foundation, Inc.
  * All rights reserved.
  *
  * This material is based upon work partially supported by The
@@ -160,7 +160,7 @@ void		npf_conndb_sysfini(npf_t *);
 npf_conndb_t *	npf_conndb_create(void);
 void		npf_conndb_destroy(npf_conndb_t *);
 
-npf_conn_t *	npf_conndb_lookup(npf_conndb_t *, const npf_connkey_t *, bool *);
+npf_conn_t *	npf_conndb_lookup(npf_t *, const npf_connkey_t *, bool *);
 bool		npf_conndb_insert(npf_conndb_t *, const npf_connkey_t *,
 		    npf_conn_t *, bool);
 npf_conn_t *	npf_conndb_remove(npf_conndb_t *, npf_connkey_t *);

@@ -1,4 +1,5 @@
 /*-
+ * Copyright (c) 2020 Mindaugas Rasiukevicius <rmind at noxt eu>
  * Copyright (c) 2009-2015 The NetBSD Foundation, Inc.
  * All rights reserved.
  *
@@ -430,7 +431,7 @@ npf_ruleset_gc(npf_ruleset_t *rlset)
  */
 int
 npf_ruleset_export(npf_t *npf, const npf_ruleset_t *rlset,
-    const char *key, nvlist_t *npf_nvl)
+    const char *key, nvlist_t *npf_nv)
 {
 	const unsigned nitems = rlset->rs_nitems;
 	unsigned n = 0;
@@ -448,11 +449,11 @@ npf_ruleset_export(npf_t *npf, const npf_ruleset_t *rlset,
 			error = ENOMEM;
 			break;
 		}
-		if (natp && (error = npf_nat_policyexport(natp, rule)) != 0) {
+		if (natp && (error = npf_natpolicy_export(natp, rule)) != 0) {
 			nvlist_destroy(rule);
 			break;
 		}
-		nvlist_append_nvlist_array(npf_nvl, key, rule);
+		nvlist_append_nvlist_array(npf_nv, key, rule);
 		nvlist_destroy(rule);
 		n++;
 	}
@@ -537,7 +538,7 @@ npf_ruleset_reload(npf_t *npf, npf_ruleset_t *newset,
 				continue;
 			if ((actrl->r_attr & NPF_RULE_KEEPNAT) != 0)
 				continue;
-			if (npf_nat_cmppolicy(actrl->r_natp, np))
+			if (npf_natpolicy_cmp(actrl->r_natp, np))
 				break;
 		}
 		if (!actrl) {
@@ -556,7 +557,7 @@ npf_ruleset_reload(npf_t *npf, npf_ruleset_t *newset,
 		 * kept active for now).  Destroy the new/unused policy.
 		 */
 		actrl->r_attr |= NPF_RULE_KEEPNAT;
-		npf_nat_freepolicy(np);
+		npf_natpolicy_destroy(np);
 	}
 
 	/* Inherit the ID counter. */
@@ -735,8 +736,8 @@ npf_rule_free(npf_rule_t *rl)
 	npf_rproc_t *rp = rl->r_rproc;
 
 	if (np && (rl->r_attr & NPF_RULE_KEEPNAT) == 0) {
-		/* Free NAT policy. */
-		npf_nat_freepolicy(np);
+		/* Destroy the NAT policy. */
+		npf_natpolicy_destroy(np);
 	}
 	if (rp) {
 		/* Release rule procedure. */

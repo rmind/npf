@@ -517,6 +517,12 @@ npf_active_p(void)
 
 #ifdef __NetBSD__
 
+/*
+ * Epoch-Based Reclamation (EBR) wrappers: in NetBSD, we rely on the
+ * passive serialization mechanism (see pserialize(9) manual page),
+ * which provides sufficient guarantees for NPF.
+ */
+
 ebr_t *
 npf_ebr_create(void)
 {

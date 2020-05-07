@@ -40,8 +40,8 @@ endif
 #
 ifeq ($(DEBUG),1)
 CFLAGS+=	-O0 -DDEBUG -fno-omit-frame-pointer
-CFLAGS+=	-fsanitize=address
-LDFLAGS+=	-fsanitize=address
+CFLAGS+=	-fsanitize=address -fsanitize=undefined
+LDFLAGS+=	-fsanitize=address -fsanitize=undefined
 else
 CFLAGS+=	-DNDEBUG
 endif

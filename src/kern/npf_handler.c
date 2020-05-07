@@ -1,4 +1,5 @@
 /*-
+ * Copyright (c) 2020 Mindaugas Rasiukevicius <rmind at noxt eu>
  * Copyright (c) 2009-2013 The NetBSD Foundation, Inc.
  * All rights reserved.
  *
@@ -30,12 +31,22 @@
 /*
  * NPF packet handler.
  *
- * Note: pfil(9) hooks are currently locked by softnet_lock and kernel-lock.
+ * This is the main entry point to the NPF where packet processing happens.
+ * There are some important synchronization rules:
+ *
+ *	1) Lookups into the connection database and configuration (ruleset,
+ *	tables, etc) are protected by Epoch-Based Reclamation (EBR);
+ *
+ *	2) The code in the critical path (protected by EBR) should generally
+ *	not block (that includes adaptive mutex acquisitions);
+ *
+ *	3) Where it will blocks, references should be acquired atomically,
+ *	while in the critical path, on the relevant objects.
  */
 
 #ifdef _KERNEL
 #include <sys/cdefs.h>
-__KERNEL_RCSID(0, "$NetBSD: npf_handler.c,v 1.46 2019/07/23 00:52:01 rmind Exp $");
+__KERNEL_RCSID(0, "$NetBSD$");
 
 #include <sys/types.h>
 #include <sys/param.h>
@@ -84,7 +95,7 @@ npf_reassembly(npf_t *npf, npf_cache_t *npc, bool *mff)
 	}
 
 	if (error) {
-		/* Reass failed. Free the mbuf, clear the nbuf. */
+		/* Reassembly failed; free the mbuf, clear the nbuf. */
 		npf_stats_inc(npf, NPF_STAT_REASSFAIL);
 		m_freem(m);
 		memset(nbuf, 0, sizeof(nbuf_t));
@@ -132,7 +143,7 @@ npfk_packet_handler(npf_t *npf, struct mbuf **mp, ifnet_t *ifp, int di)
 	KASSERT(ifp != NULL);
 
 	/*
-	 * Initialise packet information cache.
+	 * Initialize packet information cache.
 	 * Note: it is enough to clear the info bits.
 	 */
 	nbuf_init(npf, &nbuf, *mp, ifp);
@@ -236,7 +247,7 @@ npfk_packet_handler(npf_t *npf, struct mbuf **mp, ifnet_t *ifp, int di)
 		if (con) {
 			/*
 			 * Note: the reference on the rule procedure is
-			 * transfered to the connection.  It will be
+			 * transferred to the connection.  It will be
 			 * released on connection destruction.
 			 */
 			npf_conn_setpass(con, &mi, rp);

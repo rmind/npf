@@ -39,9 +39,9 @@
  * Warning (not applicable for the userspace npfkern):
  *
  *	The thmap_put()/thmap_del() are not called from the interrupt
- *	context and are protected by a mutex(9), therefore they do not
- *	SPL wrappers -- see the comment at the top of the npf_conndb.c
- *	source file.
+ *	context and are protected by an IPL_NET mutex(9), therefore they
+ *	do not need SPL wrappers -- see the comment at the top of the
+ *	npf_conndb.c source file.
  */
 
 #ifdef _KERNEL
@@ -678,6 +678,7 @@ npf_table_lookup(npf_table_t *t, const int alen, const npf_addr_t *addr)
 
 	switch (t->t_type) {
 	case NPF_TABLE_IPSET:
+		/* Note: the caller is in the npf_config_read_enter(). */
 		found = thmap_get(t->t_map, addr, alen) != NULL;
 		break;
 	case NPF_TABLE_LPM:
