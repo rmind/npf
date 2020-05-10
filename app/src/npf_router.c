@@ -349,7 +349,7 @@ main(int argc, char **argv)
 			}
 			err(EXIT_FAILURE, "accept");
 		}
-		puts("- Reloading NPF config");
+		puts("- NPF configuration control call");
 		if (npfk_socket_load(router->npf, sock) == -1) {
 			warnx("npfk_socket_load");
 		}

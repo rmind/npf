@@ -24,8 +24,8 @@ services:
     build:
       context: ..
       dockerfile: app/conf/npf-router.Dockerfile
-      target: npf-router-builder
-    image: npf_router_builder
+      target: npf-router-dev
+    image: npf_router_dev
     privileged: true
     depends_on:
       - npf-pkg
