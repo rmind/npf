@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2011-2019 The NetBSD Foundation, Inc.
+ * Copyright (c) 2011-2020 The NetBSD Foundation, Inc.
  * All rights reserved.
  *
  * This material is based upon work partially supported by The
@@ -32,7 +32,7 @@
  */
 
 #include <sys/cdefs.h>
-__RCSID("$NetBSD: npf_build.c,v 1.47 2019/01/19 21:19:32 rmind Exp $");
+__RCSID("$NetBSD$");
 
 #include <sys/types.h>
 #define	__FAVOR_BSD
@@ -56,8 +56,9 @@ __RCSID("$NetBSD: npf_build.c,v 1.47 2019/01/19 21:19:32 rmind Exp $");
 static nl_config_t *		npf_conf = NULL;
 static bool			npf_debug = false;
 static nl_rule_t *		the_rule = NULL;
+static bool			npf_conf_built = false;
 
-static bool			defgroup = false;
+static nl_rule_t *		defgroup = NULL;
 static nl_rule_t *		current_group[MAX_RULE_NESTING];
 static unsigned			rule_nesting_level = 0;
 static unsigned			npfctl_tid_counter = 0;
@@ -69,10 +70,45 @@ npfctl_config_init(bool debug)
 {
 	npf_conf = npf_config_create();
 	if (npf_conf == NULL) {
-		errx(EXIT_FAILURE, "npf_config_create failed");
+		errx(EXIT_FAILURE, "npf_config_create() failed");
 	}
-	npf_debug = debug;
 	memset(current_group, 0, sizeof(current_group));
+	npf_debug = debug;
+	npf_conf_built = false;
+}
+
+nl_config_t *
+npfctl_config_ref(void)
+{
+	return npf_conf;
+}
+
+nl_rule_t *
+npfctl_rule_ref(void)
+{
+	return the_rule;
+}
+
+void
+npfctl_config_build(void)
+{
+	/* Run-once. */
+	if (npf_conf_built) {
+		return;
+	}
+
+	/*
+	 * The default group is mandatory.  Note: npfctl_build_group_end()
+	 * skipped the default rule, since it must be the last one.
+	 */
+	if (!defgroup) {
+		errx(EXIT_FAILURE, "default group was not defined");
+	}
+	assert(rule_nesting_level == 0);
+	npf_rule_insert(npf_conf, NULL, defgroup);
+
+	npf_config_build(npf_conf);
+	npf_conf_built = true;
 }
 
 int
@@ -81,14 +117,8 @@ npfctl_config_send(int fd)
 	npf_error_t errinfo;
 	int error = 0;
 
-	if (!defgroup) {
-		errx(EXIT_FAILURE, "default group was not defined");
-	}
+	npfctl_config_build();
 	error = npf_config_submit(npf_conf, fd, &errinfo);
-	if (error == EEXIST) { /* XXX */
-		errx(EXIT_FAILURE, "(re)load failed: "
-		    "some table has a duplicate entry?");
-	}
 	if (error) {
 		npfctl_print_error(&errinfo);
 	}
@@ -103,11 +133,14 @@ npfctl_config_save(nl_config_t *ncf, const char *outfile)
 	size_t len;
 	int fd;
 
+	npfctl_config_build();
 	blob = npf_config_export(ncf, &len);
-	if (!blob)
+	if (!blob) {
 		err(EXIT_FAILURE, "npf_config_export");
-	if ((fd = open(outfile, O_CREAT | O_TRUNC | O_WRONLY, 0644)) == -1)
+	}
+	if ((fd = open(outfile, O_CREAT | O_TRUNC | O_WRONLY, 0644)) == -1) {
 		err(EXIT_FAILURE, "could not open %s", outfile);
+	}
 	if (write(fd, blob, len) != (ssize_t)len) {
 		err(EXIT_FAILURE, "write to %s failed", outfile);
 	}
@@ -118,24 +151,14 @@ npfctl_config_save(nl_config_t *ncf, const char *outfile)
 void
 npfctl_config_debug(const char *outfile)
 {
+	npfctl_config_build();
+
 	printf("\nConfiguration:\n\n");
 	_npf_config_dump(npf_conf, STDOUT_FILENO);
 
 	printf("\nSaving binary to %s\n", outfile);
 	npfctl_config_save(npf_conf, outfile);
 	npf_config_destroy(npf_conf);
-}
-
-nl_config_t *
-npfctl_config_ref(void)
-{
-	return npf_conf;
-}
-
-nl_rule_t *
-npfctl_rule_ref(void)
-{
-	return the_rule;
 }
 
 bool
@@ -314,8 +337,8 @@ npfctl_build_vars(npf_bpf_t *ctx, sa_family_t family, npfvar_t *vars, int opts)
 			break;
 		}
 		case NPFVAR_TABLE: {
-			u_int tid;
-			memcpy(&tid, data, sizeof(u_int));
+			unsigned tid;
+			memcpy(&tid, data, sizeof(unsigned));
 			npfctl_bpf_table(ctx, opts, tid);
 			break;
 		}
@@ -593,7 +616,7 @@ npfctl_build_group(const char *name, int attr, const char *ifname, bool def)
 		if (rule_nesting_level) {
 			yyerror("default group can only be at the top level");
 		}
-		defgroup = true;
+		defgroup = rl;
 	}
 
 	/* Set the current group and increase the nesting level. */
@@ -613,7 +636,15 @@ npfctl_build_group_end(void)
 	group = current_group[rule_nesting_level];
 	current_group[rule_nesting_level--] = NULL;
 
-	/* Note: if the parent is NULL, then it is a global rule. */
+	/*
+	 * Note:
+	 * - If the parent is NULL, then it is a global rule.
+	 * - The default rule must be the last, so it is inserted later.
+	 */
+	if (group == defgroup) {
+		assert(parent == NULL);
+		return;
+	}
 	npf_rule_insert(npf_conf, parent, group);
 }
 
@@ -905,7 +936,7 @@ npfctl_build_natseg(int sd, int type, unsigned mflags, const char *ifname,
  * npfctl_fill_table: fill NPF table with entries from a specified file.
  */
 static void
-npfctl_fill_table(nl_table_t *tl, u_int type, const char *fname, FILE *fp)
+npfctl_fill_table(nl_table_t *tl, unsigned type, const char *fname, FILE *fp)
 {
 	char *buf = NULL;
 	int l = 0;
@@ -941,7 +972,7 @@ npfctl_fill_table(nl_table_t *tl, u_int type, const char *fname, FILE *fp)
  * npfctl_load_table: create an NPF table and fill with contents from a file.
  */
 nl_table_t *
-npfctl_load_table(const char *tname, int tid, u_int type,
+npfctl_load_table(const char *tname, int tid, unsigned type,
     const char *fname, FILE *fp)
 {
 	nl_table_t *tl;
@@ -959,7 +990,7 @@ npfctl_load_table(const char *tname, int tid, u_int type,
  * if required, fill with contents from a file.
  */
 void
-npfctl_build_table(const char *tname, u_int type, const char *fname)
+npfctl_build_table(const char *tname, unsigned type, const char *fname)
 {
 	nl_table_t *tl;
 

@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2013-2019 The NetBSD Foundation, Inc.
+ * Copyright (c) 2013-2020 The NetBSD Foundation, Inc.
  * All rights reserved.
  *
  * This code is derived from software contributed to The NetBSD Foundation
@@ -34,7 +34,7 @@
  */
 
 #include <sys/cdefs.h>
-__RCSID("$NetBSD: npf_show.c,v 1.27 2019/01/19 21:19:32 rmind Exp $");
+__RCSID("$NetBSD");
 
 #include <sys/socket.h>
 #define	__FAVOR_BSD
@@ -59,7 +59,8 @@ typedef struct {
 	nl_config_t *	conf;
 	FILE *		fp;
 	long		fpos;
-	u_int		flags;
+	long		fposln;
+	unsigned	flags;
 	uint32_t	curmark;
 	unsigned	level;
 } npf_conf_info_t;
@@ -73,6 +74,7 @@ npfctl_show_init(void)
 {
 	stdout_ctx.fp = stdout;
 	stdout_ctx.fpos = 0;
+	stdout_ctx.fposln = 0;
 	stdout_ctx.flags = 0;
 	stdout_ctx.level = 0;
 }
@@ -89,7 +91,7 @@ print_indent(npf_conf_info_t *ctx, unsigned level)
 		 * Level decrease -- end of the group.
 		 * Print the group closing curly bracket.
 		 */
-		fputs("}\n", ctx->fp);
+		ctx->fpos += fprintf(ctx->fp, "}\n");
 	}
 	if (level == 0) {
 		/*
@@ -100,23 +102,23 @@ print_indent(npf_conf_info_t *ctx, unsigned level)
 	ctx->level = level;
 
 	while (level--) {
-		fprintf(ctx->fp, "\t");
+		ctx->fpos += fprintf(ctx->fp, "\t");
 	}
 }
 
 static void
 print_linesep(npf_conf_info_t *ctx)
 {
-	if (ftell(ctx->fp) != ctx->fpos) {
-		fputs("\n", ctx->fp);
-		ctx->fpos = ftell(ctx->fp);
+	if (ctx->fpos != ctx->fposln) {
+		ctx->fpos += fprintf(ctx->fp, "\n");
+		ctx->fposln = ctx->fpos;
 	}
 }
 
 static size_t
-tcpflags2string(char *buf, u_int tfl)
+tcpflags2string(char *buf, unsigned tfl)
 {
-	u_int i = 0;
+	unsigned i = 0;
 
 	if (tfl & TH_FIN)	buf[i++] = 'F';
 	if (tfl & TH_SYN)	buf[i++] = 'S';
@@ -150,7 +152,7 @@ static char *
 print_address(npf_conf_info_t *ctx __unused, const uint32_t *words)
 {
 	const int af = *words++;
-	const u_int mask = *words++;
+	const unsigned mask = *words++;
 	const npf_addr_t *addr;
 	int alen = 0;
 
@@ -208,7 +210,7 @@ print_proto(npf_conf_info_t *ctx, const uint32_t *words)
 static char *
 print_tcpflags(npf_conf_info_t *ctx __unused, const uint32_t *words)
 {
-	const u_int tf = words[0], tf_mask = words[1];
+	const unsigned tf = words[0], tf_mask = words[1];
 	char buf[20];
 
 	size_t n = tcpflags2string(buf, tf);
@@ -236,7 +238,7 @@ print_pbarrier(npf_conf_info_t *ctx, const uint32_t *words __unused)
 static char *
 print_portrange(npf_conf_info_t *ctx __unused, const uint32_t *words)
 {
-	u_int fport = words[0], tport = words[1];
+	unsigned fport = words[0], tport = words[1];
 	char *p;
 
 	if (fport != tport) {
@@ -277,12 +279,12 @@ static const struct attr_keyword_mapent {
 };
 
 static const struct mark_keyword_mapent {
-	u_int		mark;
+	unsigned	mark;
 	const char *	token;
 	const char *	sep;
-	u_int		set_flags;
+	unsigned	set_flags;
 	char *		(*printfn)(npf_conf_info_t *, const uint32_t *);
-	u_int		fwords;
+	unsigned	fwords;
 } mark_keyword_map[] = {
 	{ BM_IPVER,	"family %s",	NULL, 0,	print_family,	1 },
 	{ BM_PROTO,	"proto %s",	", ", 0,	print_proto,	1 },
@@ -318,7 +320,7 @@ scan_marks(npf_conf_info_t *ctx, const struct mark_keyword_mapent *mk,
 	mlen /= sizeof(uint32_t);
 	while (mlen > 2) {
 		const uint32_t m = *marks++;
-		const u_int nwords = *marks++;
+		const unsigned nwords = *marks++;
 
 		if ((mlen -= 2) < nwords) {
 			errx(EXIT_FAILURE, "byte-code marking inconsistency");
@@ -353,7 +355,7 @@ scan_marks(npf_conf_info_t *ctx, const struct mark_keyword_mapent *mk,
 	}
 	easprintf(&p, nvals > 1 ? "{ %s }" : "%s", buf);
 
-	for (u_int i = 0; i < nvals; i++) {
+	for (unsigned i = 0; i < nvals; i++) {
 		free(vals[i]);
 	}
 	return p;
@@ -363,7 +365,7 @@ static void
 npfctl_print_id(npf_conf_info_t *ctx, nl_rule_t *rl)
 {
 	uint64_t id = id = npf_rule_getid(rl);
-	fprintf(ctx->fp, "# id=\"%" PRIx64 "\" ", id);
+	ctx->fpos += fprintf(ctx->fp, "# id=\"%" PRIx64 "\" ", id);
 }
 
 static void
@@ -381,7 +383,7 @@ npfctl_print_filter(npf_conf_info_t *ctx, nl_rule_t *rl)
 		 * have been filled by libpcap(3) or possibly an unknown
 		 * to us byte-code.
 		 */
-		fprintf(ctx->fp, "%s ", type == NPF_CODE_BPF ?
+		ctx->fpos += fprintf(ctx->fp, "%s ", type == NPF_CODE_BPF ?
 		    "pcap-filter \"...\"" : "unrecognized-bytecode");
 		return;
 	}
@@ -390,18 +392,19 @@ npfctl_print_filter(npf_conf_info_t *ctx, nl_rule_t *rl)
 	/*
 	 * BPF filter criteria described by the byte-code marks.
 	 */
-	for (u_int i = 0; i < __arraycount(mark_keyword_map); i++) {
+	for (unsigned i = 0; i < __arraycount(mark_keyword_map); i++) {
 		const struct mark_keyword_mapent *mk = &mark_keyword_map[i];
 		char *val;
 
 		if ((val = scan_marks(ctx, mk, marks, mlen)) != NULL) {
-			fprintf(ctx->fp, verified_fmt(mk->token, "%s"), val);
-			fputs(" ", ctx->fp);
+			ctx->fpos += fprintf(ctx->fp,
+			    verified_fmt(mk->token, "%s"), val);
+			ctx->fpos += fprintf(ctx->fp, " ");
 			free(val);
 		}
 	}
 	if (!mlen) {
-		fputs("all ", ctx->fp);
+		ctx->fpos += fprintf(ctx->fp, "all ");
 	}
 }
 
@@ -412,26 +415,26 @@ npfctl_print_rule(npf_conf_info_t *ctx, nl_rule_t *rl)
 	const char *rproc, *ifname, *name;
 
 	/* Rule attributes/flags. */
-	for (u_int i = 0; i < __arraycount(attr_keyword_map); i++) {
+	for (unsigned i = 0; i < __arraycount(attr_keyword_map); i++) {
 		const struct attr_keyword_mapent *ak = &attr_keyword_map[i];
 
 		if (i == NAME_AT && (name = npf_rule_getname(rl)) != NULL) {
-			fprintf(ctx->fp, "\"%s\" ", name);
+			ctx->fpos += fprintf(ctx->fp, "\"%s\" ", name);
 		}
 		if ((attr & ak->mask) == ak->flags) {
-			fprintf(ctx->fp, "%s ", ak->val);
+			ctx->fpos += fprintf(ctx->fp, "%s ", ak->val);
 		}
 	}
 	if ((ifname = npf_rule_getinterface(rl)) != NULL) {
-		fprintf(ctx->fp, "on %s ", ifname);
+		ctx->fpos += fprintf(ctx->fp, "on %s ", ifname);
 	}
 	if (attr == (NPF_RULE_GROUP | NPF_RULE_IN | NPF_RULE_OUT) && !ifname) {
 		/* The default group is a special case. */
-		fprintf(ctx->fp, "default ");
+		ctx->fpos += fprintf(ctx->fp, "default ");
 	}
 	if ((attr & NPF_DYNAMIC_GROUP) == NPF_RULE_GROUP) {
 		/* Group; done. */
-		fprintf(ctx->fp, "{ ");
+		ctx->fpos += fprintf(ctx->fp, "{ ");
 		goto out;
 	}
 
@@ -440,11 +443,11 @@ npfctl_print_rule(npf_conf_info_t *ctx, nl_rule_t *rl)
 
 	/* Rule procedure. */
 	if ((rproc = npf_rule_getproc(rl)) != NULL) {
-		fprintf(ctx->fp, "apply \"%s\" ", rproc);
+		ctx->fpos += fprintf(ctx->fp, "apply \"%s\" ", rproc);
 	}
 out:
 	npfctl_print_id(ctx, rl);
-	fputs("\n", ctx->fp);
+	ctx->fpos += fprintf(ctx->fp, "\n");
 }
 
 static void
@@ -467,7 +470,8 @@ npfctl_print_nat(npf_conf_info_t *ctx, nl_nat_t *nt)
 
 	if ((npf_rule_getattr(rl) & dynamic_natset) == dynamic_natset) {
 		const char *name = npf_rule_getname(rl);
-		fprintf(ctx->fp, "map ruleset \"%s\" on %s\n", name, ifname);
+		ctx->fpos += fprintf(ctx->fp,
+		    "map ruleset \"%s\" on %s\n", name, ifname);
 		return;
 	}
 
@@ -527,13 +531,13 @@ npfctl_print_nat(npf_conf_info_t *ctx, nl_nat_t *nt)
 	/* FIXME also handle "any" */
 
 	/* Print out the NAT policy with the filter criteria. */
-	fprintf(ctx->fp, "map %s %s %s%s%s %s %s pass ",
+	ctx->fpos += fprintf(ctx->fp, "map %s %s %s%s%s %s %s pass ",
 	    ifname, (flags & NPF_NAT_STATIC) ? "static" : "dynamic",
 	    algo, (flags & NPF_NAT_PORTS) ? "" : "no-ports ",
 	    seg1, arrow, seg2);
 	npfctl_print_filter(ctx, rl);
 	npfctl_print_id(ctx, rl);
-	fputs("\n", ctx->fp);
+	ctx->fpos += fprintf(ctx->fp, "\n");
 	free(seg);
 }
 
@@ -553,7 +557,8 @@ npfctl_print_table(npf_conf_info_t *ctx, nl_table_t *tl)
 		return;
 	}
 	assert(type < __arraycount(table_types));
-	fprintf(ctx->fp, "table <%s> type %s\n", name, table_types[type]);
+	ctx->fpos += fprintf(ctx->fp,
+	    "table <%s> type %s\n", name, table_types[type]);
 }
 
 int
@@ -569,13 +574,14 @@ npfctl_config_show(int fd)
 			return errno;
 		}
 		loaded = npf_config_loaded_p(ncf);
-		fprintf(ctx->fp, "# filtering:\t%s\n# config:\t%s\n",
+		ctx->fpos += fprintf(ctx->fp,
+		    "# filtering:\t%s\n# config:\t%s\n",
 		    npf_config_active_p(ncf) ? "active" : "inactive",
 		    loaded ? "loaded" : "empty");
 		print_linesep(ctx);
 	} else {
 		ncf = npfctl_config_ref();
-		(void)npf_config_build(ncf);
+		npfctl_config_build();
 		loaded = true;
 	}
 	ctx->conf = ncf;
@@ -597,7 +603,8 @@ npfctl_config_show(int fd)
 		i = NPF_ITER_BEGIN;
 		while ((rp = npf_rproc_iterate(ncf, &i)) != NULL) {
 			const char *rpname = npf_rproc_getname(rp);
-			fprintf(ctx->fp, "procedure \"%s\"\n", rpname);
+			ctx->fpos += fprintf(ctx->fp,
+			    "procedure \"%s\"\n", rpname);
 		}
 		print_linesep(ctx);
 

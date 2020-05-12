@@ -232,7 +232,7 @@ npfctl_print_addrmask(int alen, const char *fmt, const npf_addr_t *addr,
 		break;
 	}
 	default:
-		assert(false);
+		abort();
 	}
 	sockaddr_snprintf(buf, buflen, fmt, (const void *)&ss);
 	if (mask && mask != NPF_NO_NETMASK) {

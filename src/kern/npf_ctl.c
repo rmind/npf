@@ -121,8 +121,14 @@ npf_mk_table_entries(npf_table_t *t, const nvlist_t *req, nvlist_t *resp)
 			break;
 		}
 		error = npf_table_insert(t, alen, addr, mask);
-		if (error) {
-			NPF_ERR_DEBUG(resp);
+		if (__predict_false(error)) {
+			if (error == EEXIST) {
+				nvlist_add_stringf(resp, "error-msg",
+				    "table `%s' has a duplicate entry",
+				    nvlist_get_string(req, "name"));
+			} else {
+				NPF_ERR_DEBUG(resp);
+			}
 			break;
 		}
 	}

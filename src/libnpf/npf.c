@@ -691,7 +691,9 @@ npf_rule_export(nl_rule_t *rl, size_t *length)
 bool
 npf_rule_exists_p(nl_config_t *ncf, const char *name)
 {
-	return _npf_dataset_lookup(ncf->ncf_dict, "rules", "name", name);
+	const char *key = nvlist_exists_nvlist_array(ncf->ncf_dict,
+	    "rules") ? "rules" : "__rules"; // config may not be built yet
+	return _npf_dataset_lookup(ncf->ncf_dict, key, "name", name);
 }
 
 int

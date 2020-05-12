@@ -1,7 +1,7 @@
 ##########################################################################
 # NPF + DPDK builder
 #
-FROM npf-pkg AS npf-router-builder
+FROM npf-pkg AS npf-router-dev
 WORKDIR /build
 COPY . /build/npf
 
@@ -23,8 +23,8 @@ RUN dnf config-manager --set-enabled PowerTools
 RUN dnf install -y kernel-modules kernel-modules-extra dpdk libibverbs
 RUN dnf install -y man-pages net-tools traceroute
 
-COPY --from=npf-router-builder /pkg/*.rpm /pkg/
+COPY --from=npf-router-dev /pkg/*.rpm /pkg/
 RUN dnf install -y /pkg/*.x86_64.rpm
 
 WORKDIR /app
-COPY --from=npf-router-builder /build/bin/* /app/
+COPY --from=npf-router-dev /build/bin/* /app/

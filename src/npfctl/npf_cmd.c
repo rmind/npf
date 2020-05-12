@@ -405,7 +405,7 @@ typedef struct {
 	uint16_t	alen;
 	const char *	ifname;
 	bool		nat;
-	bool		wide;
+	bool		nowide;
 	bool		name;
 	int		width;
 	FILE *		fp;
@@ -413,9 +413,9 @@ typedef struct {
 
 static int
 npfctl_conn_print(unsigned alen, const npf_addr_t *a, const in_port_t *p,
-    const char *ifname, void *v)
+    const char *ifname, void *arg)
 {
-	npf_conn_filter_t *fil = v;
+	npf_conn_filter_t *fil = arg;
 	FILE *fp = fil->fp;
 	char *src, *dst;
 
@@ -432,7 +432,7 @@ npfctl_conn_print(unsigned alen, const npf_addr_t *a, const in_port_t *p,
 	src = npfctl_print_addrmask(alen, fmt, &a[0], NPF_NO_NETMASK);
 	dst = npfctl_print_addrmask(alen, fmt, &a[1], NPF_NO_NETMASK);
 
-	if (fil->wide) {
+	if (fil->nowide) {
 		fprintf(fp, "%s:%d %s:%d", src, p[0], dst, p[1]);
 	} else {
 		fprintf(fp, "%*.*s:%-5d %*.*s:%-5d", w, w, src, p[0],
@@ -478,12 +478,12 @@ npfctl_conn_list(int fd, int argc, char **argv)
 		case 'N':
 			f.name = true;
 			break;
-		case 'w':
-			f.wide = true;
+		case 'W':
+			f.nowide = true;
 			break;
 		default:
 			fprintf(stderr,
-			    "Usage: %s list [-46hnNw] [-i <ifname>]\n",
+			    "Usage: %s list [-46hnNW] [-i <ifname>]\n",
 			    getprogname());
 			exit(EXIT_FAILURE);
 		}
@@ -494,7 +494,7 @@ npfctl_conn_list(int fd, int argc, char **argv)
 
 	if (header) {
 		fprintf(f.fp, "%*.*s %*.*s\n",
-		    w, w, "From address:port ", w, w, "To address:port ");
+		    w, w, "# from address:port ", w, w, "to address:port ");
 	}
 	npf_conn_list(fd, npfctl_conn_print, &f);
 	return 0;

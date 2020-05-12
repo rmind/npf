@@ -198,6 +198,7 @@ void		npfctl_bpf_table(npf_bpf_t *, u_int, u_int);
 #define	NPFCTL_NAT_STATIC	2
 
 void		npfctl_config_init(bool);
+void		npfctl_config_build(void);
 int		npfctl_config_send(int);
 nl_config_t *	npfctl_config_ref(void);
 int		npfctl_config_show(int);
@@ -231,10 +232,10 @@ void		npfctl_setparam(const char *, int);
 /*
  * For the systems which do not define TH_ECE and TW_CRW.
  */
-#ifndef TH_ECE
+#ifndef	TH_ECE
 #define	TH_ECE		0x40
 #endif
-#ifndef TH_CWR
+#ifndef	TH_CWR
 #define	TH_CWR		0x80
 #endif
 

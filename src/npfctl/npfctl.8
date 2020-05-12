@@ -27,7 +27,7 @@
 .\" ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 .\" POSSIBILITY OF SUCH DAMAGE.
 .\"
-.Dd August 26, 2019
+.Dd May 12, 2020
 .Dt NPFCTL 8
 .Os
 .Sh NAME
@@ -175,7 +175,7 @@ Print various statistics.
 Process the configuration file, print the byte-code of each rule
 and dump the raw configuration.
 This is primarily for developer use.
-.It Ic list Oo Fl 46hNnw Oc Op Fl i Ar ifname
+.It Ic list Oo Fl 46hNnW Oc Op Fl i Ar ifname
 Display a list of tracked connections:
 .Bl -tag -width xxxxxxxxx -compact -offset 3n
 .It Fl 4
@@ -188,8 +188,8 @@ Don't display a header.
 Try to resolve addresses.
 .It Fl n
 Only show NAT connections.
-.It Fl w
-Don't restrict display width.
+.It Fl W
+Restrict the display width.
 .It Fl i Ar ifname
 Display only connections through the named interface.
 .El
