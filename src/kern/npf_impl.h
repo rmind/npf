@@ -209,9 +209,12 @@ struct npf {
 	ebr_t *			ebr;
 	npf_config_t *		config;
 
-	/* BPF byte-code context. */
+	/*
+	 * BPF byte-code context, mbuf operations an arbitrary user argument.
+	 */
 	bpf_ctx_t *		bpfctx;
 	const npf_mbufops_t *	mbufops;
+	void *			arg;
 
 	/* Parameters. */
 	npf_paraminfo_t *	paraminfo;

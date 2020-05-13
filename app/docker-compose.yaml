@@ -65,8 +65,8 @@ services:
     networks:
       testnet:
         ipv4_address: 10.0.0.3
-    depends_on:
-      - npf-router
+    #depends_on:
+    #  - npf-router
     command:
       - "/app/run_host.sh"
 

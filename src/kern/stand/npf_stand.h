@@ -433,8 +433,6 @@ npfkern_ip_reass_packet(void *x)
 #define	ip_defttl		64
 #define	max_linkhdr		0
 
-#define	M_UNWRITABLE(m, l)	false
-
 /*
  * Misc.
  */

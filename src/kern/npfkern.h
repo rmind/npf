@@ -43,15 +43,15 @@ struct ifnet;
 #define	NPF_NO_GC	0x01
 
 typedef struct {
-	const char *	(*getname)(struct ifnet *);
-	struct ifnet *	(*lookup)(const char *);
-	void		(*flush)(void *);
-	void *		(*getmeta)(const struct ifnet *);
-	void		(*setmeta)(struct ifnet *, void *);
+	const char *	(*getname)(npf_t *, struct ifnet *);
+	struct ifnet *	(*lookup)(npf_t *, const char *);
+	void		(*flush)(npf_t *, void *);
+	void *		(*getmeta)(npf_t *, const struct ifnet *);
+	void		(*setmeta)(npf_t *, struct ifnet *, void *);
 } npf_ifops_t;
 
 typedef struct {
-	struct mbuf *	(*alloc)(int, int);
+	struct mbuf *	(*alloc)(npf_t *, unsigned, size_t);
 	void		(*free)(struct mbuf *);
 	void *		(*getdata)(const struct mbuf *);
 	struct mbuf *	(*getnext)(struct mbuf *);
@@ -59,16 +59,19 @@ typedef struct {
 	size_t		(*getchainlen)(const struct mbuf *);
 	bool		(*ensure_contig)(struct mbuf **, size_t);
 	bool		(*ensure_writable)(struct mbuf **, size_t);
+	int		(*get_tag)(const struct mbuf *, uint32_t *);
+	int		(*set_tag)(struct mbuf *, uint32_t);
 } npf_mbufops_t;
 
 int	npfk_sysinit(unsigned);
 void	npfk_sysfini(void);
 
-npf_t *	npfk_create(int, const npf_mbufops_t *, const npf_ifops_t *);
+npf_t *	npfk_create(int, const npf_mbufops_t *, const npf_ifops_t *, void *);
 int	npfk_load(npf_t *, const void *, npf_error_t *);
 int	npfk_socket_load(npf_t *, int);
 void	npfk_gc(npf_t *);
 void	npfk_destroy(npf_t *);
+void *	npfk_getarg(npf_t *);
 
 void	npfk_thread_register(npf_t *);
 void	npfk_thread_unregister(npf_t *);

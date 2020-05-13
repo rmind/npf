@@ -379,11 +379,12 @@ npf_conn_inspect(npf_cache_t *npc, const int di, int *error)
 	 * If this is multi-end state, then specially tag the packet
 	 * so it will be just passed-through on other interfaces.
 	 */
-	if (atomic_load_relaxed(&con->c_ifid) == 0 &&
-	    nbuf_add_tag(nbuf, NPF_NTAG_PASS) != 0) {
-		npf_conn_release(con);
-		*error = ENOMEM;
-		return NULL;
+	if (atomic_load_relaxed(&con->c_ifid) == 0) {
+		/*
+		 * Note: if tagging fails, then give this packet a chance
+		 * to go through a regular ruleset.
+		 */
+		(void)nbuf_add_tag(nbuf, NPF_NTAG_PASS);
 	}
 	return con;
 }
