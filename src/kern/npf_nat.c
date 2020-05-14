@@ -272,6 +272,19 @@ npf_natpolicy_export(const npf_natpolicy_t *np, nvlist_t *nat)
 	return 0;
 }
 
+static void
+npf_natpolicy_release(npf_natpolicy_t *np)
+{
+	KASSERT(atomic_load_relaxed(&np->n_refcnt) > 0);
+
+	if (atomic_dec_uint_nv(&np->n_refcnt) != 0) {
+		return;
+	}
+	KASSERT(LIST_EMPTY(&np->n_nat_list));
+	mutex_destroy(&np->n_lock);
+	kmem_free(np, sizeof(npf_natpolicy_t));
+}
+
 /*
  * npf_natpolicy_destroy: free the NAT policy.
  *
@@ -305,22 +318,7 @@ npf_natpolicy_destroy(npf_natpolicy_t *np)
 	 *
 	 * npf_conn_destroy() -> npf_nat_destroy() -> npf_natpolicy_release()
 	 */
-	if (atomic_dec_uint_nv(&np->n_refcnt) != 0) {
-		return;
-	}
-	KASSERT(LIST_EMPTY(&np->n_nat_list));
-	mutex_destroy(&np->n_lock);
-	kmem_free(np, sizeof(npf_natpolicy_t));
-}
-
-static void
-npf_natpolicy_release(npf_natpolicy_t *np)
-{
-	KASSERT(atomic_load_relaxed(&np->n_refcnt) > 0);
-
-	if (atomic_dec_uint_nv(&np->n_refcnt) == 0) {
-		npf_natpolicy_destroy(np);
-	}
+	npf_natpolicy_release(np);
 }
 
 void
