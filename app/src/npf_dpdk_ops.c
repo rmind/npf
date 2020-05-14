@@ -22,30 +22,23 @@
 
 struct mbuf;
 
-static npf_router_t *		npf_router; // XXX
-
-void
-npf_dpdk_init(npf_router_t *router)
-{
-	npf_router = router; // XXX
-}
-
 /*
  * Virtual DPDK interfaces.
  */
 
 static const char *
-dpdk_ifop_getname(ifnet_t *ifp)
+dpdk_ifop_getname(npf_t *npf __unused, ifnet_t *ifp)
 {
 	return ifp->name;
 }
 
 static ifnet_t *
-dpdk_ifop_lookup(const char *ifname)
+dpdk_ifop_lookup(npf_t *npf, const char *ifname)
 {
+	npf_router_t *router = npfk_getarg(npf);
 	ifnet_t *ifp;
 
-	LIST_FOREACH(ifp, &npf_router->ifnet_list, entry) {
+	LIST_FOREACH(ifp, &router->ifnet_list, entry) {
 		if (!strcmp(ifp->name, ifname))
 			break;
 	}
@@ -53,23 +46,24 @@ dpdk_ifop_lookup(const char *ifname)
 }
 
 static void
-dpdk_ifop_flush(void *arg)
+dpdk_ifop_flush(npf_t *npf, void *arg)
 {
+	npf_router_t *router = npfk_getarg(npf);
 	ifnet_t *ifp;
 
-	LIST_FOREACH(ifp, &npf_router->ifnet_list, entry) {
+	LIST_FOREACH(ifp, &router->ifnet_list, entry) {
 		ifp->arg = arg;
 	}
 }
 
 static void *
-dpdk_ifop_getmeta(const ifnet_t *ifp)
+dpdk_ifop_getmeta(npf_t *npf __unused, const ifnet_t *ifp)
 {
 	return ifp->arg;
 }
 
 static void
-dpdk_ifop_setname(ifnet_t *ifp, void *arg)
+dpdk_ifop_setmeta(npf_t *npf __unused, ifnet_t *ifp, void *arg)
 {
 	ifp->arg = arg;
 }
@@ -79,9 +73,10 @@ dpdk_ifop_setname(ifnet_t *ifp, void *arg)
  */
 
 static struct mbuf *
-dpdk_mbuf_alloc(int type __unused, int flags __unused)
+dpdk_mbuf_alloc(npf_t *npf, unsigned flags __unused, size_t size __unused)
 {
-	return (void *)rte_pktmbuf_alloc(npf_router->mbuf_pool);
+	npf_router_t *router = npfk_getarg(npf);
+	return (void *)rte_pktmbuf_alloc(router->mbuf_pool);
 }
 
 static void
@@ -150,11 +145,11 @@ static const npf_ifops_t npf_ifops = {
 	.lookup			= dpdk_ifop_lookup,
 	.flush			= dpdk_ifop_flush,
 	.getmeta		= dpdk_ifop_getmeta,
-	.setmeta		= dpdk_ifop_setname,
+	.setmeta		= dpdk_ifop_setmeta,
 };
 
 npf_t *
-npf_dpdk_create(int flags)
+npf_dpdk_create(int flags, npf_router_t *router)
 {
-	return npfk_create(flags, &npf_mbufops, &npf_ifops);
+	return npfk_create(flags, &npf_mbufops, &npf_ifops, router);
 }

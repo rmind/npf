@@ -217,10 +217,9 @@ router_create(void)
 	/*
 	 * NPF instance and its operations.
 	 */
-	npf_dpdk_init(router);
 	npfk_sysinit(1);
 
-	router->npf = npf_dpdk_create(0);
+	router->npf = npf_dpdk_create(0, router);
 	if (!router->npf) {
 		goto err;
 	}

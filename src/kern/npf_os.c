@@ -110,11 +110,11 @@ const struct cdevsw npf_cdevsw = {
 	.d_flag = D_OTHER | D_MPSAFE
 };
 
-static const char *	npf_ifop_getname(ifnet_t *);
-static ifnet_t *	npf_ifop_lookup(const char *);
-static void		npf_ifop_flush(void *);
-static void *		npf_ifop_getmeta(const ifnet_t *);
-static void		npf_ifop_setmeta(ifnet_t *, void *);
+static const char *	npf_ifop_getname(npf_t *, ifnet_t *);
+static ifnet_t *	npf_ifop_lookup(npf_t *, const char *);
+static void		npf_ifop_flush(npf_t *, void *);
+static void *		npf_ifop_getmeta(npf_t *, const ifnet_t *);
+static void		npf_ifop_setmeta(npf_t *, ifnet_t *, void *);
 
 static const unsigned	nworkers = 1;
 
@@ -316,19 +316,19 @@ npf_autounload_p(void)
  */
 
 static const char *
-npf_ifop_getname(ifnet_t *ifp)
+npf_ifop_getname(npf_t *npf __unused, ifnet_t *ifp)
 {
 	return ifp->if_xname;
 }
 
 static ifnet_t *
-npf_ifop_lookup(const char *name)
+npf_ifop_lookup(npf_t *npf __unused, const char *name)
 {
 	return ifunit(name);
 }
 
 static void
-npf_ifop_flush(void *arg)
+npf_ifop_flush(npf_t *npf __unused, void *arg)
 {
 	ifnet_t *ifp;
 
@@ -342,13 +342,13 @@ npf_ifop_flush(void *arg)
 }
 
 static void *
-npf_ifop_getmeta(const ifnet_t *ifp)
+npf_ifop_getmeta(npf_t *npf __unused, const ifnet_t *ifp)
 {
 	return ifp->if_npf_private;
 }
 
 static void
-npf_ifop_setmeta(ifnet_t *ifp, void *arg)
+npf_ifop_setmeta(npf_t *npf __unused, ifnet_t *ifp, void *arg)
 {
 	ifp->if_npf_private = arg;
 }

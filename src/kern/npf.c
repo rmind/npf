@@ -67,7 +67,8 @@ npfk_sysfini(void)
 }
 
 __dso_public npf_t *
-npfk_create(int flags, const npf_mbufops_t *mbufops, const npf_ifops_t *ifops)
+npfk_create(int flags, const npf_mbufops_t *mbufops,
+    const npf_ifops_t *ifops, void *arg)
 {
 	npf_t *npf;
 
@@ -75,6 +76,7 @@ npfk_create(int flags, const npf_mbufops_t *mbufops, const npf_ifops_t *ifops)
 	npf->ebr = npf_ebr_create();
 	npf->stats_percpu = percpu_alloc(NPF_STATS_SIZE);
 	npf->mbufops = mbufops;
+	npf->arg = arg;
 
 	npf_param_init(npf);
 	npf_state_sysinit(npf);
@@ -153,6 +155,12 @@ npfk_thread_unregister(npf_t *npf)
 {
 	npf_ebr_full_sync(npf->ebr);
 	npf_ebr_unregister(npf->ebr);
+}
+
+__dso_public void *
+npfk_getarg(npf_t *npf)
+{
+	return npf->arg;
 }
 
 void

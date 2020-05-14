@@ -96,8 +96,7 @@ typedef struct worker {
  * NPF DPDK operations, network interface and configuration loading.
  */
 
-void		npf_dpdk_init(npf_router_t *);
-npf_t *		npf_dpdk_create(int);
+npf_t *		npf_dpdk_create(int, npf_router_t *);
 
 int		ifnet_setup(npf_router_t *, const unsigned, const unsigned);
 int		ifnet_register(npf_router_t *, const char *);
