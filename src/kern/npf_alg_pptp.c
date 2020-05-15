@@ -217,8 +217,8 @@ pptp_gre_prepare_state(const npf_cache_t *npc, npf_nat_t *nt,
 	 * We need bypass key construction as this is a custom protocol,
 	 * i.e. "enhanced PPTP" is unknown to npf_conn_conkey().
 	 */
-	npf_connkey_setkey(ckey, IPPROTO_GRE, gre_npc->npc_ips,
-	    gre_id, npc->npc_alen, true);
+	npf_connkey_setkey(ckey, npc->npc_alen, IPPROTO_GRE,
+	    gre_npc->npc_ips, gre_id, true);
 	gre_npc->npc_ckey = &ckey;
 }
 
@@ -278,8 +278,8 @@ pptp_gre_destroy_state(npf_t *npf, pptp_gre_state_t *gre_state, npf_addr_t **ips
 		/* Initialize the forward GRE connection key. */
 		ids[NPF_SRC] = gre_state->call_id[SERVER_CALL_ID];
 		ids[NPF_DST] = 0;
-		npf_connkey_setkey((void *)&key, IPPROTO_GRE, ips, ids,
-		    sizeof(uint32_t), true);
+		npf_connkey_setkey((void *)&key, sizeof(uint32_t),
+		    IPPROTO_GRE, ips, ids, true);
 
 		/* Lookup the associated PPTP GRE connection state. */
 		con = npf_conndb_lookup(npf, &key, &forw);
@@ -616,9 +616,10 @@ static void
 pptp_tcp_destroy(npf_t *npf, npf_nat_t *nt, npf_conn_t *con)
 {
 	npf_connkey_t *fw;
-	npf_addr_t ips[2], *ipv[2];
-	uint16_t ids[2], alen, proto;
 	pptp_tcp_ctx_t *tcp_ctx;
+	npf_addr_t ips[2], *ipv[2];
+	unsigned alen, proto;
+	uint16_t ids[2];
 
 	tcp_ctx = (pptp_tcp_ctx_t *)npf_nat_getalgarg(nt);
 	if (tcp_ctx == NULL) {
@@ -631,7 +632,7 @@ pptp_tcp_destroy(npf_t *npf, npf_nat_t *nt, npf_conn_t *con)
 	/* Note: only IPv4 is supported. */
 	fw = npf_conn_getforwkey(con);
 	KASSERT(NPF_CONNKEY_ALEN(fw) == sizeof(uint32_t));
-	npf_connkey_getkey(fw, &proto, ips, ids, &alen);
+	npf_connkey_getkey(fw, &alen, &proto, ips, ids);
 
 	for (unsigned i = 0; i < PPTP_MAX_GRE_PER_CLIENT; i++) {
 		pptp_gre_state_t *gre_state = &tcp_ctx->gre_conns[i];
@@ -677,8 +678,8 @@ pptp_gre_inspect(npf_cache_t *npc, int di)
 	 */
 	gre_id[NPF_SRC] = gre_hdr->call_id;
 	gre_id[NPF_DST] = 0; /* not used */
-	npf_connkey_setkey(&ckey, IPPROTO_GRE, npc->npc_ips,
-	    gre_id, npc->npc_alen, true);
+	npf_connkey_setkey(&ckey, npc->npc_alen, IPPROTO_GRE,
+	    npc->npc_ips, gre_id, true);
 
 	/* Lookup using the custom key. */
 	npc->npc_ckey = &ckey;
@@ -740,13 +741,14 @@ pptp_gre_destroy(npf_t *npf, npf_nat_t *nt, npf_conn_t *con)
 	gre_state = (const void *)npf_nat_getalgarg(nt);
 	if ((call_id = gre_state->call_id[CLIENT_CALL_ID]) != 0) {
 		const npf_connkey_t *fw;
-		uint16_t ids[2], alen, proto;
+		unsigned alen, proto;
 		npf_addr_t ips[2];
+		uint16_t ids[2];
 
 		/* Note: only IPv4 is supported. */
 		fw = npf_conn_getforwkey(con);
 		KASSERT(NPF_CONNKEY_ALEN(fw) == sizeof(uint32_t));
-		npf_connkey_getkey(fw, &proto, ips, ids, &alen);
+		npf_connkey_getkey(fw, &alen, &proto, ips, ids);
 
 		pptp_call_id_put(&ips[NPF_DST], call_id);
 	}

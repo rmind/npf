@@ -122,6 +122,13 @@ npf_reassembly(npf_t *npf, npf_cache_t *npc, bool *mff)
 	return 0;
 }
 
+static inline bool
+npf_packet_bypass_tag_p(nbuf_t *nbuf)
+{
+	uint32_t ntag;
+	return nbuf_find_tag(nbuf, &ntag) == 0 && (ntag & NPF_NTAG_PASS) != 0;
+}
+
 /*
  * npfk_packet_handler: main packet handling routine for layer 3.
  *
@@ -136,7 +143,6 @@ npfk_packet_handler(npf_t *npf, struct mbuf **mp, ifnet_t *ifp, int di)
 	npf_rule_t *rl;
 	npf_rproc_t *rp;
 	int error, decision, flags;
-	uint32_t ntag;
 	npf_match_info_t mi;
 	bool mff;
 
@@ -184,7 +190,7 @@ npfk_packet_handler(npf_t *npf, struct mbuf **mp, ifnet_t *ifp, int di)
 	}
 
 	/* Just pass-through if specially tagged. */
-	if (nbuf_find_tag(&nbuf, &ntag) == 0 && (ntag & NPF_NTAG_PASS) != 0) {
+	if (npf_packet_bypass_tag_p(&nbuf)) {
 		goto pass;
 	}
 

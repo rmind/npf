@@ -279,7 +279,7 @@ npf_alg_exec(npf_cache_t *npc, npf_nat_t *nt, bool forw)
  *	The purpose of ALG connection inspection function is to provide
  *	ALGs with a mechanism to override the regular connection state
  *	lookup, if they need to.  For example, some ALGs may want to
- *	extract and use a different 5-tuple to perform a lookup.
+ *	extract and use a different n-tuple to perform a lookup.
  *
  *	=> This is called at the beginning of the connection state lookup
  *	   function [CONN-LOOKUP].
