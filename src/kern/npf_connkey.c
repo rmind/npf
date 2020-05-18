@@ -43,7 +43,7 @@
  *	|   4  |   8   |   20   |   16   |   16   |  32-128  |  32-128  |
  *
  *	The source and destination are inverted if the key is for the
- *	backwards stream (forw == false).  The address length depends on
+ *	backwards stream (NPF_FLOW_BACK).  The address length depends on
  *	the 'alen' field.  The length is in words and is either 1 or 4,
  *	meaning 4 or 16 in bytes.
  *
@@ -83,13 +83,13 @@ __KERNEL_RCSID(0, "$NetBSD$");
 
 unsigned
 npf_connkey_setkey(npf_connkey_t *key, unsigned alen, unsigned proto,
-    const void *ipv, const uint16_t *id, bool forw)
+    const void *ipv, const uint16_t *id, const npf_flow_t flow)
 {
 	const npf_addr_t * const *ips = ipv;
 	uint32_t *k = key->ck_key;
 	unsigned isrc, idst;
 
-	if (__predict_true(forw)) {
+	if (__predict_true(flow == NPF_FLOW_FORW)) {
 		isrc = NPF_SRC, idst = NPF_DST;
 	} else {
 		isrc = NPF_DST, idst = NPF_SRC;
@@ -222,7 +222,8 @@ npf_connkey_copy(const npf_connkey_t *skey, npf_connkey_t *dkey, bool invert)
  * => Returns the key length in bytes or zero on failure.
  */
 unsigned
-npf_conn_conkey(const npf_cache_t *npc, npf_connkey_t *key, const bool forw)
+npf_conn_conkey(const npf_cache_t *npc, npf_connkey_t *key,
+    const npf_flow_t flow)
 {
 	const npf_conn_params_t *params = npc->npc_ctx->params[NPF_PARAMS_CONN];
 	const nbuf_t *nbuf = npc->npc_nbuf;
@@ -237,7 +238,8 @@ npf_conn_conkey(const npf_cache_t *npc, npf_connkey_t *key, const bool forw)
 		/*
 		 * Request to override the connection key.
 		 */
-		return npf_connkey_copy(npc->npc_ckey, key, !forw);
+		const bool invert = flow != NPF_FLOW_FORW;
+		return npf_connkey_copy(npc->npc_ckey, key, invert);
 	}
 
 	switch (proto) {
@@ -274,7 +276,7 @@ npf_conn_conkey(const npf_cache_t *npc, npf_connkey_t *key, const bool forw)
 		return 0;
 	}
 
-	ret = npf_connkey_setkey(key, alen, proto, npc->npc_ips, id, forw);
+	ret = npf_connkey_setkey(key, alen, proto, npc->npc_ips, id, flow);
 	npf_connkey_setckey(key,
 	    params->connkey_interface ? nbuf->nb_ifid : 0,
 	    /* TODO: params->connkey_direction ? di : */ 0);
@@ -357,7 +359,7 @@ npf_connkey_import(npf_t *npf, const nvlist_t *key_nv, npf_connkey_t *key)
 	if (alen1 == 0 || alen1 > sizeof(npf_addr_t) || alen1 != alen2) {
 		return 0;
 	}
-	ret = npf_connkey_setkey(key, alen1, proto, ips, ids, true);
+	ret = npf_connkey_setkey(key, alen1, proto, ips, ids, NPF_FLOW_FORW);
 	if (ret == 0) {
 		return 0;
 	}

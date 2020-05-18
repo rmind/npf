@@ -148,7 +148,7 @@ npf_conndb_destroy(npf_conndb_t *cd)
  * npf_conndb_lookup: find a connection given the key.
  */
 npf_conn_t *
-npf_conndb_lookup(npf_t *npf, const npf_connkey_t *ck, bool *forw)
+npf_conndb_lookup(npf_t *npf, const npf_connkey_t *ck, npf_flow_t *flow)
 {
 	npf_conndb_t *cd = atomic_load_relaxed(&npf->conn_db);
 	const unsigned keylen = NPF_CONNKEY_LEN(ck);
@@ -169,7 +169,7 @@ npf_conndb_lookup(npf_t *npf, const npf_connkey_t *ck, bool *forw)
 	 * Determine whether this is the "forwards" or "backwards" key
 	 * and clear the pointer tag.
 	 */
-	*forw = CONNDB_ISFORW_P(val);
+	*flow = CONNDB_ISFORW_P(val) ? NPF_FLOW_FORW : NPF_FLOW_BACK;
 	con = CONNDB_GET_PTR(val);
 	KASSERT(con != NULL);
 
@@ -188,10 +188,10 @@ npf_conndb_lookup(npf_t *npf, const npf_connkey_t *ck, bool *forw)
  */
 bool
 npf_conndb_insert(npf_conndb_t *cd, const npf_connkey_t *ck,
-    npf_conn_t *con, bool forw)
+    npf_conn_t *con, npf_flow_t flow)
 {
 	const unsigned keylen = NPF_CONNKEY_LEN(ck);
-	const uintptr_t tag = (CONNDB_FORW_BIT * !!forw);
+	const uintptr_t tag = (CONNDB_FORW_BIT * !flow);
 	void *val;
 	bool ok;
 

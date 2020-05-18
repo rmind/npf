@@ -114,13 +114,14 @@ typedef struct npf_connkey {
 	uint32_t		ck_key[NPF_CONNKEY_MAXWORDS];
 } npf_connkey_t;
 
-unsigned	npf_conn_conkey(const npf_cache_t *, npf_connkey_t *, bool);
+unsigned	npf_conn_conkey(const npf_cache_t *, npf_connkey_t *,
+		    const npf_flow_t);
 npf_connkey_t *	npf_conn_getforwkey(npf_conn_t *);
 npf_connkey_t *	npf_conn_getbackkey(npf_conn_t *, unsigned);
 void		npf_conn_adjkey(npf_connkey_t *, const npf_addr_t *,
 		    const uint16_t, const unsigned);
 unsigned	npf_connkey_setkey(npf_connkey_t *, unsigned, unsigned,
-		    const void *, const uint16_t *, bool);
+		    const void *, const uint16_t *, const npf_flow_t);
 void		npf_connkey_getkey(const npf_connkey_t *, unsigned *,
 		    unsigned *, npf_addr_t *, uint16_t *);
 unsigned	npf_connkey_import(npf_t *, const nvlist_t *, npf_connkey_t *);
@@ -135,7 +136,7 @@ void		npf_conn_fini(npf_t *);
 void		npf_conn_tracking(npf_t *, bool);
 void		npf_conn_load(npf_t *, npf_conndb_t *, bool);
 
-npf_conn_t *	npf_conn_lookup(const npf_cache_t *, const unsigned, bool *);
+npf_conn_t *	npf_conn_lookup(const npf_cache_t *, const unsigned, npf_flow_t *);
 npf_conn_t *	npf_conn_inspect(npf_cache_t *, const unsigned, int *);
 npf_conn_t *	npf_conn_establish(npf_cache_t *, const unsigned, bool);
 void		npf_conn_release(npf_conn_t *);
@@ -165,9 +166,9 @@ void		npf_conndb_sysfini(npf_t *);
 npf_conndb_t *	npf_conndb_create(void);
 void		npf_conndb_destroy(npf_conndb_t *);
 
-npf_conn_t *	npf_conndb_lookup(npf_t *, const npf_connkey_t *, bool *);
+npf_conn_t *	npf_conndb_lookup(npf_t *, const npf_connkey_t *, npf_flow_t *);
 bool		npf_conndb_insert(npf_conndb_t *, const npf_connkey_t *,
-		    npf_conn_t *, bool);
+		    npf_conn_t *, npf_flow_t);
 npf_conn_t *	npf_conndb_remove(npf_conndb_t *, npf_connkey_t *);
 
 void		npf_conndb_enqueue(npf_conndb_t *, npf_conn_t *);

@@ -292,19 +292,21 @@ conn_update_atime(npf_conn_t *con)
  */
 static bool
 npf_conn_check(const npf_conn_t *con, const nbuf_t *nbuf,
-    const unsigned di, const bool forw)
+    const unsigned di, const npf_flow_t flow)
 {
 	const uint32_t flags = atomic_load_relaxed(&con->c_flags);
 	const unsigned ifid = atomic_load_relaxed(&con->c_ifid);
-	bool active, pforw;
+	bool active;
 
 	active = (flags & (CONN_ACTIVE | CONN_EXPIRE)) == CONN_ACTIVE;
 	if (__predict_false(!active)) {
 		return false;
 	}
 	if (ifid && nbuf) {
-		pforw = (flags & PFIL_ALL) == (unsigned)di;
-		if (__predict_false(forw != pforw)) {
+		const bool match = (flags & PFIL_ALL) == di;
+		npf_flow_t pflow = match ? NPF_FLOW_FORW : NPF_FLOW_BACK;
+
+		if (__predict_false(flow != pflow)) {
 			return false;
 		}
 		if (__predict_false(ifid != nbuf->nb_ifid)) {
@@ -320,7 +322,7 @@ npf_conn_check(const npf_conn_t *con, const nbuf_t *nbuf,
  * => If found, we will hold a reference for the caller.
  */
 npf_conn_t *
-npf_conn_lookup(const npf_cache_t *npc, const unsigned di, bool *forw)
+npf_conn_lookup(const npf_cache_t *npc, const unsigned di, npf_flow_t *flow)
 {
 	npf_t *npf = npc->npc_ctx;
 	const nbuf_t *nbuf = npc->npc_nbuf;
@@ -328,17 +330,17 @@ npf_conn_lookup(const npf_cache_t *npc, const unsigned di, bool *forw)
 	npf_connkey_t key;
 
 	/* Construct a key and lookup for a connection in the store. */
-	if (!npf_conn_conkey(npc, &key, true)) {
+	if (!npf_conn_conkey(npc, &key, NPF_FLOW_FORW)) {
 		return NULL;
 	}
-	con = npf_conndb_lookup(npf, &key, forw);
+	con = npf_conndb_lookup(npf, &key, flow);
 	if (con == NULL) {
 		return NULL;
 	}
 	KASSERT(npc->npc_proto == atomic_load_relaxed(&con->c_proto));
 
 	/* Extra checks for the connection and packet. */
-	if (!npf_conn_check(con, nbuf, di, *forw)) {
+	if (!npf_conn_check(con, nbuf, di, *flow)) {
 		atomic_dec_uint(&con->c_refcnt);
 		return NULL;
 	}
@@ -357,8 +359,9 @@ npf_conn_t *
 npf_conn_inspect(npf_cache_t *npc, const unsigned di, int *error)
 {
 	nbuf_t *nbuf = npc->npc_nbuf;
+	npf_flow_t flow;
 	npf_conn_t *con;
-	bool forw, ok;
+	bool ok;
 
 	KASSERT(!nbuf_flag_p(nbuf, NBUF_DATAREF_RESET));
 	if (!npf_conn_trackable_p(npc)) {
@@ -377,13 +380,13 @@ npf_conn_inspect(npf_cache_t *npc, const unsigned di, int *error)
 	KASSERT(!nbuf_flag_p(nbuf, NBUF_DATAREF_RESET));
 
 	/* The main lookup of the connection (acquires a reference). */
-	if ((con = npf_conn_lookup(npc, di, &forw)) == NULL) {
+	if ((con = npf_conn_lookup(npc, di, &flow)) == NULL) {
 		return NULL;
 	}
 
 	/* Inspect the protocol data and handle state changes. */
 	mutex_enter(&con->c_lock);
-	ok = npf_state_inspect(npc, &con->c_state, forw);
+	ok = npf_state_inspect(npc, &con->c_state, flow);
 	mutex_exit(&con->c_lock);
 
 	/* If invalid state: let the rules deal with it. */
@@ -465,8 +468,8 @@ npf_conn_establish(npf_cache_t *npc, const unsigned di, bool global)
 	 * Construct "forwards" and "backwards" keys.  Also, set the
 	 * interface ID for this connection (unless it is global).
 	 */
-	if (!npf_conn_conkey(npc, fw, true) ||
-	    !npf_conn_conkey(npc, bk, false)) {
+	if (!npf_conn_conkey(npc, fw, NPF_FLOW_FORW) ||
+	    !npf_conn_conkey(npc, bk, NPF_FLOW_BACK)) {
 		npf_conn_destroy(npf, con);
 		return NULL;
 	}
@@ -486,11 +489,11 @@ npf_conn_establish(npf_cache_t *npc, const unsigned di, bool global)
 	 */
 	mutex_enter(&con->c_lock);
 	conn_db = atomic_load_relaxed(&npf->conn_db);
-	if (!npf_conndb_insert(conn_db, fw, con, true)) {
+	if (!npf_conndb_insert(conn_db, fw, con, NPF_FLOW_FORW)) {
 		error = EISCONN;
 		goto err;
 	}
-	if (!npf_conndb_insert(conn_db, bk, con, false)) {
+	if (!npf_conndb_insert(conn_db, bk, con, NPF_FLOW_BACK)) {
 		npf_conn_t *ret __diagused;
 		ret = npf_conndb_remove(conn_db, fw);
 		KASSERT(ret == con);
@@ -572,7 +575,7 @@ npf_conn_setnat(const npf_cache_t *npc, npf_conn_t *con,
 	KASSERT(ntype == NPF_NATOUT || ntype == NPF_NATIN);
 
 	/* Construct a "backwards" key. */
-	if (!npf_conn_conkey(npc, &key, false)) {
+	if (!npf_conn_conkey(npc, &key, NPF_FLOW_BACK)) {
 		return EINVAL;
 	}
 
@@ -604,7 +607,7 @@ npf_conn_setnat(const npf_cache_t *npc, npf_conn_t *con,
 	npf_conn_adjkey(bk, taddr, tport, nat_type_dimap[ntype]);
 
 	/* Finally, re-insert the "backwards" key. */
-	if (!npf_conndb_insert(conn_db, bk, con, false)) {
+	if (!npf_conndb_insert(conn_db, bk, con, NPF_FLOW_BACK)) {
 		/*
 		 * Race: we have hit the duplicate, remove the "forwards"
 		 * key and expire our connection; it is no longer valid.
@@ -917,10 +920,10 @@ npf_conn_import(npf_t *npf, npf_conndb_t *cd, const nvlist_t *cdict,
 	}
 
 	/* Insert the entries and the connection itself. */
-	if (!npf_conndb_insert(cd, fw, con, true)) {
+	if (!npf_conndb_insert(cd, fw, con, NPF_FLOW_FORW)) {
 		goto err;
 	}
-	if (!npf_conndb_insert(cd, bk, con, false)) {
+	if (!npf_conndb_insert(cd, bk, con, NPF_FLOW_BACK)) {
 		npf_conndb_remove(cd, fw);
 		goto err;
 	}
@@ -942,20 +945,20 @@ npf_conn_find(npf_t *npf, const nvlist_t *nvl, nvlist_t *outnvl)
 	const nvlist_t *knvl;
 	npf_conn_t *con;
 	npf_connkey_t key;
+	npf_flow_t flow;
 	uint16_t dir;
 	int error;
-	bool forw;
 
 	knvl = dnvlist_get_nvlist(nvl, "key", NULL);
 	if (!knvl || !npf_connkey_import(npf, knvl, &key)) {
 		return EINVAL;
 	}
-	con = npf_conndb_lookup(npf, &key, &forw);
+	con = npf_conndb_lookup(npf, &key, &flow);
 	if (con == NULL) {
 		return ESRCH;
 	}
 	dir = dnvlist_get_number(nvl, "direction", 0);
-	if (!npf_conn_check(con, NULL, dir, true)) {
+	if (!npf_conn_check(con, NULL, dir, NPF_FLOW_FORW)) {
 		atomic_dec_uint(&con->c_refcnt);
 		return ESRCH;
 	}

@@ -158,7 +158,7 @@ typedef struct {
 
 typedef struct {
 	bool		(*match)(npf_cache_t *, npf_nat_t *, int);
-	bool		(*translate)(npf_cache_t *, npf_nat_t *, bool);
+	bool		(*translate)(npf_cache_t *, npf_nat_t *, npf_flow_t);
 	npf_conn_t *	(*inspect)(npf_cache_t *, int);
 	void		(*destroy)(npf_t *, npf_nat_t *, npf_conn_t *);
 } npfa_funcs_t;
@@ -457,7 +457,7 @@ void		npf_state_sysinit(npf_t *);
 void		npf_state_sysfini(npf_t *);
 
 bool		npf_state_init(npf_cache_t *, npf_state_t *);
-bool		npf_state_inspect(npf_cache_t *, npf_state_t *, const bool);
+bool		npf_state_inspect(npf_cache_t *, npf_state_t *, npf_flow_t);
 int		npf_state_etime(npf_t *, const npf_state_t *, const int);
 void		npf_state_destroy(npf_state_t *);
 
@@ -511,7 +511,7 @@ npf_alg_t *	npf_alg_register(npf_t *, const char *, const npfa_funcs_t *);
 int		npf_alg_unregister(npf_t *, npf_alg_t *);
 npf_alg_t *	npf_alg_construct(npf_t *, const char *);
 bool		npf_alg_match(npf_cache_t *, npf_nat_t *, int);
-void		npf_alg_exec(npf_cache_t *, npf_nat_t *, bool);
+void		npf_alg_exec(npf_cache_t *, npf_nat_t *, const npf_flow_t);
 npf_conn_t *	npf_alg_conn(npf_cache_t *, int);
 int		npf_alg_export(npf_t *, nvlist_t *);
 void		npf_alg_destroy(npf_t *, npf_alg_t *, npf_nat_t *, npf_conn_t *);
