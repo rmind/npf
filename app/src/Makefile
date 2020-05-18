@@ -50,9 +50,14 @@ endif
 # Dependencies: compiler flags and libraries to link.
 #
 CFLAGS+=	-march=native -I/usr/include/dpdk
-LDFLAGS+=	-lnpfkern -lthmap -llpm -lpthread
-LDFLAGS+=	-ldpdk -lrte_mbuf -lrte_net -lrte_ethdev
+LDFLAGS+=	-lpthread -ldpdk -lrte_mbuf -lrte_net -lrte_ethdev
 LDFLAGS+=	-lrte_pmd_tap -lrte_pmd_virtio
+LDFLAGS+=	-lthmap -llpm
+ifeq ($(DEBUG),1)
+LDFLAGS+=	-lnpfkern-dbg
+else
+LDFLAGS+=	-lnpfkern
+endif
 LDFLAGS+=	-lnpf # XXX
 
 #

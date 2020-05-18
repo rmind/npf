@@ -135,8 +135,10 @@ typedef struct {
  * CONNECTION STATE STRUCTURES
  */
 
-#define	NPF_FLOW_FORW		0
-#define	NPF_FLOW_BACK		1
+typedef enum {
+	NPF_FLOW_FORW = 0,
+	NPF_FLOW_BACK = 1,
+} npf_flow_t;
 
 typedef struct {
 	uint32_t	nst_end;
@@ -193,7 +195,8 @@ typedef struct {
 } npf_param_t;
 
 typedef enum {
-	NPF_PARAMS_CONNDB = 0,
+	NPF_PARAMS_CONN = 0,
+	NPF_PARAMS_CONNDB,
 	NPF_PARAMS_GENERIC_STATE,
 	NPF_PARAMS_TCP_STATE,
 	NPF_PARAMS_COUNT
@@ -486,7 +489,7 @@ void		npf_nat_setid(npf_natpolicy_t *, uint64_t);
 uint64_t	npf_nat_getid(const npf_natpolicy_t *);
 void		npf_nat_freealg(npf_natpolicy_t *, npf_alg_t *);
 
-int		npf_do_nat(npf_cache_t *, npf_conn_t *, const int);
+int		npf_do_nat(npf_cache_t *, npf_conn_t *, const unsigned);
 npf_nat_t *	npf_nat_share_policy(npf_cache_t *, npf_conn_t *, npf_nat_t *);
 void		npf_nat_destroy(npf_conn_t *, npf_nat_t *);
 void		npf_nat_getorig(npf_nat_t *, npf_addr_t **, in_port_t *);
@@ -495,7 +498,7 @@ void		npf_nat_setalg(npf_nat_t *, npf_alg_t *, uintptr_t);
 npf_alg_t *	npf_nat_getalg(const npf_nat_t *);
 uintptr_t	npf_nat_getalgarg(const npf_nat_t *);
 
-void		npf_nat_export(nvlist_t *, npf_nat_t *);
+void		npf_nat_export(npf_t *, const npf_nat_t *, nvlist_t *);
 npf_nat_t *	npf_nat_import(npf_t *, const nvlist_t *, npf_ruleset_t *,
 		    npf_conn_t *);
 

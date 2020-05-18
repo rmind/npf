@@ -23,7 +23,7 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.Dd August 3, 2019
+.Dd May 16, 2020
 .Dt NPF-PARAMS 7
 .Os
 .Sh NAME
@@ -59,6 +59,20 @@ Number of connection state items to process in one garbage collection
 (G/C) cycle.
 Must be positive number.
 Default: 256.
+.El
+.\" ---
+.It Li state.key
+The connection state is uniquely identified by an n-tuple.
+The state behavior can be controlled by including (excluding)
+some of the information in (from) the keys.
+.Bl -tag -width "123456"
+.It Li interface
+Include interface identifier into the keys, making the connection
+state strictly per-interface.
+Default: 0.
+.It Li direction
+Include packet direction into the keys.
+Default: 0.
 .El
 .\" ---
 .It Li state.generic
