@@ -252,7 +252,7 @@ npf_alg_match(npf_cache_t *npc, npf_nat_t *nt, int di)
  *	   to the dynamic NAT logic [NAT-TRANSLATE].
  */
 void
-npf_alg_exec(npf_cache_t *npc, npf_nat_t *nt, bool forw)
+npf_alg_exec(npf_cache_t *npc, npf_nat_t *nt, const npf_flow_t flow)
 {
 	npf_t *npf = npc->npc_ctx;
 	npf_algset_t *aset = npf->algset;
@@ -263,11 +263,11 @@ npf_alg_exec(npf_cache_t *npc, npf_nat_t *nt, bool forw)
 	count = atomic_load_relaxed(&aset->alg_count);
 	for (unsigned i = 0; i < count; i++) {
 		const npfa_funcs_t *f = &aset->alg_funcs[i];
-		bool (*translate_func)(npf_cache_t *, npf_nat_t *, bool);
+		bool (*translate_func)(npf_cache_t *, npf_nat_t *, npf_flow_t);
 
 		translate_func = atomic_load_relaxed(&f->translate);
 		if (translate_func) {
-			translate_func(npc, nt, forw);
+			translate_func(npc, nt, flow);
 		}
 	}
 	npf_config_read_exit(npf, s);

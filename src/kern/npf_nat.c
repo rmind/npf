@@ -373,24 +373,32 @@ npf_nat_getid(const npf_natpolicy_t *np)
 /*
  * npf_nat_which: tell which address (source or destination) should be
  * rewritten given the combination of the NAT type and flow direction.
+ *
+ * => Returns NPF_SRC or NPF_DST constant.
  */
 static inline unsigned
-npf_nat_which(const unsigned type, bool forw)
+npf_nat_which(const unsigned type, const npf_flow_t flow)
 {
+	unsigned which;
+
+	/* The logic below relies on these values being 0 or 1. */
+	CTASSERT(NPF_SRC == 0 && NPF_DST == 1);
+	CTASSERT(NPF_FLOW_FORW == NPF_SRC && NPF_FLOW_BACK == NPF_DST);
+
+	KASSERT(type == NPF_NATIN || type == NPF_NATOUT);
+	KASSERT(flow == NPF_FLOW_FORW || flow == NPF_FLOW_BACK);
+
 	/*
 	 * Outbound NAT rewrites:
+	 *
 	 * - Source (NPF_SRC) on "forwards" stream.
 	 * - Destination (NPF_DST) on "backwards" stream.
+	 *
 	 * Inbound NAT is other way round.
 	 */
-	if (type == NPF_NATOUT) {
-		forw = !forw;
-	} else {
-		KASSERT(type == NPF_NATIN);
-	}
-	CTASSERT(NPF_SRC == 0 && NPF_DST == 1);
-	KASSERT(forw == NPF_SRC || forw == NPF_DST);
-	return (unsigned)forw;
+	which = (type == NPF_NATOUT) ? flow : !flow;
+	KASSERT(which == NPF_SRC || which == NPF_DST);
+	return which;
 }
 
 /*
@@ -511,7 +519,7 @@ npf_nat_create(npf_cache_t *npc, npf_natpolicy_t *np, npf_conn_t *con)
 		npf_config_read_exit(npf, slock);
 
 	} else if (np->n_algo == NPF_ALGO_NETMAP) {
-		const unsigned which = npf_nat_which(np->n_type, true);
+		const unsigned which = npf_nat_which(np->n_type, NPF_FLOW_FORW);
 		npf_nat_algo_netmap(npc, np, which, &nt->nt_taddr);
 		taddr = &nt->nt_taddr;
 	} else {
@@ -571,17 +579,17 @@ out:
  * npf_dnat_translate: perform translation given the state data.
  */
 static inline int
-npf_dnat_translate(npf_cache_t *npc, npf_nat_t *nt, bool forw)
+npf_dnat_translate(npf_cache_t *npc, npf_nat_t *nt, npf_flow_t flow)
 {
 	const npf_natpolicy_t *np = nt->nt_natpolicy;
-	const unsigned which = npf_nat_which(np->n_type, forw);
+	const unsigned which = npf_nat_which(np->n_type, flow);
 	const npf_addr_t *addr;
 	in_port_t port;
 
 	KASSERT(npf_iscached(npc, NPC_IP46));
 	KASSERT(npf_iscached(npc, NPC_LAYER4));
 
-	if (forw) {
+	if (flow == NPF_FLOW_FORW) {
 		/* "Forwards" stream: use translation address/port. */
 		addr = &nt->nt_taddr;
 		port = nt->nt_tport;
@@ -595,7 +603,7 @@ npf_dnat_translate(npf_cache_t *npc, npf_nat_t *nt, bool forw)
 	/* Execute ALG translation first. */
 	if ((npc->npc_info & NPC_ALG_EXEC) == 0) {
 		npc->npc_info |= NPC_ALG_EXEC;
-		npf_alg_exec(npc, nt, forw);
+		npf_alg_exec(npc, nt, flow);
 		npf_recache(npc);
 	}
 	KASSERT(!nbuf_flag_p(npc->npc_nbuf, NBUF_DATAREF_RESET));
@@ -608,9 +616,9 @@ npf_dnat_translate(npf_cache_t *npc, npf_nat_t *nt, bool forw)
  * npf_snat_translate: perform translation given the algorithm.
  */
 static inline int
-npf_snat_translate(npf_cache_t *npc, const npf_natpolicy_t *np, bool forw)
+npf_snat_translate(npf_cache_t *npc, const npf_natpolicy_t *np, npf_flow_t flow)
 {
-	const unsigned which = npf_nat_which(np->n_type, forw);
+	const unsigned which = npf_nat_which(np->n_type, flow);
 	const npf_addr_t *taddr;
 	npf_addr_t addr;
 
@@ -666,7 +674,7 @@ npf_nat_share_policy(npf_cache_t *npc, npf_conn_t *con, npf_nat_t *src_nt)
  */
 static npf_nat_t *
 npf_nat_lookup(const npf_cache_t *npc, npf_conn_t *con,
-    const unsigned di, bool *forw)
+    const unsigned di, npf_flow_t *flow)
 {
 	const nbuf_t *nbuf = npc->npc_nbuf;
 	const npf_natpolicy_t *np;
@@ -685,9 +693,8 @@ npf_nat_lookup(const npf_cache_t *npc, npf_conn_t *con,
 	/*
 	 * We rely on NPF_NAT{IN,OUT} being equal to PFIL_{IN,OUT}.
 	 */
-	KASSERT(NPF_NATIN == PFIL_IN && NPF_NATOUT == PFIL_OUT);
-	*forw = (np->n_type == di);
-
+	CTASSERT(NPF_NATIN == PFIL_IN && NPF_NATOUT == PFIL_OUT);
+	*flow = (np->n_type == di) ? NPF_FLOW_FORW : NPF_FLOW_BACK;
 	return nt;
 }
 
@@ -709,9 +716,9 @@ npf_do_nat(npf_cache_t *npc, npf_conn_t *con, const unsigned di)
 	nbuf_t *nbuf = npc->npc_nbuf;
 	npf_conn_t *ncon = NULL;
 	npf_natpolicy_t *np;
+	npf_flow_t flow;
 	npf_nat_t *nt;
 	int error;
-	bool forw;
 
 	/* All relevant data should be already cached. */
 	if (!npf_iscached(npc, NPC_IP46) || !npf_iscached(npc, NPC_LAYER4)) {
@@ -724,7 +731,7 @@ npf_do_nat(npf_cache_t *npc, npf_conn_t *con, const unsigned di)
 	 * Determines whether the stream is "forwards" or "backwards".
 	 * Note: no need to lock, since reference on connection is held.
 	 */
-	if (con && (nt = npf_nat_lookup(npc, con, di, &forw)) != NULL) {
+	if (con && (nt = npf_nat_lookup(npc, con, di, &flow)) != NULL) {
 		np = nt->nt_natpolicy;
 		goto translate;
 	}
@@ -738,14 +745,14 @@ npf_do_nat(npf_cache_t *npc, npf_conn_t *con, const unsigned di)
 		/* If packet does not match - done. */
 		return 0;
 	}
-	forw = true;
+	flow = NPF_FLOW_FORW;
 
 	/* Static NAT - just perform the translation. */
 	if (np->n_flags & NPF_NAT_STATIC) {
 		if (nbuf_cksum_barrier(nbuf, di)) {
 			npf_recache(npc);
 		}
-		error = npf_snat_translate(npc, np, forw);
+		error = npf_snat_translate(npc, np, flow);
 		npf_natpolicy_release(np);
 		return error;
 	}
@@ -796,7 +803,7 @@ translate:
 	}
 
 	/* Perform the translation. */
-	error = npf_dnat_translate(npc, nt, forw);
+	error = npf_dnat_translate(npc, nt, flow);
 out:
 	if (__predict_false(ncon)) {
 		if (error) {

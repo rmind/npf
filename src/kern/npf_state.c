@@ -184,22 +184,21 @@ npf_state_destroy(npf_state_t *nst)
  * the packet belongs to the tracked connection) and false otherwise.
  */
 bool
-npf_state_inspect(npf_cache_t *npc, npf_state_t *nst, const bool forw)
+npf_state_inspect(npf_cache_t *npc, npf_state_t *nst, const npf_flow_t flow)
 {
 	const int proto = npc->npc_proto;
-	const int di = forw ? NPF_FLOW_FORW : NPF_FLOW_BACK;
 	bool ret;
 
 	switch (proto) {
 	case IPPROTO_TCP:
 		/* Pass to TCP state tracking engine. */
-		ret = npf_state_tcp(npc, nst, di);
+		ret = npf_state_tcp(npc, nst, flow);
 		break;
 	case IPPROTO_UDP:
 	case IPPROTO_ICMP:
 	case IPPROTO_GRE:
 		/* Generic. */
-		nst->nst_state = npf_generic_fsm[nst->nst_state][di];
+		nst->nst_state = npf_generic_fsm[nst->nst_state][flow];
 		ret = true;
 		break;
 	default:
