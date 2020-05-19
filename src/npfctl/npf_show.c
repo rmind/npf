@@ -52,17 +52,31 @@ __RCSID("$NetBSD");
 
 #include "npfctl.h"
 
-#define	SEEN_SRC	0x01
-#define	SEEN_DST	0x02
+#define	SEEN_PROTO	0x01
+
+typedef struct {
+	char **		values;
+	unsigned	count;
+} elem_list_t;
+
+enum {
+	LIST_PROTO = 0, LIST_SADDR, LIST_DADDR, LIST_SPORT, LIST_DPORT,
+	LIST_COUNT,
+};
 
 typedef struct {
 	nl_config_t *	conf;
+
 	FILE *		fp;
 	long		fpos;
 	long		fposln;
+	unsigned	level;
+
 	unsigned	flags;
 	uint32_t	curmark;
-	unsigned	level;
+	uint64_t	seen_marks;
+	elem_list_t	list[LIST_COUNT];
+
 } npf_conf_info_t;
 
 static npf_conf_info_t	stdout_ctx;
@@ -72,11 +86,44 @@ static void	print_linesep(npf_conf_info_t *);
 void
 npfctl_show_init(void)
 {
+	memset(&stdout_ctx, 0, sizeof(npf_conf_info_t));
 	stdout_ctx.fp = stdout;
-	stdout_ctx.fpos = 0;
-	stdout_ctx.fposln = 0;
-	stdout_ctx.flags = 0;
-	stdout_ctx.level = 0;
+}
+
+static void
+list_push(elem_list_t *list, char *val)
+{
+	const unsigned n = list->count;
+	char **values;
+
+	if ((values = calloc(n + 1, sizeof(char *))) == NULL) {
+		err(EXIT_FAILURE, "calloc");
+	}
+	for (unsigned i = 0; i < n; i++) {
+		values[i] = list->values[i];
+	}
+	values[n] = val;
+	free(list->values);
+	list->values = values;
+	list->count++;
+}
+
+static char *
+list_join_free(elem_list_t *list, const bool use_br, const char *sep)
+{
+	char *s, buf[2048];
+
+	if (!join(buf, sizeof(buf), list->count, list->values, sep)) {
+		errx(EXIT_FAILURE, "out of memory while parsing the rule");
+	}
+	easprintf(&s, (use_br && list->count > 1) ? "{ %s }" : "%s", buf);
+	for (unsigned i = 0; i < list->count; i++) {
+		free(list->values[i]);
+	}
+	free(list->values);
+	list->values = NULL;
+	list->count = 0;
+	return s;
 }
 
 /*
@@ -194,6 +241,7 @@ print_table(npf_conf_info_t *ctx, const uint32_t *words)
 static char *
 print_proto(npf_conf_info_t *ctx, const uint32_t *words)
 {
+	ctx->flags |= SEEN_PROTO;
 	switch (words[0]) {
 	case IPPROTO_TCP:
 		return estrdup("tcp");
@@ -211,28 +259,23 @@ static char *
 print_tcpflags(npf_conf_info_t *ctx __unused, const uint32_t *words)
 {
 	const unsigned tf = words[0], tf_mask = words[1];
-	char buf[20];
+	char buf[32];
+	size_t n;
 
-	size_t n = tcpflags2string(buf, tf);
+	if ((ctx->flags & SEEN_PROTO) == 0) {
+		/*
+		 * Note: the TCP flag matching might be without 'proto tcp'
+		 * when using a plain 'stateful' rule.  In such case, just
+		 * skip showing of the flags as they are implicit.
+		 */
+		return NULL;
+	}
+	n = tcpflags2string(buf, tf);
 	if (tf != tf_mask) {
 		buf[n++] = '/';
 		tcpflags2string(buf + n, tf_mask);
 	}
 	return estrdup(buf);
-}
-
-static char *
-print_pbarrier(npf_conf_info_t *ctx, const uint32_t *words __unused)
-{
-	if (ctx->curmark == BM_SRC_PORTS && (ctx->flags & SEEN_SRC) == 0) {
-		ctx->flags |= SEEN_SRC;
-		return estrdup("from any");
-	}
-	if (ctx->curmark == BM_DST_PORTS && (ctx->flags & SEEN_DST) == 0) {
-		ctx->flags |= SEEN_DST;
-		return estrdup("to any");
-	}
-	return NULL;
 }
 
 static char *
@@ -265,7 +308,7 @@ static const struct attr_keyword_mapent {
 	const char *	val;
 } attr_keyword_map[] = {
 	{ F(GROUP)|F(DYNAMIC),	F(GROUP),		"group"		},
-	{ F(DYNAMIC),		F(DYNAMIC),		"ruleset"	},
+	{ F(GROUP)|F(DYNAMIC),	F(GROUP)|F(DYNAMIC),	"ruleset"	},
 	{ F(GROUP)|F(PASS),	0,			"block"		},
 	{ F(GROUP)|F(PASS),	F(PASS),		"pass"		},
 	{ F(RETRST)|F(RETICMP),	F(RETRST)|F(RETICMP),	"return"	},
@@ -280,27 +323,26 @@ static const struct attr_keyword_mapent {
 
 static const struct mark_keyword_mapent {
 	unsigned	mark;
-	const char *	token;
-	const char *	sep;
-	unsigned	set_flags;
+	const char *	format;
+	int		list_id;
 	char *		(*printfn)(npf_conf_info_t *, const uint32_t *);
 	unsigned	fwords;
 } mark_keyword_map[] = {
-	{ BM_IPVER,	"family %s",	NULL, 0,	print_family,	1 },
-	{ BM_PROTO,	"proto %s",	", ", 0,	print_proto,	1 },
-	{ BM_TCPFL,	"flags %s",	NULL, 0,	print_tcpflags,	2 },
-	{ BM_ICMP_TYPE,	"icmp-type %s",	NULL, 0,	print_number,	1 },
-	{ BM_ICMP_CODE,	"code %s",	NULL, 0,	print_number,	1 },
+	{ BM_IPVER,	"family %s",	LIST_PROTO,	print_family,	1 },
+	{ BM_PROTO,	"proto %s",	LIST_PROTO,	print_proto,	1 },
+	{ BM_TCPFL,	"flags %s",	LIST_PROTO,	print_tcpflags,	2 },
+	{ BM_ICMP_TYPE,	"icmp-type %s",	LIST_PROTO,	print_number,	1 },
+	{ BM_ICMP_CODE,	"code %s",	LIST_PROTO,	print_number,	1 },
 
-	{ BM_SRC_CIDR,	"from %s",	", ", SEEN_SRC,	print_address,	6 },
-	{ BM_SRC_TABLE,	"from %s",	", ", SEEN_SRC,	print_table,	1 },
-	{ BM_SRC_PORTS,	"%s",		NULL, 0,	print_pbarrier,	2 },
-	{ BM_SRC_PORTS,	"port %s",	", ", 0,	print_portrange,2 },
+	{ BM_SRC_NEG,	NULL,		-1,		NULL,		0 },
+	{ BM_SRC_CIDR,	NULL,		LIST_SADDR,	print_address,	6 },
+	{ BM_SRC_TABLE,	NULL,		LIST_SADDR,	print_table,	1 },
+	{ BM_SRC_PORTS,	NULL,		LIST_SPORT,	print_portrange,2 },
 
-	{ BM_DST_CIDR,	"to %s",	", ", SEEN_DST,	print_address,	6 },
-	{ BM_DST_TABLE,	"to %s",	", ", SEEN_DST,	print_table,	1 },
-	{ BM_DST_PORTS,	"%s",		NULL, 0,	print_pbarrier,	2 },
-	{ BM_DST_PORTS,	"port %s",	", ", 0,	print_portrange,2 },
+	{ BM_DST_NEG,	NULL,		-1,		NULL,		0 },
+	{ BM_DST_CIDR,	NULL,		LIST_DADDR,	print_address,	6 },
+	{ BM_DST_TABLE,	NULL,		LIST_DADDR,	print_table,	1 },
+	{ BM_DST_PORTS,	NULL,		LIST_DPORT,	print_portrange,2 },
 };
 
 static const char * __attribute__((format_arg(2)))
@@ -309,12 +351,20 @@ verified_fmt(const char *fmt, const char *t __unused)
 	return fmt;
 }
 
-static char *
+static void
 scan_marks(npf_conf_info_t *ctx, const struct mark_keyword_mapent *mk,
     const uint32_t *marks, size_t mlen)
 {
-	char buf[2048], *vals[256], *p;
-	size_t nvals = 0;
+	elem_list_t sublist, *target_list;
+
+	/*
+	 * If format is used for this mark, then collect multiple elements
+	 * in into the list, merge and re-push the set into the target list.
+	 *
+	 * Currently, this is applicable only for 'proto { tcp, udp }'.
+	 */
+	memset(&sublist, 0, sizeof(elem_list_t));
+	target_list = mk->format ? &sublist : &ctx->list[mk->list_id];
 
 	/* Scan for the marks and extract the values. */
 	mlen /= sizeof(uint32_t);
@@ -326,54 +376,116 @@ scan_marks(npf_conf_info_t *ctx, const struct mark_keyword_mapent *mk,
 			errx(EXIT_FAILURE, "byte-code marking inconsistency");
 		}
 		if (m == mk->mark) {
-			char *val;
-
-			/* Set the current mark and the flags. */
-			ctx->flags |= mk->set_flags;
+			/*
+			 * Set the current mark and note it as seen.
+			 * Value is processed by the print function,
+			 * otherwise we just need to note the mark.
+			 */
 			ctx->curmark = m;
-
-			/* Value is processed by the print function. */
+			CTASSERT(BM_COUNT < (sizeof(uint64_t) * CHAR_BIT));
+			ctx->seen_marks = UINT64_C(1) << m;
 			assert(mk->fwords == nwords);
-			if ((val = mk->printfn(ctx, marks)) != NULL) {
-				vals[nvals++] = val;
+
+			if (mk->printfn) {
+				char *val;
+
+				if ((val = mk->printfn(ctx, marks)) != NULL) {
+					list_push(target_list, val);
+				}
 			}
 		}
 		marks += nwords;
 		mlen -= nwords;
 	}
-	if (nvals == 0) {
-		return NULL;
-	}
-	assert(nvals == 1 || mk->sep != NULL);
 
-	/*
-	 * Join all the values and print.  Add curly brackets if there
-	 * is more than value and it can be a set.
-	 */
-	if (!join(buf, sizeof(buf), nvals, vals, mk->sep ? mk->sep : "")) {
-		errx(EXIT_FAILURE, "out of memory while parsing the rule");
-	}
-	easprintf(&p, nvals > 1 ? "{ %s }" : "%s", buf);
+	if (sublist.count) {
+		char *val, *elements;
 
-	for (unsigned i = 0; i < nvals; i++) {
-		free(vals[i]);
+		elements = list_join_free(&sublist, true, ", ");
+		easprintf(&val, verified_fmt(mk->format, "%s"), elements );
+		list_push(&ctx->list[mk->list_id], val);
+		free(elements);
 	}
-	return p;
 }
 
 static void
 npfctl_print_id(npf_conf_info_t *ctx, nl_rule_t *rl)
 {
-	uint64_t id = id = npf_rule_getid(rl);
-	ctx->fpos += fprintf(ctx->fp, "# id=\"%" PRIx64 "\" ", id);
+	const uint64_t id = npf_rule_getid(rl);
+
+	if (id) {
+		ctx->fpos += fprintf(ctx->fp, "# id=\"%" PRIx64 "\" ", id);
+	}
 }
 
 static void
+npfctl_print_filter_generic(npf_conf_info_t *ctx)
+{
+	elem_list_t *list = &ctx->list[LIST_PROTO];
+
+	if (list->count) {
+		char *elements = list_join_free(list, false, " ");
+		ctx->fpos += fprintf(ctx->fp, "%s ", elements);
+		free(elements);
+	}
+}
+
+static bool
+npfctl_print_filter_seg(npf_conf_info_t *ctx, unsigned which)
+{
+	static const struct {
+		const char *	keyword;
+		unsigned	alist;
+		unsigned	plist;
+		unsigned	negbm;
+	} refs[] = {
+		[NPF_SRC] = {
+			.keyword	= "from",
+			.alist		= LIST_SADDR,
+			.plist		= LIST_SPORT,
+			.negbm		= UINT64_C(1) << BM_SRC_NEG,
+		},
+		[NPF_DST] = {
+			.keyword	= "to",
+			.alist		= LIST_DADDR,
+			.plist		= LIST_DPORT,
+			.negbm		= UINT64_C(1) << BM_DST_NEG,
+		}
+	};
+	const char *neg = !!(ctx->seen_marks & refs[which].negbm) ? "! " : "";
+	const char *kwd = refs[which].keyword;
+	bool seen_filter = false;
+	elem_list_t *list;
+	char *elements;
+
+	list = &ctx->list[refs[which].alist];
+	if (list->count != 0) {
+		seen_filter = true;
+		elements = list_join_free(list, true, ", ");
+		ctx->fpos += fprintf(ctx->fp, "%s %s%s ", kwd, neg, elements);
+		free(elements);
+	}
+
+	list = &ctx->list[refs[which].plist];
+	if (list->count != 0) {
+		if (!seen_filter) {
+			ctx->fpos += fprintf(ctx->fp, "%s any ", kwd);
+			seen_filter = true;
+		}
+		elements = list_join_free(list, true, ", ");
+		ctx->fpos += fprintf(ctx->fp, "port %s ", elements);
+		free(elements);
+	}
+	return seen_filter;
+}
+
+static bool
 npfctl_print_filter(npf_conf_info_t *ctx, nl_rule_t *rl)
 {
 	const void *marks;
 	size_t mlen, len;
 	const void *code;
+	bool seenf = false;
 	int type;
 
 	marks = npf_rule_getinfo(rl, &mlen);
@@ -385,7 +497,7 @@ npfctl_print_filter(npf_conf_info_t *ctx, nl_rule_t *rl)
 		 */
 		ctx->fpos += fprintf(ctx->fp, "%s ", type == NPF_CODE_BPF ?
 		    "pcap-filter \"...\"" : "unrecognized-bytecode");
-		return;
+		return true;
 	}
 	ctx->flags = 0;
 
@@ -394,18 +506,12 @@ npfctl_print_filter(npf_conf_info_t *ctx, nl_rule_t *rl)
 	 */
 	for (unsigned i = 0; i < __arraycount(mark_keyword_map); i++) {
 		const struct mark_keyword_mapent *mk = &mark_keyword_map[i];
-		char *val;
-
-		if ((val = scan_marks(ctx, mk, marks, mlen)) != NULL) {
-			ctx->fpos += fprintf(ctx->fp,
-			    verified_fmt(mk->token, "%s"), val);
-			ctx->fpos += fprintf(ctx->fp, " ");
-			free(val);
-		}
+		scan_marks(ctx, mk, marks, mlen);
 	}
-	if (!mlen) {
-		ctx->fpos += fprintf(ctx->fp, "all ");
-	}
+	npfctl_print_filter_generic(ctx);
+	seenf |= npfctl_print_filter_seg(ctx, NPF_SRC);
+	seenf |= npfctl_print_filter_seg(ctx, NPF_DST);
+	return seenf;
 }
 
 static void
@@ -413,6 +519,7 @@ npfctl_print_rule(npf_conf_info_t *ctx, nl_rule_t *rl)
 {
 	const uint32_t attr = npf_rule_getattr(rl);
 	const char *rproc, *ifname, *name;
+	bool dyn_ruleset;
 
 	/* Rule attributes/flags. */
 	for (unsigned i = 0; i < __arraycount(attr_keyword_map); i++) {
@@ -439,7 +546,10 @@ npfctl_print_rule(npf_conf_info_t *ctx, nl_rule_t *rl)
 	}
 
 	/* Print filter criteria. */
-	npfctl_print_filter(ctx, rl);
+	dyn_ruleset = (attr & NPF_DYNAMIC_GROUP) == NPF_DYNAMIC_GROUP;
+	if (!npfctl_print_filter(ctx, rl) && !dyn_ruleset) {
+		ctx->fpos += fprintf(ctx->fp, "all ");
+	}
 
 	/* Rule procedure. */
 	if ((rproc = npf_rule_getproc(rl)) != NULL) {
@@ -521,14 +631,14 @@ npfctl_print_nat(npf_conf_info_t *ctx, nl_nat_t *nt)
 		algo = "algo round-robin ";
 		break;
 	case NPF_ALGO_NPT66:
-		algo = "algo npt66";
+		algo = "algo npt66 ";
 		break;
 	default:
 		algo = "";
 		break;
 	}
 
-	/* FIXME also handle "any" */
+	/* XXX also handle "any" */
 
 	/* Print out the NAT policy with the filter criteria. */
 	ctx->fpos += fprintf(ctx->fp, "map %s %s %s%s%s %s %s pass ",

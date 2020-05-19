@@ -1,6 +1,6 @@
 .\"    $NetBSD$
 .\"
-.\" Copyright (c) 2009-2019 The NetBSD Foundation, Inc.
+.\" Copyright (c) 2009-2020 The NetBSD Foundation, Inc.
 .\" All rights reserved.
 .\"
 .\" This material is based upon work partially supported by The
@@ -27,7 +27,7 @@
 .\" ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 .\" POSSIBILITY OF SUCH DAMAGE.
 .\"
-.Dd May 16, 2020
+.Dd May 19, 2020
 .Dt NPF.CONF 5
 .Os
 .Sh NAME
@@ -270,6 +270,17 @@ Applies to IPv4 and IPv6.
 Return an ICMP UNREACHABLE message, when the packet being blocked is a UDP packet.
 Applies to IPv4 and IPv6.
 .El
+.Pp
+The
+.Cm from
+and
+.Cm to
+keywords are provided to filter by source or destination IP addresses.
+They can be used in conjunction with the
+.Cm port
+keyword.
+Negation (the exclamation mark) can be used in front of the address
+filter criteria.
 .Pp
 Further packet specification at present is limited to TCP and UDP
 understanding source and destination ports, and ICMP and IPv6-ICMP
@@ -602,8 +613,7 @@ proto-opts	= "flags" tcp-flags [ "/" tcp-flag-mask ] |
 		  "icmp-type" type [ "code" icmp-code ]
 proto		= "proto" protocol [ proto-opts ]
 
-filt-opts	= "from" filt-addr [ port-opts ] "to" filt-addr
-		  [ port-opts ]
+filt-opts	= "from" filt-addr [ port-opts ] "to" filt-addr [ port-opts ]
 filt-addr	= [ "!" ] [ interface | addr-mask | table-id | "any" ]
 
 port-opts	= "port" ( port-num | port-from "-" port-to | var-name )
