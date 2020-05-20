@@ -193,9 +193,6 @@ npf_iscached(const npf_cache_t *npc, const int inf)
 	return __predict_true((npc->npc_info & inf) != 0);
 }
 
-#define	NPF_SRC		0
-#define	NPF_DST		1
-
 /*
  * Misc.
  */
@@ -203,6 +200,9 @@ npf_iscached(const npf_cache_t *npc, const int inf)
 bool		npf_autounload_p(void);
 
 #endif	/* _KERNEL */
+
+#define	NPF_SRC		0
+#define	NPF_DST		1
 
 /* Rule attributes. */
 #define	NPF_RULE_PASS			0x00000001

@@ -458,7 +458,7 @@ npfctl_conn_list(int fd, int argc, char **argv)
 	argc--;
 	argv++;
 
-	while ((c = getopt(argc, argv, "46hi:nNw")) != -1) {
+	while ((c = getopt(argc, argv, "46hi:nNW")) != -1) {
 		switch (c) {
 		case '4':
 			f.alen = sizeof(struct in_addr);

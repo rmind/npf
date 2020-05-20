@@ -277,7 +277,7 @@ npfctl_get_singletable(const npfvar_t *vp)
 
 static bool
 npfctl_build_fam(npf_bpf_t *ctx, sa_family_t family,
-    fam_addr_mask_t *fam, int opts)
+    fam_addr_mask_t *fam, unsigned opts)
 {
 	/*
 	 * If family is specified, address does not match it and the
@@ -320,7 +320,7 @@ npfctl_build_vars(npf_bpf_t *ctx, sa_family_t family, npfvar_t *vars, int opts)
 	const int type = npfvar_get_type(vars, 0);
 	size_t i;
 
-	npfctl_bpf_group_enter(ctx);
+	npfctl_bpf_group_enter(ctx, (opts & MATCH_INVERT) != 0);
 	for (i = 0; i < npfvar_get_count(vars); i++) {
 		void *data = npfvar_get_data(vars, type, i);
 		assert(data != NULL);
@@ -343,10 +343,10 @@ npfctl_build_vars(npf_bpf_t *ctx, sa_family_t family, npfvar_t *vars, int opts)
 			break;
 		}
 		default:
-			assert(false);
+			yyerror("unexpected %s", npfvar_type(type));
 		}
 	}
-	npfctl_bpf_group_exit(ctx, (opts & MATCH_INVERT) != 0);
+	npfctl_bpf_group_exit(ctx);
 }
 
 static void
@@ -369,7 +369,7 @@ npfctl_build_proto(npf_bpf_t *ctx, sa_family_t family, const opt_proto_t *op)
 			assert(npfvar_get_count(popts) == 2);
 			tf = npfvar_get_data(popts, NPFVAR_TCPFLAG, 0);
 			tf_mask = npfvar_get_data(popts, NPFVAR_TCPFLAG, 1);
-			npfctl_bpf_tcpfl(ctx, *tf, *tf_mask, false);
+			npfctl_bpf_tcpfl(ctx, *tf, *tf_mask);
 		}
 		break;
 	case IPPROTO_ICMP:
@@ -440,8 +440,7 @@ npfctl_build_code(nl_rule_t *rl, sa_family_t family, const opt_proto_t *op,
 	 */
 	if ((npf_rule_getattr(rl) & NPF_RULE_STATEFUL) != 0 &&
 	    (proto == -1 || (proto == IPPROTO_TCP && !op->op_opts))) {
-		npfctl_bpf_tcpfl(bc, TH_SYN,
-		    TH_SYN | TH_ACK | TH_FIN | TH_RST, proto == -1);
+		npfctl_bpf_tcpfl(bc, TH_SYN, TH_SYN | TH_ACK | TH_FIN | TH_RST);
 	}
 
 	/* Build IP address blocks. */
@@ -453,18 +452,18 @@ npfctl_build_code(nl_rule_t *rl, sa_family_t family, const opt_proto_t *op,
 	/* Build port-range blocks. */
 	if (need_tcpudp) {
 		/* TCP/UDP check for the ports. */
-		npfctl_bpf_group_enter(bc);
+		npfctl_bpf_group_enter(bc, false);
 		npfctl_bpf_proto(bc, AF_UNSPEC, IPPROTO_TCP);
 		npfctl_bpf_proto(bc, AF_UNSPEC, IPPROTO_UDP);
-		npfctl_bpf_group_exit(bc, false);
+		npfctl_bpf_group_exit(bc);
 	}
 	npfctl_build_vars(bc, family, apfrom->ap_portrange, MATCH_SRC);
 	npfctl_build_vars(bc, family, apto->ap_portrange, MATCH_DST);
 
 	/* Set the byte-code marks, if any. */
 	const void *bmarks = npfctl_bpf_bmarks(bc, &len);
-	if (npf_rule_setinfo(rl, bmarks, len) == -1) {
-		errx(EXIT_FAILURE, "npf_rule_setinfo failed");
+	if (bmarks && npf_rule_setinfo(rl, bmarks, len) != 0) {
+		errx(EXIT_FAILURE, "npf_rule_setinfo");
 	}
 
 	/* Complete BPF byte-code and pass to the rule. */
@@ -476,7 +475,7 @@ npfctl_build_code(nl_rule_t *rl, sa_family_t family, const opt_proto_t *op,
 	len = bf->bf_len * sizeof(struct bpf_insn);
 
 	if (npf_rule_setcode(rl, NPF_CODE_BPF, bf->bf_insns, len) != 0) {
-		errx(EXIT_FAILURE, "npf_rule_setcode failed");
+		errx(EXIT_FAILURE, "npf_rule_setcode");
 	}
 	npfctl_dump_bpf(bf);
 	npfctl_bpf_destroy(bc);
