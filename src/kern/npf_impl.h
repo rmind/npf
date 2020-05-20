@@ -463,7 +463,7 @@ void		npf_state_destroy(npf_state_t *);
 
 void		npf_state_tcp_sysinit(npf_t *);
 void		npf_state_tcp_sysfini(npf_t *);
-bool		npf_state_tcp(npf_cache_t *, npf_state_t *, int);
+bool		npf_state_tcp(npf_cache_t *, npf_state_t *, npf_flow_t);
 int		npf_state_tcp_timeout(npf_t *, const npf_state_t *);
 
 /* Portmap. */
