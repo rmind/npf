@@ -121,7 +121,8 @@ usage(void)
 	    "\t%s list [-46hNnw] [-i <ifname>]\n",
 	    progname);
 	fprintf(stderr,
-	    "\t%s debug [<rule-file>] [<raw-output>]\n",
+	    "\t%s debug { -a | -b <binary-config> | -c <config> } "
+	    "[ -o <outfile> ]\n",
 	    progname);
 	exit(EXIT_FAILURE);
 }
@@ -283,25 +284,27 @@ npfctl_preload_bpfjit(void)
 #endif
 }
 
-static int
-npfctl_load(int fd)
+static nl_config_t *
+npfctl_import(const char *path)
 {
 	nl_config_t *ncf;
-	npf_error_t errinfo;
 	struct stat sb;
 	size_t blen;
 	void *blob;
-	int error;
+	int fd;
 
 	/*
 	 * The file may change while reading - we are not handling this,
 	 * just leaving this responsibility for the caller.
 	 */
-	if (stat(NPF_DB_PATH, &sb) == -1) {
+	if ((fd = open(path, O_RDONLY)) == -1) {
+		err(EXIT_FAILURE, "could not open `%s'", path);
+	}
+	if (fstat(fd, &sb) == -1) {
 		err(EXIT_FAILURE, "stat");
 	}
 	if ((blen = sb.st_size) == 0) {
-		err(EXIT_FAILURE, "saved configuration file is empty");
+		err(EXIT_FAILURE, "the binary configuration file is empty");
 	}
 	blob = mmap(NULL, blen, PROT_READ, MAP_FILE | MAP_PRIVATE, fd, 0);
 	if (blob == MAP_FAILED) {
@@ -309,19 +312,27 @@ npfctl_load(int fd)
 	}
 	ncf = npf_config_import(blob, blen);
 	munmap(blob, blen);
-	if (ncf == NULL) {
-		return errno;
-	}
+	return ncf;
+}
+
+static int
+npfctl_load(int fd)
+{
+	nl_config_t *ncf;
+	npf_error_t errinfo;
 
 	/*
-	 * Configuration imported - submit it now.
+	 * Import the configuration, submit it and destroy.
 	 */
-	errno = error = npf_config_submit(ncf, fd, &errinfo);
-	if (error) {
+	ncf = npfctl_import(NPF_DB_PATH);
+	if (ncf == NULL) {
+		err(EXIT_FAILURE, "npf_config_import");
+	}
+	if ((errno = npf_config_submit(ncf, fd, &errinfo)) != 0) {
 		npfctl_print_error(&errinfo);
 	}
 	npf_config_destroy(ncf);
-	return error;
+	return errno;
 }
 
 static int
@@ -352,6 +363,79 @@ npfctl_open_dev(const char *path)
 		}
 	}
 	return fd;
+}
+
+static void
+npfctl_debug(int argc, char **argv)
+{
+	const char *conf = NULL, *bconf = NULL, *outfile = NULL;
+	bool use_active = false;
+	nl_config_t *ncf = NULL;
+	int fd, c, optcount;
+
+	argc--;
+	argv++;
+
+	npfctl_config_init(true);
+	while ((c = getopt(argc, argv, "ab:c:o:")) != -1) {
+		switch (c) {
+		case 'a':
+			use_active = true;
+			break;
+		case 'b':
+			bconf = optarg;
+			break;
+		case 'c':
+			conf = optarg;
+			break;
+		case 'o':
+			outfile = optarg;
+			break;
+		default:
+			usage();
+		}
+	}
+
+	/*
+	 * Options -a, -b and -c are mutually exclusive, so allow only one.
+	 * If no options were specified, then set the defaults.
+	 */
+	optcount = (int)!!use_active + (int)!!conf + (int)!!bconf;
+	if (optcount != 1) {
+		if (optcount > 1) {
+			usage();
+		}
+		conf = NPF_CONF_PATH;
+		outfile = outfile ? outfile : "npf.nvlist";
+	}
+
+	if (use_active) {
+		puts("Loading the active configuration");
+		fd = npfctl_open_dev(NPF_DEV_PATH);
+		if ((ncf = npf_config_retrieve(fd)) == NULL) {
+			err(EXIT_FAILURE, "npf_config_retrieve");
+		}
+	}
+
+	if (conf) {
+		printf("Loading %s\n", conf);
+		npfctl_parse_file(conf);
+		npfctl_config_build();
+		ncf = npfctl_config_ref();
+	}
+
+	if (bconf) {
+		printf("Importing %s\n", bconf);
+		ncf = npfctl_import(bconf);
+	}
+
+	printf("Configuration:\n\n");
+	_npf_config_dump(ncf, STDOUT_FILENO);
+	if (outfile) {
+		printf("\nSaving binary to %s\n", outfile);
+		npfctl_config_save(ncf, outfile);
+	}
+	npf_config_destroy(ncf);
 }
 
 static void
@@ -422,7 +506,8 @@ npfctl(int action, int argc, char **argv)
 	case NPFCTL_SAVE:
 		ncf = npf_config_retrieve(fd);
 		if (ncf) {
-			npfctl_config_save(ncf, NPF_DB_PATH);
+			npfctl_config_save(ncf,
+			    argc > 2 ? argv[2] : NPF_DB_PATH);
 			npf_config_destroy(ncf);
 		} else {
 			ret = errno;
@@ -444,9 +529,7 @@ npfctl(int action, int argc, char **argv)
 		fun = "npfctl_config_show";
 		break;
 	case NPFCTL_DEBUG:
-		npfctl_config_init(true);
-		npfctl_parse_file(argc > 2 ? argv[2] : NPF_CONF_PATH);
-		npfctl_config_debug(argc > 3 ? argv[3] : "/tmp/npf.nvlist");
+		npfctl_debug(argc, argv);
 		break;
 	}
 	if (ret) {

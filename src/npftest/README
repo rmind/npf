@@ -7,13 +7,13 @@ It uses RUMP framework to run NPF kernel module in the userspace.
 
 Test:
 
-npfctl debug npftest.conf /tmp/npf.nvlist
+npfctl debug -c npftest.conf -o /tmp/npf.nvlist
 npftest -c /tmp/npf.nvlist -t
 
 Stream:
 
 tcpdump -w stream.pcap -i $interface "host $host and tcp"
-npfctl debug npftest.conf /tmp/npf.nvlist
+npfctl debug -c npftest.conf -o /tmp/npf.nvlist
 npftest -c /tmp/npf.nvlist -s stream.pcap > stream_npf_data.txt
 
 Preferably, use MALLOC_OPTIONS="AJ" and/or other facilities.

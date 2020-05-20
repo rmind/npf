@@ -133,7 +133,6 @@ npfctl_config_save(nl_config_t *ncf, const char *outfile)
 	size_t len;
 	int fd;
 
-	npfctl_config_build();
 	blob = npf_config_export(ncf, &len);
 	if (!blob) {
 		err(EXIT_FAILURE, "npf_config_export");
@@ -146,19 +145,6 @@ npfctl_config_save(nl_config_t *ncf, const char *outfile)
 	}
 	free(blob);
 	close(fd);
-}
-
-void
-npfctl_config_debug(const char *outfile)
-{
-	npfctl_config_build();
-
-	printf("\nConfiguration:\n\n");
-	_npf_config_dump(npf_conf, STDOUT_FILENO);
-
-	printf("\nSaving binary to %s\n", outfile);
-	npfctl_config_save(npf_conf, outfile);
-	npf_config_destroy(npf_conf);
 }
 
 bool
@@ -268,7 +254,7 @@ npfctl_get_singletable(const npfvar_t *vp)
 	unsigned *tid;
 
 	if (npfvar_get_count(vp) > 1) {
-		yyerror("multiple tables are not valid");
+		yyerror("invalid use of multiple tables");
 	}
 	tid = npfvar_get_data(vp, NPFVAR_TABLE, 0);
 	assert(tid != NULL);

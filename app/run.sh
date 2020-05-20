@@ -47,7 +47,7 @@ router_configure()
 	  block all
 	}
 	EOF
-	npfctl debug /etc/npf.conf /tmp/npf.nvlist | tail -n1
+	npfctl debug -c /etc/npf.conf | tail -n1
 }
 
 run()
