@@ -206,8 +206,6 @@ nl_config_t *	npfctl_config_ref(void);
 int		npfctl_config_show(int);
 void		npfctl_config_save(nl_config_t *, const char *);
 void		npfctl_config_debug(const char *);
-
-void		npfctl_show_init(void);
 int		npfctl_ruleset_show(int, const char *);
 
 nl_rule_t *	npfctl_rule_ref(void);

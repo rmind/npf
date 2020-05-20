@@ -318,6 +318,7 @@ void		npf_param_register(npf_t *, npf_param_t *, unsigned);
 void *		npf_param_allocgroup(npf_t *, npf_paramgroup_t, size_t);
 void		npf_param_freegroup(npf_t *, npf_paramgroup_t, size_t);
 int		npf_param_check(npf_t *, const char *, int);
+int		npf_params_export(const npf_t *, nvlist_t *);
 
 void		npf_ifmap_init(npf_t *, const npf_ifops_t *);
 void		npf_ifmap_fini(npf_t *);

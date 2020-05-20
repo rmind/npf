@@ -484,7 +484,6 @@ main(int argc, char **argv)
 	if (argc < 2) {
 		usage();
 	}
-	npfctl_show_init();
 	cmd = argv[1];
 
 	/* Find and call the subroutine. */

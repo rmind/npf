@@ -66,6 +66,7 @@ enum {
 
 typedef struct {
 	nl_config_t *	conf;
+	bool		validating;
 
 	FILE *		fp;
 	long		fpos;
@@ -79,15 +80,15 @@ typedef struct {
 
 } npf_conf_info_t;
 
-static npf_conf_info_t	stdout_ctx;
-
 static void	print_linesep(npf_conf_info_t *);
 
-void
+static npf_conf_info_t *
 npfctl_show_init(void)
 {
+	static npf_conf_info_t stdout_ctx;
 	memset(&stdout_ctx, 0, sizeof(npf_conf_info_t));
 	stdout_ctx.fp = stdout;
+	return &stdout_ctx;
 }
 
 static void
@@ -671,10 +672,27 @@ npfctl_print_table(npf_conf_info_t *ctx, nl_table_t *tl)
 	    "table <%s> type %s\n", name, table_types[type]);
 }
 
+static void
+npfctl_print_params(npf_conf_info_t *ctx, nl_config_t *ncf)
+{
+	nl_iter_t i = NPF_ITER_BEGIN;
+	int val, defval, *dval;
+	const char *name;
+
+	dval = ctx->validating ? NULL : &defval;
+	while ((name = npf_param_iterate(ncf, &i, &val, dval)) != NULL) {
+		if (dval && val == *dval) {
+			continue;
+		}
+		ctx->fpos += fprintf(ctx->fp, "set %s %d\n", name, val);
+	}
+	print_linesep(ctx);
+}
+
 int
 npfctl_config_show(int fd)
 {
-	npf_conf_info_t *ctx = &stdout_ctx;
+	npf_conf_info_t *ctx = npfctl_show_init();
 	nl_config_t *ncf;
 	bool loaded;
 
@@ -684,6 +702,7 @@ npfctl_config_show(int fd)
 			return errno;
 		}
 		loaded = npf_config_loaded_p(ncf);
+		ctx->validating = false;
 		ctx->fpos += fprintf(ctx->fp,
 		    "# filtering:\t%s\n# config:\t%s\n",
 		    npf_config_active_p(ncf) ? "active" : "inactive",
@@ -692,6 +711,7 @@ npfctl_config_show(int fd)
 	} else {
 		ncf = npfctl_config_ref();
 		npfctl_config_build();
+		ctx->validating = true;
 		loaded = true;
 	}
 	ctx->conf = ncf;
@@ -703,6 +723,8 @@ npfctl_config_show(int fd)
 		nl_table_t *tl;
 		nl_iter_t i;
 		unsigned level;
+
+		npfctl_print_params(ctx, ncf);
 
 		i = NPF_ITER_BEGIN;
 		while ((tl = npf_table_iterate(ncf, &i)) != NULL) {
@@ -738,7 +760,7 @@ npfctl_config_show(int fd)
 int
 npfctl_ruleset_show(int fd, const char *ruleset_name)
 {
-	npf_conf_info_t *ctx = &stdout_ctx;
+	npf_conf_info_t *ctx = npfctl_show_init();
 	nl_config_t *ncf;
 	nl_rule_t *rl;
 	unsigned level;
