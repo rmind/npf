@@ -125,14 +125,14 @@ struct npf_natpolicy {
 #define	NPF_NP_CMP_SIZE		(sizeof(npf_natpolicy_t) - NPF_NP_CMP_START)
 
 /*
- * NAT translation entry for a connection.
+ * NAT entry for a connection.
  */
 struct npf_nat {
 	/* Associated NAT policy. */
 	npf_natpolicy_t *	nt_natpolicy;
 
-	uint16_t		nt_alen;
 	uint16_t		nt_ifid;
+	uint16_t		nt_alen;
 
 	/*
 	 * Translation address as well as the original address which is
@@ -155,7 +155,7 @@ struct npf_nat {
 static pool_cache_t		nat_cache	__read_mostly;
 
 /*
- * npf_nat_sys{init,fini}: initialise/destroy NAT subsystem structures.
+ * npf_nat_sys{init,fini}: initialize/destroy NAT subsystem structures.
  */
 
 void
@@ -349,8 +349,8 @@ npf_natpolicy_cmp(npf_natpolicy_t *np, npf_natpolicy_t *mnp)
 	const void *np_raw, *mnp_raw;
 
 	/*
-	 * Compare the relevant NAT policy information (in raw form),
-	 * which is enough for matching criterion.
+	 * Compare the relevant NAT policy information (in its raw form)
+	 * that is enough as a matching criteria.
 	 */
 	KASSERT(np && mnp && np != mnp);
 	np_raw = (const uint8_t *)np + NPF_NP_CMP_START;
@@ -408,7 +408,7 @@ npf_nat_which(const unsigned type, const npf_flow_t flow)
  * => NAT lookup is protected by EBR.
  */
 static npf_natpolicy_t *
-npf_nat_inspect(npf_cache_t *npc, const int di)
+npf_nat_inspect(npf_cache_t *npc, const unsigned di)
 {
 	npf_t *npf = npc->npc_ctx;
 	int slock = npf_config_read_enter(npf);
@@ -474,7 +474,7 @@ npf_nat_getaddr(npf_cache_t *npc, npf_natpolicy_t *np, const unsigned alen)
 static npf_nat_t *
 npf_nat_create(npf_cache_t *npc, npf_natpolicy_t *np, npf_conn_t *con)
 {
-	const int proto = npc->npc_proto;
+	const unsigned proto = npc->npc_proto;
 	const unsigned alen = npc->npc_alen;
 	const nbuf_t *nbuf = npc->npc_nbuf;
 	npf_t *npf = npc->npc_ctx;
@@ -893,12 +893,13 @@ npf_nat_destroy(npf_conn_t *con, npf_nat_t *nt)
 }
 
 /*
- * npf_nat_export: serialise the NAT entry with a NAT policy ID.
+ * npf_nat_export: serialize the NAT entry with a NAT policy ID.
  */
 void
 npf_nat_export(npf_t *npf, const npf_nat_t *nt, nvlist_t *con_nv)
 {
 	npf_natpolicy_t *np = nt->nt_natpolicy;
+	unsigned alen = nt->nt_alen;
 	nvlist_t *nat_nv;
 
 	nat_nv = nvlist_create(0);
@@ -907,15 +908,20 @@ npf_nat_export(npf_t *npf, const npf_nat_t *nt, nvlist_t *con_nv)
 		npf_ifmap_copyname(npf, nt->nt_ifid, ifname, sizeof(ifname));
 		nvlist_add_string(nat_nv, "ifname", ifname);
 	}
-	nvlist_add_binary(nat_nv, "oaddr", &nt->nt_oaddr, sizeof(npf_addr_t));
+	nvlist_add_number(nat_nv, "alen", alen);
+
+	nvlist_add_binary(nat_nv, "oaddr", &nt->nt_oaddr, alen);
 	nvlist_add_number(nat_nv, "oport", nt->nt_oport);
+
+	nvlist_add_binary(nat_nv, "taddr", &nt->nt_taddr, alen);
 	nvlist_add_number(nat_nv, "tport", nt->nt_tport);
+
 	nvlist_add_number(nat_nv, "nat-policy", np->n_id);
 	nvlist_move_nvlist(con_nv, "nat", nat_nv);
 }
 
 /*
- * npf_nat_import: find the NAT policy and unserialise the NAT entry.
+ * npf_nat_import: find the NAT policy and unserialize the NAT entry.
  */
 npf_nat_t *
 npf_nat_import(npf_t *npf, const nvlist_t *nat,
@@ -923,9 +929,10 @@ npf_nat_import(npf_t *npf, const nvlist_t *nat,
 {
 	npf_natpolicy_t *np;
 	npf_nat_t *nt;
-	const void *oaddr;
+	const char *ifname;
+	const void *taddr, *oaddr;
+	size_t alen, len;
 	uint64_t np_id;
-	size_t len;
 
 	np_id = dnvlist_get_number(nat, "nat-policy", UINT64_MAX);
 	if ((np = npf_ruleset_findnat(natlist, np_id)) == NULL) {
@@ -934,12 +941,28 @@ npf_nat_import(npf_t *npf, const nvlist_t *nat,
 	nt = pool_cache_get(nat_cache, PR_WAITOK);
 	memset(nt, 0, sizeof(npf_nat_t));
 
+	ifname = dnvlist_get_string(nat, "ifname", NULL);
+	if (ifname && (nt->nt_ifid = npf_ifmap_register(npf, ifname)) == 0) {
+		goto err;
+	}
+
+	alen = dnvlist_get_number(nat, "alen", 0);
+	if (alen == 0 || alen > sizeof(npf_addr_t)) {
+		goto err;
+	}
+
+	taddr = dnvlist_get_binary(nat, "taddr", &len, NULL, 0);
+	if (!taddr || len != alen) {
+		goto err;
+	}
+	memcpy(&nt->nt_taddr, taddr, sizeof(npf_addr_t));
+
 	oaddr = dnvlist_get_binary(nat, "oaddr", &len, NULL, 0);
-	if (!oaddr || len != sizeof(npf_addr_t)) {
-		pool_cache_put(nat_cache, nt);
-		return NULL;
+	if (!oaddr || len != alen) {
+		goto err;
 	}
 	memcpy(&nt->nt_oaddr, oaddr, sizeof(npf_addr_t));
+
 	nt->nt_oport = dnvlist_get_number(nat, "oport", 0);
 	nt->nt_tport = dnvlist_get_number(nat, "tport", 0);
 
@@ -949,8 +972,7 @@ npf_nat_import(npf_t *npf, const nvlist_t *nat,
 
 		if (!npf_portmap_take(pm, nt->nt_alen,
 		    &nt->nt_taddr, nt->nt_tport)) {
-			pool_cache_put(nat_cache, nt);
-			return NULL;
+			goto err;
 		}
 	}
 	npf_stats_inc(npf, NPF_STAT_NAT_CREATE);
@@ -965,6 +987,9 @@ npf_nat_import(npf_t *npf, const nvlist_t *nat,
 	    atomic_load_relaxed(&np->n_refcnt) + 1);
 	LIST_INSERT_HEAD(&np->n_nat_list, nt, nt_entry);
 	return nt;
+err:
+	pool_cache_put(nat_cache, nt);
+	return NULL;
 }
 
 #if defined(DDB) || defined(_NPF_TESTING)
