@@ -142,7 +142,7 @@ enum { CONN_TRACKING_OFF, CONN_TRACKING_ON };
 static int npf_conn_export(npf_t *, npf_conn_t *, nvlist_t *);
 
 /*
- * npf_conn_sys{init,fini}: initialise/destroy connection tracking.
+ * npf_conn_sys{init,fini}: initialize/destroy connection tracking.
  */
 
 void
@@ -397,10 +397,12 @@ npf_conn_inspect(npf_cache_t *npc, const unsigned di, int *error)
 	}
 #if 0
 	/*
-	 * If this is multi-end state, then specially tag the packet
-	 * so it will be just passed-through on other interfaces.
+	 * TODO -- determine when this might be wanted/used.
+	 *
+	 * Note: skipping the connection lookup and ruleset inspection
+	 * on other interfaces will also bypass dynamic NAT.
 	 */
-	if (atomic_load_relaxed(&con->c_ifid) == 0) {
+	if (atomic_load_relaxed(&con->c_flags) & CONN_GPASS) {
 		/*
 		 * Note: if tagging fails, then give this packet a chance
 		 * to go through a regular ruleset.
@@ -435,7 +437,7 @@ npf_conn_establish(npf_cache_t *npc, const unsigned di, bool global)
 		return NULL;
 	}
 
-	/* Allocate and initialise the new connection. */
+	/* Allocate and initialize the new connection. */
 	con = pool_cache_get(npf->conn_cache[idx], PR_NOWAIT);
 	if (__predict_false(!con)) {
 		npf_worker_signal(npf);
@@ -806,7 +808,7 @@ npf_conndb_export(npf_t *npf, nvlist_t *nvl)
 }
 
 /*
- * npf_conn_export: serialise a single connection.
+ * npf_conn_export: serialize a single connection.
  */
 static int
 npf_conn_export(npf_t *npf, npf_conn_t *con, nvlist_t *nvl)
@@ -871,7 +873,7 @@ npf_conn_import(npf_t *npf, npf_conndb_t *cd, const nvlist_t *cdict,
 	alen = dnvlist_get_number(cdict, "alen", 0);
 	idx = NPF_CONNCACHE(alen);
 
-	/* Allocate a connection and initialise it (clear first). */
+	/* Allocate a connection and initialize it (clear first). */
 	con = pool_cache_get(npf->conn_cache[idx], PR_WAITOK);
 	memset(con, 0, sizeof(npf_conn_t));
 	mutex_init(&con->c_lock, MUTEX_DEFAULT, IPL_SOFTNET);
