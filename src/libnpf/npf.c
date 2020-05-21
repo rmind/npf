@@ -495,6 +495,43 @@ npf_param_set(nl_config_t *ncf, const char *name, int val)
 	return 0;
 }
 
+const char *
+npf_param_iterate(nl_config_t *ncf, nl_iter_t *iter, int *val, int *defval)
+{
+	void *cookie = (void *)(intptr_t)*iter;
+	const nvlist_t *params, *dparams;
+	const char *name;
+	int type;
+
+	assert(sizeof(nl_iter_t) >= sizeof(void *));
+
+	params = dnvlist_get_nvlist(ncf->ncf_dict, "params", NULL);
+	if (params == NULL) {
+		return NULL;
+	}
+skip:
+	if ((name = nvlist_next(params, &type, &cookie)) == NULL) {
+		*iter = NPF_ITER_BEGIN;
+		return NULL;
+	}
+	if (type != NV_TYPE_NUMBER) {
+		goto skip; // should never happen, though
+	}
+	if (defval) {
+		dparams = dnvlist_get_nvlist(ncf->ncf_dict,
+		    "params-defaults", NULL);
+		if (dparams == NULL) {
+			errno = EINVAL;
+			return NULL;
+		}
+		*defval = (int)nvlist_get_number(dparams, name);
+	}
+
+	*val = (int)nvlist_get_number(params, name);
+	*iter = (intptr_t)cookie;
+	return name;
+}
+
 /*
  * DYNAMIC RULESET INTERFACE.
  */

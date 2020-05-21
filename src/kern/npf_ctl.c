@@ -626,6 +626,10 @@ npfctl_save(npf_t *npf, const nvlist_t *req, nvlist_t *resp)
 	 */
 	nvlist_add_number(resp, "version", NPF_VERSION);
 	nc = npf_config_enter(npf);
+	error = npf_params_export(npf, resp);
+	if (error) {
+		goto out;
+	}
 	error = npf_conndb_export(npf, resp);
 	if (error) {
 		goto out;

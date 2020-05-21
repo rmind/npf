@@ -90,6 +90,7 @@ int		npf_alg_load(nl_config_t *, const char *);
 
 int		npf_param_get(nl_config_t *, const char *, int *);
 int		npf_param_set(nl_config_t *, const char *, int);
+const char *	npf_param_iterate(nl_config_t *, nl_iter_t *, int *, int *);
 
 int		npf_ruleset_add(int, const char *, nl_rule_t *, uint64_t *);
 int		npf_ruleset_remove(int, const char *, uint64_t);

@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2019 The NetBSD Foundation, Inc.
+ * Copyright (c) 2019-2020 The NetBSD Foundation, Inc.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -26,7 +26,7 @@
 
 #ifdef _KERNEL
 #include <sys/cdefs.h>
-__KERNEL_RCSID(0, "$NetBSD: npf_params.c,v 1.1 2019/07/23 00:52:01 rmind Exp $");
+__KERNEL_RCSID(0, "$NetBSD$");
 
 #include <sys/param.h>
 #include <sys/types.h>
@@ -89,6 +89,32 @@ npf_param_fini(npf_t *npf)
 	}
 	thmap_destroy(pinfo->map);
 	kmem_free(pinfo, sizeof(npf_paraminfo_t));
+}
+
+int
+npf_params_export(const npf_t *npf, nvlist_t *nv)
+{
+	nvlist_t *params, *dparams;
+
+	/*
+	 * Export both the active and default values.  The latter are to
+	 * accommodate npfctl so it could distinguish what has been set.
+	 */
+	params = nvlist_create(0);
+	dparams = nvlist_create(0);
+	for (npf_paramreg_t *pr = npf->paraminfo->list; pr; pr = pr->next) {
+		for (unsigned i = 0; i < pr->count; i++) {
+			const npf_param_t *param = &pr->params[i];
+			const uint64_t val = *param->valp;
+			const uint64_t defval = param->default_val;
+
+			nvlist_add_number(params, param->name, val);
+			nvlist_add_number(dparams, param->name, defval);
+		}
+	}
+	nvlist_add_nvlist(nv, "params", params);
+	nvlist_add_nvlist(nv, "params-defaults", dparams);
+	return 0;
 }
 
 void *
