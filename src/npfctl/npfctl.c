@@ -242,6 +242,13 @@ npfctl_print_addrmask(int alen, const char *fmt, const npf_addr_t *addr,
 	return buf;
 }
 
+bool
+npfctl_addr_iszero(const npf_addr_t *addr)
+{
+	static const npf_addr_t zero; /* must be static */
+	return memcmp(addr, &zero, sizeof(npf_addr_t)) == 0;
+}
+
 static bool bpfjit = true;
 
 void

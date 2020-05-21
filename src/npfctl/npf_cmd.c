@@ -402,69 +402,96 @@ again:
 //
 
 typedef struct {
-	uint16_t	alen;
+	FILE *		fp;
+	unsigned	alen;
 	const char *	ifname;
 	bool		nat;
 	bool		nowide;
 	bool		name;
-	int		width;
-	FILE *		fp;
+
+	bool		v4;
+	unsigned	pwidth;
 } npf_conn_filter_t;
 
 static int
 npfctl_conn_print(unsigned alen, const npf_addr_t *a, const in_port_t *p,
     const char *ifname, void *arg)
 {
-	npf_conn_filter_t *fil = arg;
+	const npf_conn_filter_t *fil = arg;
+	char *addrstr, *src, *dst;
+	const char *fmt;
 	FILE *fp = fil->fp;
-	char *src, *dst;
+	bool nat_conn;
 
-	if (fil->ifname && strcmp(ifname, fil->ifname) != 0)
+	/*
+	 * Filter connection entries by IP version, interface and/or
+	 * applicability of NAT.
+	 */
+	if (alen != fil->alen) {
 		return 0;
-	if (fil->alen && alen != fil->alen)
-		return 0;
-	if (fil->nat && !p[2])
-		return 0;
-
-	int w = fil->width;
-	const char *fmt = fil->name ? "%A" :
-	    (alen == sizeof(struct in_addr) ? "%a" : "[%a]");
-	src = npfctl_print_addrmask(alen, fmt, &a[0], NPF_NO_NETMASK);
-	dst = npfctl_print_addrmask(alen, fmt, &a[1], NPF_NO_NETMASK);
-
-	if (fil->nowide) {
-		fprintf(fp, "%s:%d %s:%d", src, p[0], dst, p[1]);
-	} else {
-		fprintf(fp, "%*.*s:%-5d %*.*s:%-5d", w, w, src, p[0],
-		    w, w, dst, p[1]);
 	}
+	if (fil->ifname && (!ifname || strcmp(ifname, fil->ifname) != 0)) {
+		return 0;
+	}
+	nat_conn = !npfctl_addr_iszero(&a[2]) || p[2] != 0;
+	if (fil->nat && !nat_conn) {
+		return 0;
+	}
+
+	fmt = fil->name ? "%A" : (fil->v4 ? "%a" : "[%a]");
+
+	addrstr = npfctl_print_addrmask(alen, fmt, &a[0], NPF_NO_NETMASK);
+	easprintf(&src, "%s:%d", addrstr, p[0]);
+	free(addrstr);
+
+	addrstr = npfctl_print_addrmask(alen, fmt, &a[1], NPF_NO_NETMASK);
+	easprintf(&dst, "%s:%d", addrstr, p[1]);
+	free(addrstr);
+
+	fprintf(fp, "%-*s %-*s ", fil->pwidth, src, fil->pwidth, dst);
 	free(src);
 	free(dst);
-	if (!p[2]) {
-		fputc('\n', fp);
-		return 1;
+
+	fprintf(fp, "%-10s ", ifname ? ifname : "-");
+	if (nat_conn) {
+		addrstr = npfctl_print_addrmask(alen, fmt, &a[2], NPF_NO_NETMASK);
+		fprintf(fp, "%s:%d", addrstr, p[2]);
+		free(addrstr);
 	}
-	fprintf(fp, " via %s:%d\n", ifname, p[2]);
+	fputc('\n', fp);
 	return 1;
+}
+
+static void
+npf_conn_list_v(int fd, unsigned alen, npf_conn_filter_t *f)
+{
+	f->alen = alen;
+	f->v4 = alen == sizeof(struct in_addr);
+	f->pwidth = f->nowide ? 0 : ((f->v4 ? 15 : 40) + 1 + 5);
+	npf_conn_list(fd, npfctl_conn_print, f);
 }
 
 int
 npfctl_conn_list(int fd, int argc, char **argv)
 {
 	npf_conn_filter_t f;
-	int c, w, header = true;
+	bool header = true;
+	unsigned alen = 0;
+	int c;
 
-	memset(&f, 0, sizeof(f));
 	argc--;
 	argv++;
+
+	memset(&f, 0, sizeof(f));
+	f.fp = stdout;
 
 	while ((c = getopt(argc, argv, "46hi:nNW")) != -1) {
 		switch (c) {
 		case '4':
-			f.alen = sizeof(struct in_addr);
+			alen = sizeof(struct in_addr);
 			break;
 		case '6':
-			f.alen = sizeof(struct in6_addr);
+			alen = sizeof(struct in6_addr);
 			break;
 		case 'h':
 			header = false;
@@ -482,20 +509,26 @@ npfctl_conn_list(int fd, int argc, char **argv)
 			f.nowide = true;
 			break;
 		default:
-			fprintf(stderr,
+			err(EXIT_FAILURE,
 			    "Usage: %s list [-46hnNW] [-i <ifname>]\n",
 			    getprogname());
-			exit(EXIT_FAILURE);
 		}
 	}
-	f.width = f.alen == sizeof(struct in_addr) ? 25 : 41;
-	w = f.width + 6;
-	f.fp = stdout;
 
 	if (header) {
-		fprintf(f.fp, "%*.*s %*.*s\n",
-		    w, w, "# from address:port ", w, w, "to address:port ");
+		fprintf(f.fp, "# %-*s %-*s %-*s %s\n",
+		    21 - 2, "src-addr:port",
+		    21, "dst-addr:port",
+		    10, "interface",
+		    "nat-addr:port");
 	}
-	npf_conn_list(fd, npfctl_conn_print, &f);
+
+	if (!alen || alen == sizeof(struct in_addr)) {
+		npf_conn_list_v(fd, sizeof(struct in_addr), &f);
+	}
+	if (!alen || alen == sizeof(struct in6_addr)) {
+		npf_conn_list_v(fd, sizeof(struct in6_addr), &f);
+	}
+
 	return 0;
 }

@@ -111,11 +111,13 @@ typedef enum {
 #define	NPF_IFNET_TABLE_PREF		".ifnet-"
 #define	NPF_IFNET_TABLE_PREFLEN		(sizeof(NPF_IFNET_TABLE_PREF) - 1)
 
-bool		join(char *, size_t, int, char **, const char *);
 void		yyerror(const char *, ...) __printflike(1, 2) __dead;
 void		npfctl_bpfjit(bool);
 void		npfctl_parse_file(const char *);
 void		npfctl_parse_string(const char *, parse_entry_t);
+
+bool		join(char *, size_t, int, char **, const char *);
+bool		npfctl_addr_iszero(const npf_addr_t *);
 
 void		npfctl_print_error(const npf_error_t *);
 char *		npfctl_print_addrmask(int, const char *, const npf_addr_t *,
