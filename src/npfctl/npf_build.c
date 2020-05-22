@@ -302,9 +302,7 @@ npfctl_build_fam(npf_bpf_t *ctx, sa_family_t family,
 	 * zero mask would never match and therefore is not valid.
 	 */
 	if (fam->fam_mask == 0) {
-		static const npf_addr_t zero; /* must be static */
-
-		if (memcmp(&fam->fam_addr, &zero, sizeof(npf_addr_t))) {
+		if (!npfctl_addr_iszero(&fam->fam_addr)) {
 			yyerror("filter criterion would never match");
 		}
 		return false;

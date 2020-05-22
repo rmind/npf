@@ -942,29 +942,28 @@ err:
  * npf_conn_find: lookup a connection in the list of connections
  */
 int
-npf_conn_find(npf_t *npf, const nvlist_t *nvl, nvlist_t *outnvl)
+npf_conn_find(npf_t *npf, const nvlist_t *req, nvlist_t *resp)
 {
-	const nvlist_t *knvl;
+	const nvlist_t *key_nv;
 	npf_conn_t *con;
 	npf_connkey_t key;
 	npf_flow_t flow;
-	uint16_t dir;
 	int error;
 
-	knvl = dnvlist_get_nvlist(nvl, "key", NULL);
-	if (!knvl || !npf_connkey_import(npf, knvl, &key)) {
+	key_nv = dnvlist_get_nvlist(req, "key", NULL);
+	if (!key_nv || !npf_connkey_import(npf, key_nv, &key)) {
 		return EINVAL;
 	}
 	con = npf_conndb_lookup(npf, &key, &flow);
 	if (con == NULL) {
 		return ESRCH;
 	}
-	dir = dnvlist_get_number(nvl, "direction", 0);
-	if (!npf_conn_check(con, NULL, dir, NPF_FLOW_FORW)) {
+	if (!npf_conn_check(con, NULL, 0, NPF_FLOW_FORW)) {
 		atomic_dec_uint(&con->c_refcnt);
 		return ESRCH;
 	}
-	error = npf_conn_export(npf, con, outnvl);
+	error = npf_conn_export(npf, con, resp);
+	nvlist_add_number(resp, "flow", flow);
 	atomic_dec_uint(&con->c_refcnt);
 	return error;
 }

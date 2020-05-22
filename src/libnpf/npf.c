@@ -1332,43 +1332,56 @@ npf_alg_load(nl_config_t *ncf, const char *name)
  * CONNECTION / NAT ENTRY INTERFACE.
  */
 
-int
-npf_nat_lookup(int fd, int af, npf_addr_t *addr[2], in_port_t port[2],
-    int proto, int dir)
+typedef struct {
+	unsigned	alen;
+	unsigned	proto;
+	npf_addr_t	addr[3];
+	in_port_t	port[3];
+} npf_connpoint_t;
+
+static int
+_npf_conn_lookup(int fd, const int af, npf_addr_t *addr[2], in_port_t port[2],
+    unsigned proto, const char *ifname, unsigned di)
 {
-	nvlist_t *req = NULL, *conn_res;
+	nvlist_t *req = NULL, *resp = NULL, *key_nv;
 	const nvlist_t *nat;
 	int error = EINVAL;
 
 	/*
 	 * Setup the connection lookup key.
 	 */
-	conn_res = nvlist_create(0);
-	if (!conn_res) {
+	if ((key_nv = nvlist_create(0)) == NULL) {
 		return ENOMEM;
 	}
-	if (!_npf_add_addr(conn_res, "saddr", af, addr[0]))
+	if (!_npf_add_addr(key_nv, "saddr", af, addr[0])) {
+		nvlist_destroy(key_nv);
 		goto out;
-	if (!_npf_add_addr(conn_res, "daddr", af, addr[1]))
+	}
+	if (!_npf_add_addr(key_nv, "daddr", af, addr[1])) {
+		nvlist_destroy(key_nv);
 		goto out;
-	nvlist_add_number(conn_res, "sport", port[0]);
-	nvlist_add_number(conn_res, "dport", port[1]);
-	nvlist_add_number(conn_res, "proto", proto);
+	}
+	nvlist_add_number(key_nv, "sport", htons(port[0]));
+	nvlist_add_number(key_nv, "dport", htons(port[1]));
+	nvlist_add_number(key_nv, "proto", proto);
+	if (ifname) {
+		nvlist_add_string(key_nv, "ifname", ifname);
+	}
+	if (di) {
+		nvlist_add_number(key_nv, "di", di);
+	}
 
 	/*
 	 * Setup the request.
 	 */
-	req = nvlist_create(0);
-	if (!req) {
+	if ((req = nvlist_create(0)) == NULL) {
 		error = ENOMEM;
 		goto out;
 	}
-	nvlist_add_number(req, "direction", dir);
-	nvlist_move_nvlist(req, "key", conn_res);
-	conn_res = NULL;
+	nvlist_move_nvlist(req, "key", key_nv);
 
 	/* Lookup: retrieve the connection entry. */
-	error = _npf_xfer_fd(fd, IOC_NPF_CONN_LOOKUP, req, &conn_res);
+	error = _npf_xfer_fd(fd, IOC_NPF_CONN_LOOKUP, req, &resp);
 	if (error) {
 		goto out;
 	}
@@ -1376,20 +1389,20 @@ npf_nat_lookup(int fd, int af, npf_addr_t *addr[2], in_port_t port[2],
 	/*
 	 * Get the NAT entry and extract the translated pair.
 	 */
-	nat = dnvlist_get_nvlist(conn_res, "nat", NULL);
-	if (!nat) {
-		errno = ENOENT;
+	if ((nat = dnvlist_get_nvlist(resp, "nat", NULL)) == NULL) {
+		error = ENOENT;
 		goto out;
 	}
-	if (!_npf_get_addr(nat, "oaddr", addr[0])) {
+	if (_npf_get_addr(nat, "oaddr", addr[0]) == 0 ||
+	    _npf_get_addr(nat, "taddr", addr[1]) == 0) {
 		error = EINVAL;
 		goto out;
 	}
-	port[0] = nvlist_get_number(nat, "oport");
-	port[1] = nvlist_get_number(nat, "tport");
+	port[0] = ntohs(nvlist_get_number(nat, "oport"));
+	port[1] = ntohs(nvlist_get_number(nat, "tport"));
 out:
-	if (conn_res) {
-		nvlist_destroy(conn_res);
+	if (resp) {
+		nvlist_destroy(resp);
 	}
 	if (req) {
 		nvlist_destroy(req);
@@ -1397,57 +1410,60 @@ out:
 	return error;
 }
 
-typedef struct {
-	npf_addr_t	addr[2];
-	in_port_t	port[2];
-	uint16_t	alen;
-	uint16_t	proto;
-} npf_endpoint_t;
+int
+npf_nat_lookup(int fd, int af, npf_addr_t *addr[2], in_port_t port[2],
+    int proto, int di __unused)
+{
+	int error;
+
+	port[0] = ntohs(port[0]); port[1] = ntohs(port[1]);
+	error = _npf_conn_lookup(fd, af, addr, port, proto, NULL, 0);
+	port[0] = htons(port[0]); port[1] = htons(port[1]);
+	return error;
+}
 
 static bool
-npf_endpoint_load(const nvlist_t *conn, const char *name, npf_endpoint_t *ep)
+npf_connkey_handle(const nvlist_t *key_nv, npf_connpoint_t *ep)
 {
-	const nvlist_t *ed = dnvlist_get_nvlist(conn, name, NULL);
+	unsigned alen1, alen2;
 
-	if (!ed)
+	alen1 = _npf_get_addr(key_nv, "saddr", &ep->addr[0]);
+	alen2 = _npf_get_addr(key_nv, "daddr", &ep->addr[1]);
+	if (alen1 == 0 || alen1 != alen2) {
 		return false;
-	if (!(ep->alen = _npf_get_addr(ed, "saddr", &ep->addr[0])))
-		return false;
-	if (ep->alen != _npf_get_addr(ed, "daddr", &ep->addr[1]))
-		return false;
-	ep->port[0] = nvlist_get_number(ed, "sport");
-	ep->port[1] = nvlist_get_number(ed, "dport");
-	ep->proto = nvlist_get_number(ed, "proto");
+	}
+	ep->alen = alen1;
+	ep->port[0] = ntohs(nvlist_get_number(key_nv, "sport"));
+	ep->port[1] = ntohs(nvlist_get_number(key_nv, "dport"));
+	ep->proto = nvlist_get_number(key_nv, "proto");
 	return true;
 }
 
 static void
 npf_conn_handle(const nvlist_t *conn, npf_conn_func_t func, void *arg)
 {
-	const nvlist_t *nat;
-	npf_endpoint_t ep;
-	uint16_t tport;
+	const nvlist_t *key_nv, *nat_nv;
 	const char *ifname;
+	npf_connpoint_t ep;
+
+	memset(&ep, 0, sizeof(npf_connpoint_t));
 
 	ifname = dnvlist_get_string(conn, "ifname", NULL);
-	if (!ifname)
-		goto err;
-
-	if ((nat = dnvlist_get_nvlist(conn, "nat", NULL)) != NULL) {
-		tport = nvlist_get_number(nat, "tport");
-	} else {
-		tport = 0;
-	}
-	if (!npf_endpoint_load(conn, "forw-key", &ep)) {
+	key_nv = dnvlist_get_nvlist(conn, "forw-key", NULL);
+	if (!npf_connkey_handle(key_nv, &ep)) {
 		goto err;
 	}
-
-	in_port_t p[] = {
-	    ntohs(ep.port[0]),
-	    ntohs(ep.port[1]),
-	    ntohs(tport)
-	};
-	(*func)((unsigned)ep.alen, ep.addr, p, ifname, arg);
+	if ((nat_nv = dnvlist_get_nvlist(conn, "nat", NULL)) != NULL) {
+		if (_npf_get_addr(nat_nv, "taddr", &ep.addr[2]) != ep.alen) {
+			goto err;
+		}
+		ep.port[2] = ntohs(nvlist_get_number(nat_nv, "tport"));
+	}
+	/*
+	 * XXX: add 'proto' and 'flow'; perhaps expand and pass the
+	 * whole to npf_connpoint_t?
+	 */
+	(*func)((unsigned)ep.alen, ep.addr, ep.port, ifname, arg);
 err:
 	return;
 }
