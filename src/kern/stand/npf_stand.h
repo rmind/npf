@@ -333,10 +333,11 @@ npfkern_percpu_foreach(percpu_t *pc, percpu_callback_t cb, void *arg)
 
 #define	percpu_t			percpu_t
 #define	percpu_alloc(s)			npfkern_percpu_alloc(s)
-#define	percpu_free(p, s)		npfkern_percpu_free(p, s)
+#define	percpu_free(p, s)		npfkern_percpu_free((p), (s))
 #define	percpu_getref(p)		npfkern_percpu_getref(p)
 #define	percpu_putref(p)		assert(p)
-#define	percpu_foreach(p, f, a)		npfkern_percpu_foreach(p, f, a)
+#define	percpu_foreach_xcall(p,i,f,a)	npfkern_percpu_foreach((p), (f), (a))
+#define	XC_HIGHPRI_IPL(x)		0
 
 /*
  * Random number generator.

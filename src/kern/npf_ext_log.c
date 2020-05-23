@@ -139,10 +139,9 @@ npf_log(npf_cache_t *npc, void *meta, const npf_match_info_t *mi, int *decision)
 		return true;
 	}
 
-	/* Pass through BPF. */
-	ifp->if_opackets++;
-	ifp->if_obytes += m->m_pkthdr.len;
+	if_statadd2(ifp, if_opackets, 1, if_obytes, m->m_pkthdr.len);
 	if (ifp->if_bpf) {
+		/* Pass through BPF. */
 		bpf_mtap2(ifp->if_bpf, &hdr, NPFLOG_HDRLEN, m, BPF_D_OUT);
 	}
 	if_put(ifp, &psref);
