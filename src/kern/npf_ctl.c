@@ -829,7 +829,7 @@ npfctl_run_op(npf_t *npf, unsigned op, const nvlist_t *req, nvlist_t *resp)
 	int error;
 
 	ver = dnvlist_get_number(req, "version", UINT64_MAX);
-	if (__predict_false(ver != NPF_VERSION)) {
+	if (__predict_false(ver != UINT64_MAX && ver != NPF_VERSION)) {
 		return EPROGMISMATCH;
 	}
 	switch (op) {

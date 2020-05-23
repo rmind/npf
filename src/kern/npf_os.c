@@ -269,7 +269,15 @@ npf_dev_ioctl(dev_t dev, u_long cmd, void *data, int flag, lwp_t *l)
 
 	error = nvlist_copyin(data, &req, NPF_IOCTL_DATA_LIMIT);
 	if (__predict_false(error)) {
+#ifdef __NetBSD__
+		/* Until the version bump. */
+		if (cmd != IOC_NPF_SAVE) {
+			return error;
+		}
+		req = nvlist_create(0);
+#else
 		return error;
+#endif
 	}
 	resp = nvlist_create(0);
 	if ((error = npfctl_run_op(npf, cmd, req, resp)) == 0) {

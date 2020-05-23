@@ -351,7 +351,7 @@ npf_table_create(const char *name, u_int tid, int type,
 
 	switch (type) {
 	case NPF_TABLE_LPM:
-		t->t_lpm = lpm_create();
+		t->t_lpm = lpm_create(KM_NOSLEEP);
 		if (t->t_lpm == NULL) {
 			goto out;
 		}
