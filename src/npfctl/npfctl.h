@@ -186,7 +186,8 @@ void		npfctl_bpf_destroy(npf_bpf_t *);
 void		npfctl_bpf_group_enter(npf_bpf_t *, bool);
 void		npfctl_bpf_group_exit(npf_bpf_t *);
 
-void		npfctl_bpf_proto(npf_bpf_t *, sa_family_t, int);
+void		npfctl_bpf_ipver(npf_bpf_t *, sa_family_t);
+void		npfctl_bpf_proto(npf_bpf_t *, unsigned);
 void		npfctl_bpf_cidr(npf_bpf_t *, u_int, sa_family_t,
 		    const npf_addr_t *, const npf_netmask_t);
 void		npfctl_bpf_ports(npf_bpf_t *, u_int, in_port_t, in_port_t);
@@ -220,11 +221,11 @@ void		npfctl_build_rproc(const char *, npfvar_t *);
 void		npfctl_build_group(const char *, int, const char *, bool);
 void		npfctl_build_group_end(void);
 void		npfctl_build_rule(uint32_t, const char *, sa_family_t,
-		    const opt_proto_t *, const filt_opts_t *,
+		    const npfvar_t *, const filt_opts_t *,
 		    const char *, const char *);
 void		npfctl_build_natseg(int, int, unsigned, const char *,
 		    const addr_port_t *, const addr_port_t *,
-		    const opt_proto_t *, const filt_opts_t *, unsigned);
+		    const npfvar_t *, const filt_opts_t *, unsigned);
 void		npfctl_build_maprset(const char *, int, const char *);
 void		npfctl_build_table(const char *, u_int, const char *);
 
