@@ -71,18 +71,18 @@ struct npfvar;
 typedef struct npfvar npfvar_t;
 
 npfvar_t *	npfvar_create(void);
-npfvar_t *	npfvar_create_element(int, const void *, size_t);
-npfvar_t *	npfvar_create_from_string(int, const char *);
+npfvar_t *	npfvar_create_element(unsigned, const void *, size_t);
+npfvar_t *	npfvar_create_from_string(unsigned, const char *);
 npfvar_t *	npfvar_lookup(const char *);
 const char *	npfvar_type(size_t);
 void		npfvar_add(npfvar_t *, const char *);
-npfvar_t *	npfvar_add_element(npfvar_t *, int, const void *, size_t);
+npfvar_t *	npfvar_add_element(npfvar_t *, unsigned, const void *, size_t);
 npfvar_t *	npfvar_add_elements(npfvar_t *, npfvar_t *);
 void		npfvar_destroy(npfvar_t *);
 
 char *		npfvar_expand_string(const npfvar_t *);
 size_t		npfvar_get_count(const npfvar_t *);
 int		npfvar_get_type(const npfvar_t *, size_t);
-void *		npfvar_get_data(const npfvar_t *, int, size_t);
+void *		npfvar_get_data(const npfvar_t *, unsigned, size_t);
 
 #endif
