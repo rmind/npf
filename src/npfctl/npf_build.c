@@ -864,27 +864,31 @@ npfctl_build_natseg(int sd, int type, unsigned mflags, const char *ifname,
 		flags = NPF_NAT_STATIC;
 
 		/* Note: translation address/network cannot be a table. */
-		am1 = npfctl_get_singlefam(ap1->ap_netaddr);
-		am2 = npfctl_get_singlefam(ap2->ap_netaddr);
+		if (type & NPF_NATIN) {
+			am1 = npfctl_get_singlefam(ap1->ap_netaddr);
+		}
+		if (type & NPF_NATOUT) {
+			am2 = npfctl_get_singlefam(ap2->ap_netaddr);
+		}
 
 		/* Validate the algorithm. */
 		switch (algo) {
 		case NPF_ALGO_NPT66:
-			if (am1->fam_mask != am2->fam_mask) {
+			if (!binat || am1->fam_mask != am2->fam_mask) {
 				yyerror("asymmetric NPTv6 is not supported");
 			}
 			adj = npfctl_npt66_calcadj(am1->fam_mask,
 			    &am1->fam_addr, &am2->fam_addr);
 			break;
 		case NPF_ALGO_NETMAP:
-			if (am1->fam_mask != am2->fam_mask) {
+			if (binat && am1->fam_mask != am2->fam_mask) {
 				yyerror("net-to-net mapping using the "
 				    "NETMAP algorithm must be 1:1");
 			}
 			break;
 		case NPF_ALGO_NONE:
-			if (am1->fam_mask != NPF_NO_NETMASK ||
-			    am2->fam_mask != NPF_NO_NETMASK) {
+			if ((am1 && am1->fam_mask != NPF_NO_NETMASK) ||
+			    (am2 && am2->fam_mask != NPF_NO_NETMASK)) {
 				yyerror("static net-to-net translation "
 				    "must have an algorithm specified");
 			}

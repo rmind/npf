@@ -71,7 +71,7 @@ typedef struct {
 	FILE *		fp;
 	long		fpos;
 	long		fposln;
-	unsigned	level;
+	int		glevel;
 
 	unsigned	flags;
 	uint32_t	curmark;
@@ -87,6 +87,7 @@ npfctl_show_init(void)
 {
 	static npf_conf_info_t stdout_ctx;
 	memset(&stdout_ctx, 0, sizeof(npf_conf_info_t));
+	stdout_ctx.glevel = -1;
 	stdout_ctx.fp = stdout;
 	return &stdout_ctx;
 }
@@ -134,21 +135,14 @@ list_join_free(elem_list_t *list, const bool use_br, const char *sep)
 static void
 print_indent(npf_conf_info_t *ctx, unsigned level)
 {
-	if (level < ctx->level) {
+	if (ctx->glevel >= 0 && level <= (unsigned)ctx->glevel) {
 		/*
 		 * Level decrease -- end of the group.
 		 * Print the group closing curly bracket.
 		 */
-		ctx->fpos += fprintf(ctx->fp, "}\n");
+		ctx->fpos += fprintf(ctx->fp, "}\n\n");
+		ctx->glevel = -1;
 	}
-	if (level == 0) {
-		/*
-		 * Group level -- separate groups by a trailing new line.
-		 */
-		print_linesep(ctx);
-	}
-	ctx->level = level;
-
 	while (level--) {
 		ctx->fpos += fprintf(ctx->fp, "\t");
 	}
@@ -516,7 +510,7 @@ npfctl_print_filter(npf_conf_info_t *ctx, nl_rule_t *rl)
 }
 
 static void
-npfctl_print_rule(npf_conf_info_t *ctx, nl_rule_t *rl)
+npfctl_print_rule(npf_conf_info_t *ctx, nl_rule_t *rl, unsigned level)
 {
 	const uint32_t attr = npf_rule_getattr(rl);
 	const char *rproc, *ifname, *name;
@@ -543,6 +537,7 @@ npfctl_print_rule(npf_conf_info_t *ctx, nl_rule_t *rl)
 	if ((attr & NPF_DYNAMIC_GROUP) == NPF_RULE_GROUP) {
 		/* Group; done. */
 		ctx->fpos += fprintf(ctx->fp, "{ ");
+		ctx->glevel = level;
 		goto out;
 	}
 
@@ -749,7 +744,7 @@ npfctl_config_show(int fd)
 		i = NPF_ITER_BEGIN;
 		while ((rl = npf_rule_iterate(ncf, &i, &level)) != NULL) {
 			print_indent(ctx, level);
-			npfctl_print_rule(ctx, rl);
+			npfctl_print_rule(ctx, rl, level);
 		}
 		print_indent(ctx, 0);
 	}
@@ -775,7 +770,7 @@ npfctl_ruleset_show(int fd, const char *ruleset_name)
 	}
 	i = NPF_ITER_BEGIN;
 	while ((rl = npf_rule_iterate(ncf, &i, &level)) != NULL) {
-		npfctl_print_rule(ctx, rl);
+		npfctl_print_rule(ctx, rl, 0);
 	}
 	npf_config_destroy(ncf);
 	return error;
