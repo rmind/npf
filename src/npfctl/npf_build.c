@@ -303,7 +303,7 @@ npfctl_build_vars(npf_bpf_t *ctx, sa_family_t family, npfvar_t *vars, int opts)
 {
 	npfctl_bpf_group_enter(ctx, (opts & MATCH_INVERT) != 0);
 	for (unsigned i = 0; i < npfvar_get_count(vars); i++) {
-		const unsigned type = npfvar_get_type(vars, 0);
+		const unsigned type = npfvar_get_type(vars, i);
 		void *data = npfvar_get_data(vars, type, i);
 
 		assert(data != NULL);
@@ -780,7 +780,7 @@ npfctl_build_nat(int type, const char *ifname, const addr_port_t *ap,
 static void
 npfctl_dnat_check(const addr_port_t *ap, const unsigned algo)
 {
-	int type = npfvar_get_type(ap->ap_netaddr, 0);
+	const unsigned type = npfvar_get_type(ap->ap_netaddr, 0);
 	fam_addr_mask_t *am;
 
 	switch (algo) {
