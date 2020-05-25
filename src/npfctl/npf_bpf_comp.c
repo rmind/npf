@@ -69,7 +69,7 @@
  *
  * Grouping
  *
- *	Filters can have groups, which have a meaning of logical
+ *	Filters can have groups, which have an effect of logical
  *	disjunction, e.g.:
  *
  *		A and B and (C or D)
@@ -132,7 +132,7 @@ struct npf_bpf {
 	 * The current group offset (counted in BPF instructions)
 	 * and block number at the start of the group.
 	 */
-	bool			ingroup;
+	unsigned		ingroup;
 	bool			invert;
 	unsigned		goff;
 	unsigned		gblock;
@@ -321,8 +321,8 @@ npfctl_bpf_group_enter(npf_bpf_t *ctx, bool invert)
 
 	ctx->goff = bp->bf_len;
 	ctx->gblock = ctx->nblocks;
-	ctx->ingroup = true;
 	ctx->invert = invert;
+	ctx->ingroup++;
 }
 
 void
@@ -332,6 +332,7 @@ npfctl_bpf_group_exit(npf_bpf_t *ctx)
 	const size_t curoff = bp->bf_len;
 
 	assert(ctx->ingroup);
+	ctx->ingroup--;
 
 	/* If there are no blocks or only one - nothing to do. */
 	if (!ctx->invert && (ctx->nblocks - ctx->gblock) <= 1) {
@@ -369,9 +370,9 @@ npfctl_bpf_group_exit(npf_bpf_t *ctx)
 }
 
 static void
-fetch_l3(npf_bpf_t *ctx, sa_family_t af, u_int flags)
+fetch_l3(npf_bpf_t *ctx, sa_family_t af, unsigned flags)
 {
-	u_int ver;
+	unsigned ver;
 
 	switch (af) {
 	case AF_INET:
@@ -396,7 +397,7 @@ fetch_l3(npf_bpf_t *ctx, sa_family_t af, u_int flags)
 	if ((ctx->flags & FETCHED_L3) == 0 || (af && ctx->af == 0)) {
 		const uint8_t jt = ver ? 0 : JUMP_MAGIC;
 		const uint8_t jf = ver ? JUMP_MAGIC : 0;
-		const bool ingroup = ctx->ingroup;
+		const bool ingroup = ctx->ingroup != 0;
 		const bool invert = ctx->invert;
 
 		/*
@@ -465,19 +466,20 @@ bm_invert_checkpoint(npf_bpf_t *ctx, const unsigned opts)
 }
 
 /*
+ * npfctl_bpf_ipver: match the IP version.
+ */
+void
+npfctl_bpf_ipver(npf_bpf_t *ctx, sa_family_t af)
+{
+	fetch_l3(ctx, af, 0);
+}
+
+/*
  * npfctl_bpf_proto: code block to match IP version and L4 protocol.
  */
 void
-npfctl_bpf_proto(npf_bpf_t *ctx, sa_family_t af, int proto)
+npfctl_bpf_proto(npf_bpf_t *ctx, unsigned proto)
 {
-	assert(af != AF_UNSPEC || proto != -1);
-
-	/* Note: fails if IP version does not match. */
-	fetch_l3(ctx, af, 0);
-	if (proto == -1) {
-		return;
-	}
-
 	struct bpf_insn insns_proto[] = {
 		/* A <- L4 protocol; A == expected-protocol? */
 		BPF_STMT(BPF_LD+BPF_W+BPF_MEM, BPF_MW_L4PROTO),
@@ -645,7 +647,7 @@ npfctl_bpf_tcpfl(npf_bpf_t *ctx, uint8_t tf, uint8_t tf_mask)
 
 	if ((ctx->flags & CHECKED_L4_PROTO) == 0) {
 		const unsigned jf = usingmask ? 3 : 2;
-		assert(ctx->ingroup == false);
+		assert(ctx->ingroup == 0);
 
 		/*
 		 * A <- L4 protocol; A == TCP?  If not, jump out.
@@ -687,7 +689,7 @@ npfctl_bpf_tcpfl(npf_bpf_t *ctx, uint8_t tf, uint8_t tf_mask)
 
 /*
  * npfctl_bpf_icmp: code block to match ICMP type and/or code.
- * Note: suitable both for the ICMPv4 and ICMPv6.
+ * Note: suitable for both the ICMPv4 and ICMPv6.
  */
 void
 npfctl_bpf_icmp(npf_bpf_t *ctx, int type, int code)

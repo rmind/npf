@@ -259,6 +259,7 @@ _npf_xfer_fd(int fd, unsigned long cmd, nvlist_t *req, nvlist_t **resp)
 		goto err;
 	}
 	switch (st.st_mode & S_IFMT) {
+#if !defined(__NetBSD__)
 	case S_IFSOCK:
 		if (nvlist_send(fd, req) == -1) {
 			goto err;
@@ -267,6 +268,7 @@ _npf_xfer_fd(int fd, unsigned long cmd, nvlist_t *req, nvlist_t **resp)
 			goto err;
 		}
 		break;
+#endif
 #if !defined(_NPF_STANDALONE)
 	case S_IFBLK:
 	case S_IFCHR:

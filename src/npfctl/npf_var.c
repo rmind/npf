@@ -27,8 +27,14 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
+/*
+ * NPF variables are used to build the intermediate representation (IR)
+ * of the configuration grammar.  They represent primitive types (strings,
+ * numbers, etc) as well as complex types (address and mask, table, etc).
+ */
+
 #include <sys/cdefs.h>
-__RCSID("$NetBSD: npf_var.c,v 1.12 2019/01/19 21:19:32 rmind Exp $");
+__RCSID("$NetBSD$");
 
 #include <stdlib.h>
 #include <string.h>

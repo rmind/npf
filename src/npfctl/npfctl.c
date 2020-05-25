@@ -34,14 +34,17 @@ __RCSID("$NetBSD$");
 #include <sys/stat.h>
 #include <sys/socket.h>
 #include <sys/mman.h>
+#include <sys/un.h>
 #ifdef __NetBSD__
 #include <sys/module.h>
 #endif
 
 #include <stdio.h>
+#include <string.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <errno.h>
 #include <err.h>
 
 #include "npfctl.h"

@@ -249,3 +249,5 @@ any			return ANY;
 [ \t]		/* eat whitespace */
 
 :		return COLON;
+
+.		return INVALID;
