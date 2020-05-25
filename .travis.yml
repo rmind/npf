@@ -57,6 +57,6 @@ script:
   # Build and install the NPF packages.
   - (cd pkg && make deb && sudo dpkg -i ../libnpf*.deb ../npfctl*.deb)
   # Setup the npftest configuration.
-  - (cd src/npftest && make && npfctl debug npftest.conf /tmp/npf.nvlist)
+  - (cd src/npftest && make && npfctl debug -c npftest.conf -o /tmp/npf.nvlist)
   # Run the tests.
   - (cd src/npftest && ./npftest -c /tmp/npf.nvlist -t)

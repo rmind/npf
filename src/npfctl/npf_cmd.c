@@ -455,8 +455,11 @@ npfctl_conn_print(unsigned alen, const npf_addr_t *a, const in_port_t *p,
 	fprintf(fp, "%-10s ", ifname ? ifname : "-");
 	if (nat_conn) {
 		addrstr = npfctl_print_addrmask(alen, fmt, &a[2], NPF_NO_NETMASK);
-		fprintf(fp, "%s:%d", addrstr, p[2]);
+		fprintf(fp, "%s", addrstr);
 		free(addrstr);
+		if (p[2]) {
+			fprintf(fp, ":%d", p[2]);
+		}
 	}
 	fputc('\n', fp);
 	return 1;

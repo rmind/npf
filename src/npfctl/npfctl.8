@@ -85,6 +85,10 @@ The configuration file at
 .Pa /etc/npf.conf
 will be used unless a file is specified by
 .Ar path .
+The
+.Ar path
+may also be set to "-" for reading from
+.Em stdin .
 .\" ---
 .It Ic rule Ar name Ic add Aq rule-syntax
 Add a rule to a dynamic ruleset specified by
@@ -159,11 +163,12 @@ or
 If not specified, the type of the table being replaced will be used.
 .El
 .\" ---
-.It Ic save
-Save the active configuration and a snapshot of the current connections.
+.It Ic save Op Ar path
+Save the active configuration with a snapshot of the current connections.
 The data will be stored in the
 .Pa /var/db/npf.db
-file.
+file unless a file is specified by
+.Ar path .
 Administrator may want to stop the packet inspection before saving.
 .It Ic load
 Load the saved configuration file and the connections from the file.
@@ -171,9 +176,20 @@ Note that any existing connections will be destroyed.
 Administrator may want to start packet inspection after the load.
 .It Ic stats
 Print various statistics.
-.It Ic debug
-Process the configuration file, print the byte-code of each rule
-and dump the raw configuration.
+.It Ic debug ( Fl a | Fl b Ar binary-config | Fl c Ar config ) \
+Oo Fl o Ar outfile Oc
+Process the active configuration (if
+.Fl a
+is set), the given binary configuration (if
+.Fl b
+is set) or the given the plain configuration (if
+.Fl c
+is set).
+Print the byte-code of each rule and the encoded configuration data.
+Also, if
+.Fl o
+is set, write the binary configuration data into the given file.
+.Pp
 This is primarily for developer use.
 .It Ic list Oo Fl 46hNnW Oc Op Fl i Ar ifname
 Display a list of tracked connections:
