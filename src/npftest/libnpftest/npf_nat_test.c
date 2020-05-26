@@ -16,7 +16,7 @@
 
 #define	NPF_BINAT	(NPF_NATIN | NPF_NATOUT)
 
-#define	RANDOM_PORT	46759
+#define	RANDOM_PORT	18791
 
 static const struct test_case {
 	const char *	src;
@@ -193,7 +193,7 @@ checkresult(bool verbose, unsigned i, struct mbuf *m, ifnet_t *ifp, int error)
 		npf_inet_ntop(af, npc.npc_ips[NPF_SRC], sbuf, sizeof(sbuf));
 		npf_inet_ntop(af, npc.npc_ips[NPF_DST], dbuf, sizeof(dbuf));
 
-		printf("\tpost-translation:");
+		printf("\tpost-translation: ");
 		printf("src %s (%d) ", sbuf, ntohs(uh->uh_sport));
 		printf("dst %s (%d)\n", dbuf, ntohs(uh->uh_dport));
 	}

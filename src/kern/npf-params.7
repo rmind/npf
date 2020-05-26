@@ -119,12 +119,12 @@ Default: 240.
 .El
 .\" ---
 .It Li portmap.min_port
-Lower bound of the port range used when selecting the port for dynamic NAT
-with port translation enabled.
-Default: 1024 (also the lowest allowed value).
+Lower bound of the port range used when selecting the port
+for dynamic NAT with port translation enabled.
+Default: 1024 (inclusive; also the lowest allowed value).
 .It Li portmap.max_port
 Upper bound of the port range as described above.
-Default: 65535 (also the highest allowed value).
+Default: 49151 (inclusive; 65535 is the highest allowed value).
 .\" ---
 .El
 .\" -----
