@@ -121,7 +121,7 @@ npf_portmap_init(npf_t *npf)
 		{
 			"portmap.max_port",
 			&pm->max_port,
-			.default_val = NPF_PORTMAP_MAXPORT,
+			.default_val = 49151, // RFC 6335
 			.min = 1024, .max = 65535
 		}
 	};
@@ -472,25 +472,32 @@ npf_portmap_flush(npf_portmap_t *pm)
 in_port_t
 npf_portmap_get(npf_portmap_t *pm, int alen, const npf_addr_t *addr)
 {
-	const unsigned port_delta = pm->max_port - pm->min_port;
+	const unsigned min_port = atomic_load_relaxed(&pm->min_port);
+	const unsigned max_port = atomic_load_relaxed(&pm->max_port);
+	const unsigned port_delta = max_port - min_port + 1;
 	unsigned bit, target;
 	bitmap_t *bm;
 
+	/* Sanity check: the user might set incorrect parameters. */
+	if (__predict_false(min_port > max_port)) {
+		return 0;
+	}
+
 	bm = npf_portmap_autoget(pm, alen, addr);
-	if (bm == NULL) {
+	if (__predict_false(bm == NULL)) {
 		/* No memory. */
 		return 0;
 	}
 
 	/* Randomly select a port. */
-	target = pm->min_port + (cprng_fast32() % port_delta);
+	target = min_port + (cprng_fast32() % port_delta);
 	bit = target;
 next:
 	if (bitmap_set(bm, bit)) {
 		/* Success. */
 		return htons(bit);
 	}
-	bit = pm->min_port + ((bit + 1) % port_delta);
+	bit = min_port + ((bit + 1) % port_delta);
 	if (target != bit) {
 		/* Next.. */
 		goto next;
