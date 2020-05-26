@@ -45,7 +45,7 @@ LDFLAGS+=	-lpthread -lnv -lpcap -lcdb -lnpfkern-dbg
 OBJS=		npftest.o npfstream.o
 
 OBJS+=		libnpftest/npf_bpf_test.o
-OBJS+=		libnpftest/npf_conn_test.o
+OBJS+=		libnpftest/npf_gc_test.o
 OBJS+=		libnpftest/npf_nat_test.o
 OBJS+=		libnpftest/npf_nbuf_test.o
 OBJS+=		libnpftest/npf_perf_test.o

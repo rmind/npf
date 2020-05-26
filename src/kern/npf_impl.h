@@ -244,14 +244,14 @@ struct npf {
 	unsigned		ifmap_off;
 	kmutex_t		ifmap_lock;
 
-	/* Associated worker thread. */
-	unsigned		worker_id;
-	void *			worker_entry;
-	bool			sync_registered;
-
 	/* List of extensions and its lock. */
 	LIST_HEAD(, npf_ext)	ext_list;
 	kmutex_t		ext_lock;
+
+	/* Associated worker information. */
+	unsigned		worker_flags;
+	LIST_ENTRY(npf)		worker_entry;
+	npf_workfunc_t		worker_funcs[NPF_MAX_WORKS];
 
 	/* Statistics. */
 	percpu_t *		stats_percpu;
@@ -302,9 +302,10 @@ bool		npf_active_p(void);
 
 int		npf_worker_sysinit(unsigned);
 void		npf_worker_sysfini(void);
+int		npf_worker_addfunc(npf_t *, npf_workfunc_t);
+void		npf_worker_enlist(npf_t *);
+void		npf_worker_discharge(npf_t *);
 void		npf_worker_signal(npf_t *);
-void		npf_worker_register(npf_t *, npf_workfunc_t);
-void		npf_worker_unregister(npf_t *, npf_workfunc_t);
 
 int		npfctl_run_op(npf_t *, unsigned, const nvlist_t *, nvlist_t *);
 int		npfctl_table(npf_t *, void *);

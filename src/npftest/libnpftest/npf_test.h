@@ -121,8 +121,8 @@ bool		npf_table_test(bool, void *, size_t);
 bool		npf_state_test(bool);
 
 bool		npf_rule_test(bool);
-bool		npf_conn_test(bool);
 bool		npf_nat_test(bool);
+bool		npf_gc_test(bool);
 
 int		npf_inet_pton(int, const char *, void *);
 const char *	npf_inet_ntop(int, const void *, char *, socklen_t);

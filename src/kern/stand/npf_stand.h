@@ -171,6 +171,11 @@ again:
 #define	atomic_store_relaxed(x, y)	\
     atomic_store_explicit((x), (y), memory_order_relaxed)
 
+#define	atomic_load_acquire(x)		\
+    atomic_load_explicit((x), memory_order_acquire)
+#define	atomic_store_release(x, y)	\
+    atomic_store_explicit((x), (y), memory_order_release)
+
 /*
  * Threads.
  */
