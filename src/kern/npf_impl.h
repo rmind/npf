@@ -253,6 +253,7 @@ struct npf {
 	/* Associated worker information. */
 	unsigned		worker_flags;
 	LIST_ENTRY(npf)		worker_entry;
+	unsigned		worker_wait_time;
 	npf_workfunc_t		worker_funcs[NPF_MAX_WORKS];
 
 	/* Statistics. */
