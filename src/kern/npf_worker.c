@@ -53,7 +53,8 @@ typedef struct npf_worker {
 	lwp_t *			worker[];
 } npf_workerinfo_t;
 
-#define	NPF_GC_MAXWAIT		(10 * 1000) // 10 seconds
+#define	NPF_GC_MINWAIT		(10)		// 10 ms
+#define	NPF_GC_MAXWAIT		(10 * 1000)	// 10 sec
 
 /*
  * Flags for the npf_t::worker_flags field.
@@ -250,7 +251,8 @@ process_npf_instance(npf_workerinfo_t *winfo, npf_t *npf)
 		}
 		work(npf);
 	}
-	return NPF_GC_MAXWAIT;
+
+	return MAX(MIN(npf->worker_wait_time, NPF_GC_MAXWAIT), NPF_GC_MINWAIT);
 }
 
 /*
