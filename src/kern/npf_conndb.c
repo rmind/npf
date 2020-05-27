@@ -116,7 +116,7 @@ npf_conndb_sysinit(npf_t *npf)
 		},
 		{
 			"gc.interval_max",
-			&params->interval_min,
+			&params->interval_max,
 			.default_val = 5000, // ms
 			.min = 10, .max = 10000
 		},
