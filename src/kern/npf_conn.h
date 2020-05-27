@@ -115,7 +115,7 @@ typedef struct npf_connkey {
 } npf_connkey_t;
 
 unsigned	npf_conn_conkey(const npf_cache_t *, npf_connkey_t *,
-		    const npf_flow_t);
+		    const unsigned, const npf_flow_t);
 npf_connkey_t *	npf_conn_getforwkey(npf_conn_t *);
 npf_connkey_t *	npf_conn_getbackkey(npf_conn_t *, unsigned);
 void		npf_conn_adjkey(npf_connkey_t *, const npf_addr_t *,

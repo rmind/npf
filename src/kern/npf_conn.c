@@ -332,7 +332,7 @@ npf_conn_lookup(const npf_cache_t *npc, const unsigned di, npf_flow_t *flow)
 	npf_connkey_t key;
 
 	/* Construct a key and lookup for a connection in the store. */
-	if (!npf_conn_conkey(npc, &key, NPF_FLOW_FORW)) {
+	if (!npf_conn_conkey(npc, &key, di, NPF_FLOW_FORW)) {
 		return NULL;
 	}
 	con = npf_conndb_lookup(npf, &key, flow);
@@ -472,8 +472,8 @@ npf_conn_establish(npf_cache_t *npc, const unsigned di, bool global)
 	 * Construct "forwards" and "backwards" keys.  Also, set the
 	 * interface ID for this connection (unless it is global).
 	 */
-	if (!npf_conn_conkey(npc, fw, NPF_FLOW_FORW) ||
-	    !npf_conn_conkey(npc, bk, NPF_FLOW_BACK)) {
+	if (!npf_conn_conkey(npc, fw, di, NPF_FLOW_FORW) ||
+	    !npf_conn_conkey(npc, bk, di ^ PFIL_ALL, NPF_FLOW_BACK)) {
 		npf_conn_destroy(npf, con);
 		return NULL;
 	}
@@ -572,16 +572,12 @@ npf_conn_setnat(const npf_cache_t *npc, npf_conn_t *con,
 	npf_addr_t *taddr;
 	in_port_t tport;
 	uint32_t flags;
+	unsigned bdi;
 
 	KASSERT(atomic_load_relaxed(&con->c_refcnt) > 0);
 
 	npf_nat_gettrans(nt, &taddr, &tport);
 	KASSERT(ntype == NPF_NATOUT || ntype == NPF_NATIN);
-
-	/* Construct a "backwards" key. */
-	if (!npf_conn_conkey(npc, &key, NPF_FLOW_BACK)) {
-		return EINVAL;
-	}
 
 	/* Acquire the lock and check for the races. */
 	mutex_enter(&con->c_lock);
@@ -598,6 +594,13 @@ npf_conn_setnat(const npf_cache_t *npc, npf_conn_t *con,
 		mutex_exit(&con->c_lock);
 		npf_stats_inc(npc->npc_ctx, NPF_STAT_RACE_NAT);
 		return EISCONN;
+	}
+
+	/* Construct the new "backwards" key. */
+	bdi = (flags ^ PFIL_ALL) & PFIL_ALL;
+	if (!npf_conn_conkey(npc, &key, bdi, NPF_FLOW_BACK)) {
+		mutex_exit(&con->c_lock);
+		return EINVAL;
 	}
 
 	/* Remove the "backwards" key. */
