@@ -49,6 +49,26 @@ struct npf_paraminfo {
 	thmap_t *		map;
 };
 
+static inline void
+npf_param_general_register(npf_t *npf)
+{
+	npf_param_t param_map[] = {
+		{
+			"ip4.reassembly",
+			&npf->ip4_reassembly,
+			.default_val = 0, // false
+			.min = 0, .max = 1
+		},
+		{
+			"ip6.reassembly",
+			&npf->ip6_reassembly,
+			.default_val = 0, // false
+			.min = 0, .max = 1
+		},
+	};
+	npf_param_register(npf, param_map, __arraycount(param_map));
+}
+
 void
 npf_param_init(npf_t *npf)
 {
@@ -57,6 +77,9 @@ npf_param_init(npf_t *npf)
 	paraminfo = kmem_zalloc(sizeof(npf_paraminfo_t), KM_SLEEP);
 	paraminfo->map = thmap_create(0, NULL, THMAP_NOCOPY);
 	npf->paraminfo = paraminfo;
+
+	/* Register some general parameters. */
+	npf_param_general_register(npf);
 }
 
 void

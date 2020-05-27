@@ -54,6 +54,20 @@ Default: 1.
 .El
 .\" ---
 .Bl -tag -width "123456"
+.It Li ip4.reassembly
+Perform IPv4 reassembly before inspecting the packet.
+Fragmentation is considered very harmful, therefore disabled by default.
+However, while the packet should generally be reassembled at the receiver,
+reassembly by the packet filer might be necessary in order to perform state
+tracking.
+Default: 0.
+.It Li ip6.reassembly
+Perform IPv6 reassembly before inspecting the packet.
+Discouraged in general but not prohibited by RFC 8200.
+Default: 0.
+.El
+.\" ---
+.Bl -tag -width "123456"
 .It Li gc.step
 Number of connection state items to process in one garbage collection
 (G/C) cycle.
