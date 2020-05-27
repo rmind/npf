@@ -88,10 +88,16 @@ npf_reassembly(npf_t *npf, npf_cache_t *npc, bool *mff)
 	*mff = false;
 	m = nbuf_head_mbuf(nbuf);
 
-	if (npf_iscached(npc, NPC_IP4)) {
+	if (npf_iscached(npc, NPC_IP4) && npf->ip4_reassembly) {
 		error = ip_reass_packet(&m);
-	} else if (npf_iscached(npc, NPC_IP6)) {
+	} else if (npf_iscached(npc, NPC_IP6) && npf->ip6_reassembly) {
 		error = ip6_reass_packet(&m, npc->npc_hlen);
+	} else {
+		/*
+		 * Reassembly is disabled: just pass the packet through
+		 * the ruleset for inspection.
+		 */
+		return 0;
 	}
 
 	if (error) {
@@ -170,7 +176,7 @@ npfk_packet_handler(npf_t *npf, struct mbuf **mp, ifnet_t *ifp, int di)
 	/* Cache everything. */
 	flags = npf_cache_all(&npc);
 
-	/* If error on the format, leave quickly. */
+	/* Malformed packet, leave quickly. */
 	if (flags & NPC_FMTERR) {
 		error = EINVAL;
 		goto out;

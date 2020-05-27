@@ -222,6 +222,8 @@ struct npf {
 	/* Parameters. */
 	npf_paraminfo_t *	paraminfo;
 	void *			params[NPF_PARAMS_COUNT];
+	int			ip4_reassembly;
+	int			ip6_reassembly;
 
 	/*
 	 * Connection tracking state: disabled (off) or enabled (on).
