@@ -234,14 +234,12 @@ npf_mk_singlerproc(npf_t *npf, const nvlist_t *rproc, nvlist_t *resp)
 	size_t nitems;
 	npf_rproc_t *rp;
 
-	if (!nvlist_exists_nvlist_array(rproc, "extcalls")) {
+	if ((rp = npf_rproc_create(rproc)) == NULL) {
 		NPF_ERR_DEBUG(resp);
 		return NULL;
 	}
-	rp = npf_rproc_create(rproc);
-	if (rp == NULL) {
-		NPF_ERR_DEBUG(resp);
-		return NULL;
+	if (!nvlist_exists_nvlist_array(rproc, "extcalls")) {
+		return rp;
 	}
 	extcalls = nvlist_get_nvlist_array(rproc, "extcalls", &nitems);
 	for (unsigned i = 0; i < nitems; i++) {
