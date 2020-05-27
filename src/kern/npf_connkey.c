@@ -157,6 +157,7 @@ npf_connkey_setckey(npf_connkey_t *key, unsigned ifid, unsigned di)
 		 * Note: we rely on PFIL_IN and PFIL_OUT definitions.
 		 */
 		CTASSERT(PFIL_IN == 0x1 || PFIL_OUT == 0x2);
+		KASSERT((di & ~PFIL_ALL) == 0);
 		key->ck_key[0] |= ((uint32_t)di << 18);
 	}
 }
@@ -223,7 +224,7 @@ npf_connkey_copy(const npf_connkey_t *skey, npf_connkey_t *dkey, bool invert)
  */
 unsigned
 npf_conn_conkey(const npf_cache_t *npc, npf_connkey_t *key,
-    const npf_flow_t flow)
+    const unsigned di, const npf_flow_t flow)
 {
 	const npf_conn_params_t *params = npc->npc_ctx->params[NPF_PARAMS_CONN];
 	const nbuf_t *nbuf = npc->npc_nbuf;
@@ -279,7 +280,7 @@ npf_conn_conkey(const npf_cache_t *npc, npf_connkey_t *key,
 	ret = npf_connkey_setkey(key, alen, proto, npc->npc_ips, id, flow);
 	npf_connkey_setckey(key,
 	    params->connkey_interface ? nbuf->nb_ifid : 0,
-	    /* TODO: params->connkey_direction ? di : */ 0);
+	    params->connkey_direction ? (di & PFIL_ALL) : 0);
 	return ret;
 }
 
