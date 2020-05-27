@@ -64,7 +64,7 @@ describe_tests(void)
 		"bpf\tBPF coprocessor\n"
 		"table\ttable handling\n"
 		"state\tstate handling and processing\n"
-		"conn\tconnection processing\n"
+		"gc\tconnection G/C\n"
 		"rule\trule processing\n"
 		"nat\tNAT rule processing\n");
 	exit(EXIT_SUCCESS);
@@ -309,9 +309,9 @@ main(int argc, char **argv)
 			tname_matched = true;
 		}
 
-		if (!testname || strcmp("conn", testname) == 0) {
-			ok = rumpns_npf_conn_test(verbose);
-			fail |= result("conn", ok);
+		if (!testname || strcmp("gc", testname) == 0) {
+			ok = rumpns_npf_gc_test(verbose);
+			fail |= result("gc", ok);
 			tname_matched = true;
 		}
 	}

@@ -91,7 +91,7 @@ npfk_create(int flags, const npf_mbufops_t *mbufops,
 	npf_config_init(npf);
 
 	if ((flags & NPF_NO_GC) == 0) {
-		npf_worker_register(npf, npf_conn_worker);
+		npf_worker_enlist(npf);
 	}
 	return npf;
 }
@@ -99,6 +99,8 @@ npfk_create(int flags, const npf_mbufops_t *mbufops,
 __dso_public void
 npfk_destroy(npf_t *npf)
 {
+	npf_worker_discharge(npf);
+
 	/*
 	 * Destroy the current configuration.  Note: at this point all
 	 * handlers must be deactivated; we will drain any processing.

@@ -139,7 +139,7 @@ CTASSERT(PFIL_ALL == (0x001 | 0x002));
 
 enum { CONN_TRACKING_OFF, CONN_TRACKING_ON };
 
-static int npf_conn_export(npf_t *, npf_conn_t *, nvlist_t *);
+static int	npf_conn_export(npf_t *, npf_conn_t *, nvlist_t *);
 
 /*
  * npf_conn_sys{init,fini}: initialize/destroy connection tracking.
@@ -174,9 +174,11 @@ npf_conn_init(npf_t *npf)
 	    0, 0, 0, "npfcn6pl", NULL, IPL_NET, NULL, NULL, NULL);
 
 	mutex_init(&npf->conn_lock, MUTEX_DEFAULT, IPL_NONE);
-	npf->conn_tracking = CONN_TRACKING_OFF;
+	atomic_store_relaxed(&npf->conn_tracking, CONN_TRACKING_OFF);
 	npf->conn_db = npf_conndb_create();
 	npf_conndb_sysinit(npf);
+
+	npf_worker_addfunc(npf, npf_conn_worker);
 }
 
 void
@@ -185,8 +187,7 @@ npf_conn_fini(npf_t *npf)
 	const size_t len = sizeof(npf_conn_params_t);
 
 	/* Note: the caller should have flushed the connections. */
-	KASSERT(npf->conn_tracking == CONN_TRACKING_OFF);
-	npf_worker_unregister(npf, npf_conn_worker);
+	KASSERT(atomic_load_relaxed(&npf->conn_tracking) == CONN_TRACKING_OFF);
 
 	npf_conndb_destroy(npf->conn_db);
 	pool_cache_destroy(npf->conn_cache[0]);
@@ -217,7 +218,8 @@ npf_conn_load(npf_t *npf, npf_conndb_t *ndb, bool track)
 	 */
 	mutex_enter(&npf->conn_lock);
 	if (ndb) {
-		KASSERT(npf->conn_tracking == CONN_TRACKING_OFF);
+		KASSERT(atomic_load_relaxed(&npf->conn_tracking)
+		    == CONN_TRACKING_OFF);
 		odb = atomic_load_relaxed(&npf->conn_db);
 		membar_sync();
 		atomic_store_relaxed(&npf->conn_db, ndb);
@@ -759,7 +761,7 @@ npf_conn_remove(npf_conndb_t *cd, npf_conn_t *con)
 }
 
 /*
- * npf_conn_worker: G/C to run from a worker thread.
+ * npf_conn_worker: G/C to run from a worker thread or via npfk_gc().
  */
 void
 npf_conn_worker(npf_t *npf)
