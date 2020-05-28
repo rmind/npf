@@ -347,7 +347,7 @@ npfctl_open_dev(const char *path)
 	if (lstat(path, &st) == -1) {
 		err(EXIT_FAILURE, "fstat");
 	}
-	if (st.st_mode & S_IFMT) {
+	if ((st.st_mode & S_IFMT) == S_IFSOCK) {
 		struct sockaddr_un addr;
 
 		if ((fd = socket(AF_UNIX, SOCK_STREAM, 0)) == -1) {

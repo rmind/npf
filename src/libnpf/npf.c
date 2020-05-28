@@ -279,10 +279,7 @@ _npf_xfer_fd(int fd, unsigned long cmd, nvlist_t *req, nvlist_t **resp)
 			errno = EPROGMISMATCH;
 			goto err;
 		}
-		if (nvlist_send_ioctl(fd, cmd, req) == -1) {
-			goto err;
-		}
-		if (resp && nvlist_recv_ioctl(fd, cmd, resp) == -1) {
+		if (nvlist_xfer_ioctl(fd, cmd, req, resp) == -1) {
 			goto err;
 		}
 		break;
@@ -295,12 +292,15 @@ _npf_xfer_fd(int fd, unsigned long cmd, nvlist_t *req, nvlist_t **resp)
 	}
 	return 0;
 err:
-	return errno ? errno : EINVAL;
+	return errno ? errno : EIO;
 }
 
 /*
- * npf_xfer_fd_errno: same as npf_xfer_fd(), but on successful retrieval
- * of the response nvlist, additionally inspects 'errno' and returns it.
+ * npf_xfer_fd_errno: same as npf_xfer_fd(), but:
+ *
+ * => After successful retrieval of the response, inspects it, extracts
+ *    the 'errno' value (if any) and returns it.
+ * => Destroys the response.
  */
 static int
 _npf_xfer_fd_errno(int fd, unsigned long cmd, nvlist_t *req)

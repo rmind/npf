@@ -561,18 +561,18 @@ int
 npf_conn_setnat(const npf_cache_t *npc, npf_conn_t *con,
     npf_nat_t *nt, unsigned ntype)
 {
-	static const unsigned nat_type_dimap[] = {
+	static const unsigned nat_type_which[] = {
+		/* See the description in npf_nat_which(). */
 		[NPF_NATOUT] = NPF_DST,
 		[NPF_NATIN] = NPF_SRC,
 	};
 	npf_t *npf = npc->npc_ctx;
-	npf_connkey_t key, *fw, *bk;
 	npf_conn_t *ret __diagused;
 	npf_conndb_t *conn_db;
+	npf_connkey_t *bk;
 	npf_addr_t *taddr;
 	in_port_t tport;
 	uint32_t flags;
-	unsigned bdi;
 
 	KASSERT(atomic_load_relaxed(&con->c_refcnt) > 0);
 
@@ -596,22 +596,14 @@ npf_conn_setnat(const npf_cache_t *npc, npf_conn_t *con,
 		return EISCONN;
 	}
 
-	/* Construct the new "backwards" key. */
-	bdi = (flags ^ PFIL_ALL) & PFIL_ALL;
-	if (!npf_conn_conkey(npc, &key, bdi, NPF_FLOW_BACK)) {
-		mutex_exit(&con->c_lock);
-		return EINVAL;
-	}
-
 	/* Remove the "backwards" key. */
-	fw = npf_conn_getforwkey(con);
-	bk = npf_conn_getbackkey(con, NPF_CONNKEY_ALEN(fw));
 	conn_db = atomic_load_relaxed(&npf->conn_db);
+	bk = npf_conn_getbackkey(con, con->c_alen);
 	ret = npf_conndb_remove(conn_db, bk);
 	KASSERT(ret == con);
 
 	/* Set the source/destination IDs to the translation values. */
-	npf_conn_adjkey(bk, taddr, tport, nat_type_dimap[ntype]);
+	npf_conn_adjkey(bk, taddr, tport, nat_type_which[ntype]);
 
 	/* Finally, re-insert the "backwards" key. */
 	if (!npf_conndb_insert(conn_db, bk, con, NPF_FLOW_BACK)) {
@@ -619,6 +611,7 @@ npf_conn_setnat(const npf_cache_t *npc, npf_conn_t *con,
 		 * Race: we have hit the duplicate, remove the "forwards"
 		 * key and expire our connection; it is no longer valid.
 		 */
+		npf_connkey_t *fw = npf_conn_getforwkey(con);
 		ret = npf_conndb_remove(conn_db, fw);
 		KASSERT(ret == con);
 

@@ -172,7 +172,7 @@ npf_connkey_getckey(const npf_connkey_t *key, unsigned *ifid, unsigned *di)
 }
 
 /*
- * npf_conn_adjkey: adjust the connection key by resetting the address/port.
+ * npf_conn_adjkey: adjust the connection key by setting the address/port.
  *
  * => The 'which' must either be NPF_SRC or NPF_DST.
  */

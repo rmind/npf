@@ -17,7 +17,7 @@ scp ./kern/*npf*.{c,h} "$base_netbsd/sys/net/npf/"
 scp ./kern/npf-params.7 "$base_netbsd/usr.sbin/npf/"
 
 # npfctl
-scp ./npfctl/npf*.{c,h,l,y,5,8} "$base_netbsd/usr.sbin/npf/npfctl/"
+scp ./npfctl/npf?*.{c,h,l,y,5,8} "$base_netbsd/usr.sbin/npf/npfctl/"
 
 # libnpf
 scp ./libnpf/libnpf.3 "$base_netbsd/lib/libnpf/"
