@@ -30,19 +30,19 @@
 /*
  * NPF configuration loading mechanism.
  *
- * The main operations on the configuration are:
+ * The main operations on the configuration are the following:
  * 1) Read access, primarily from the npf_packet_handler() function.
- * 2) Write access on particular set, mainly rule or table updates.
+ * 2) Write access on a particular set, mainly rule or table updates.
  * 3) Deletion of the configuration after the reload operation.
  *
  * Synchronization
  *
- *	For (1) case, EBR is used to allow concurrent access to the
- *	configuration set (ruleset, etc).  It guarantees that the
+ *	For the (1) case, EBR is used to allow concurrent access to
+ *	the configuration set (ruleset, etc).  It guarantees that the
  *	configuration will not be destroyed while accessing it.
  *
- *	Writers, i.e. cases (2) and (3) use mutual exclusion and when
- *	necessary the writer-side barrier of the EBR.
+ *	For the cases (2) and (3), mutual exclusion (npf_t::config_lock)
+ *	is used with, when necessarya, the writer-side barrier of EBR.
  */
 
 #ifdef _KERNEL

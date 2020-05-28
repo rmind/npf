@@ -377,7 +377,7 @@ scan_marks(npf_conf_info_t *ctx, const struct mark_keyword_mapent *mk,
 			 * otherwise we just need to note the mark.
 			 */
 			ctx->curmark = m;
-			CTASSERT(BM_COUNT < (sizeof(uint64_t) * CHAR_BIT));
+			assert(BM_COUNT < (sizeof(uint64_t) * CHAR_BIT));
 			ctx->seen_marks = UINT64_C(1) << m;
 			assert(mk->fwords == nwords);
 
