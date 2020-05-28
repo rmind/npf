@@ -6,6 +6,7 @@
 
 #ifdef _KERNEL
 #include <sys/types.h>
+#include <sys/kmem.h>
 #endif
 
 #include "npf.h"
@@ -232,7 +233,7 @@ run_worker_tests(npf_t *npf)
 		npf_worker_signal(test_npf);
 
 		npf_ebr_destroy(test_npf->ebr);
-		free(test_npf); // npfk_destroy()
+		kmem_free(test_npf, sizeof(npf_t)); // npfk_destroy()
 	}
 
 	/*

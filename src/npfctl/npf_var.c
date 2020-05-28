@@ -243,7 +243,7 @@ npfvar_get_data(const npfvar_t *vp, unsigned type, size_t idx)
 	if (el && NPFVAR_TYPE(el->e_type) != NPFVAR_TYPE(type)) {
 		yyerror("variable '%s' element %zu "
 		    "is of type '%s' rather than '%s'", vp->v_key,
-		    npfvar_type(el->e_type), npfvar_type(type));
+		    idx, npfvar_type(el->e_type), npfvar_type(type));
 		return NULL;
 	}
 	return el->e_data;

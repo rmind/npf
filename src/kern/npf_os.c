@@ -155,7 +155,7 @@ npf_init(void)
 	error = npfk_sysinit(nworkers);
 	if (error)
 		return error;
-	npf = npfk_create(0, NULL, &kern_ifops);
+	npf = npfk_create(0, NULL, &kern_ifops, NULL);
 	npf_setkernctx(npf);
 	npf_pfil_register(true);
 
