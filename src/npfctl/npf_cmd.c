@@ -239,11 +239,10 @@ npfctl_table_replace(int fd, int argc, char **argv)
 			newname = optarg;
 			break;
 		default:
-			fprintf(stderr,
+			errx(EXIT_FAILURE,
 			    "Usage: %s table \"table-name\" replace "
 			    "[-n \"name\"] [-t <type>] <table-file>\n",
 			    getprogname());
-			exit(EXIT_FAILURE);
 		}
 	}
 	argc -= optind;
@@ -473,7 +472,9 @@ npf_conn_list_v(int fd, unsigned alen, npf_conn_filter_t *f)
 	f->alen = alen;
 	f->v4 = alen == sizeof(struct in_addr);
 	f->pwidth = f->nowide ? 0 : ((f->v4 ? 15 : 40) + 1 + 5);
-	npf_conn_list(fd, npfctl_conn_print, f);
+	if (npf_conn_list(fd, npfctl_conn_print, f) != 0) {
+		err(EXIT_FAILURE, "npf_conn_list");
+	}
 }
 
 int
@@ -514,7 +515,7 @@ npfctl_conn_list(int fd, int argc, char **argv)
 			f.nowide = true;
 			break;
 		default:
-			err(EXIT_FAILURE,
+			errx(EXIT_FAILURE,
 			    "Usage: %s list [-46hnNW] [-i <ifname>]\n",
 			    getprogname());
 		}

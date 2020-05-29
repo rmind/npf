@@ -42,7 +42,7 @@
  *	configuration will not be destroyed while accessing it.
  *
  *	For the cases (2) and (3), mutual exclusion (npf_t::config_lock)
- *	is used with, when necessarya, the writer-side barrier of EBR.
+ *	is used with, when necessary, the writer-side barrier of EBR.
  */
 
 #ifdef _KERNEL
