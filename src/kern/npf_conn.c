@@ -649,8 +649,8 @@ npf_conn_pass(const npf_conn_t *con, npf_match_info_t *mi, npf_rproc_t **rp)
 {
 	KASSERT(atomic_load_relaxed(&con->c_refcnt) > 0);
 	if (__predict_true(atomic_load_relaxed(&con->c_flags) & CONN_PASS)) {
-		mi->mi_rid = atomic_load_relaxed(&con->c_rid);
 		mi->mi_retfl = atomic_load_relaxed(&con->c_retfl);
+		mi->mi_rid = con->c_rid;
 		*rp = con->c_rproc;
 		return true;
 	}
