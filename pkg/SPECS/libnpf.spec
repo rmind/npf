@@ -46,11 +46,14 @@ make %{?_smp_mflags} LIBDIR=%{_libdir}
 
 
 %install
-make install \
-    DESTDIR=%{buildroot} \
-    LIBDIR=%{_libdir} \
-    INCDIR=%{_includedir} \
-    MANDIR=%{_mandir}
+for t in kern libnpf; do
+	cd $t && make install \
+	    DESTDIR=%{buildroot} \
+	    LIBDIR=%{_libdir} \
+	    INCDIR=%{_includedir} \
+	    MANDIR=%{_mandir}
+	cd ..
+done
 cd kern && make clean && make install \
     DEBUG=1 \
     DESTDIR=%{buildroot} \
@@ -60,7 +63,7 @@ cd kern && make clean && make install \
 
 
 %files
-%{_libdir}/*
+%{_libdir}/libnpf*
 %{_includedir}/*
 %{_mandir}/*
 

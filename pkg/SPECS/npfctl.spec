@@ -29,18 +29,23 @@ This RPM package contains npfctl(8) utility.
 
 
 %prep
-%setup -q -n src/npfctl
+%setup -q -n src
 
 
 %build
-make %{?_smp_mflags}
+(cd npfctl && make %{?_smp_mflags})
+(cd lib && make %{?_smp_mflags} LIBDIR=%{_libdir})
 
 
 %install
-make install DESTDIR=%{buildroot} BINDIR=%{_bindir} MANDIR=%{_mandir}
+(cd npfctl && make install \
+    DESTDIR=%{buildroot} BINDIR=%{_bindir} MANDIR=%{_mandir})
+(cd lib && make install \
+    DESTDIR=%{buildroot} LIBDIR=%{_libdir})
 
 
 %files
+%{_libdir}/npf/*
 %{_bindir}/*
 %{_mandir}/*
 

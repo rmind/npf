@@ -12,27 +12,34 @@ LIBDIR:=/usr/lib/$(DEB_HOST_MULTIARCH)
 INCDIR:=/usr/include
 MANDIR:=/usr/share/man
 
+# Install extension .so files at the /usr/lib/npf/ path.
+EXT_LIBDIR:=/usr/lib/
+
 %:
 	dh $@ --sourcedirectory=SOURCES --parallel
 
 override_dh_auto_build:
 	dh_auto_build -- LIBDIR=$(LIBDIR)
 	@ # Build the debug library for npftest
-	dh_auto_build -- -C kern lib DEBUG=1 LIBDIR=$(LIBDIR)
+	dh_auto_build -- -C kern lib LIBDIR=$(LIBDIR) DEBUG=1
 
 override_dh_auto_test:
 	dh_auto_test tests
 
 override_dh_auto_install:
-	dh_auto_install -- \
+	dh_auto_install -- -C libnpf \
+	    LIBDIR=$(LIBDIR) INCDIR=$(INCDIR) MANDIR=$(MANDIR)
+	dh_auto_install -- -C kern \
 	    LIBDIR=$(LIBDIR) INCDIR=$(INCDIR) MANDIR=$(MANDIR)
 	@ # Install the debug library
 	dh_auto_install -- -C kern \
-	    DEBUG=1 LIBDIR=$(LIBDIR) INCDIR=$(INCDIR) MANDIR=$(MANDIR)
+	    LIBDIR=$(LIBDIR) INCDIR=$(INCDIR) MANDIR=$(MANDIR) DEBUG=1
 	@ # Build and install npfctl; FIXME: figure out the DEB dependency mess
 	LIBRARY_PATH=$(DESTDIR)/$(LIBDIR) dh_auto_build -- -C npfctl
-	dh_auto_install -- -C npfctl \
-	    BINDIR=$(BINDIR) MANDIR=$(MANDIR)
+	dh_auto_install -- -C npfctl BINDIR=$(BINDIR) MANDIR=$(MANDIR)
+	@ # Install npfctl extensions; FIXME
+	LIBRARY_PATH=$(DESTDIR)/$(LIBDIR) \
+	    dh_auto_install -- -C lib LIBDIR=$(EXT_LIBDIR)
 
 override_dh_strip:
 	dh_strip -p libnpf1 --dbg-package=libnpf1-dbg
