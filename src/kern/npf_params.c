@@ -60,8 +60,20 @@ npf_param_general_register(npf_t *npf)
 			.min = 0, .max = 1
 		},
 		{
+			"ip4.drop_options",
+			&npf->ip4_drop_options,
+			.default_val = 0, // false
+			.min = 0, .max = 1
+		},
+		{
 			"ip6.reassembly",
 			&npf->ip6_reassembly,
+			.default_val = 0, // false
+			.min = 0, .max = 1
+		},
+		{
+			"ip6.drop_options",
+			&npf->ip6_drop_options,
 			.default_val = 0, // false
 			.min = 0, .max = 1
 		},

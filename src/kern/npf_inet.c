@@ -425,6 +425,7 @@ npf_cache_ip(npf_cache_t *npc, nbuf_t *nbuf)
 {
 	const void *nptr = nbuf_dataptr(nbuf);
 	const uint8_t ver = *(const uint8_t *)nptr;
+	const npf_t *npf = npc->npc_ctx;
 	int flags = 0;
 
 	/*
@@ -442,6 +443,9 @@ npf_cache_ip(npf_cache_t *npc, nbuf_t *nbuf)
 
 		/* Retrieve the complete header. */
 		if ((u_int)(ip->ip_hl << 2) < sizeof(struct ip)) {
+			return NPC_FMTERR;
+		}
+		if ((ip->ip_hl != 5) && npf->ip4_drop_options) {
 			return NPC_FMTERR;
 		}
 		ip = nbuf_ensure_contig(nbuf, (u_int)(ip->ip_hl << 2));
@@ -501,6 +505,9 @@ npf_cache_ip(npf_cache_t *npc, nbuf_t *nbuf)
 			case IPPROTO_HOPOPTS:
 			case IPPROTO_DSTOPTS:
 			case IPPROTO_ROUTING:
+				if (npf->ip6_drop_options) {
+					return NPC_FMTERR;
+				}
 				hlen = (ip6e->ip6e_len + 1) << 3;
 				break;
 			case IPPROTO_FRAGMENT:
