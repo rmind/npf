@@ -45,7 +45,7 @@ static int
 if_output(worker_t *worker, unsigned if_idx, struct rte_mbuf *m)
 {
 	const npf_mbuf_priv_t *minfo = rte_mbuf_to_priv(m);
-	struct ether_hdr *eh;
+	struct rte_ether_hdr *eh;
 	ifnet_t *ifp;
 
 	/*
@@ -62,13 +62,13 @@ if_output(worker_t *worker, unsigned if_idx, struct rte_mbuf *m)
 	/*
 	 * Add the Ethernet header.
 	 */
-	ASSERT(m->l2_len == ETHER_HDR_LEN);
-	eh = (void *)rte_pktmbuf_prepend(m, ETHER_HDR_LEN);
+	ASSERT(m->l2_len == RTE_ETHER_HDR_LEN);
+	eh = (void *)rte_pktmbuf_prepend(m, RTE_ETHER_HDR_LEN);
 	if (eh == NULL) {
 		ifnet_put(ifp);
 		return -1; // drop
 	}
-	ether_addr_copy(&ifp->hwaddr, &eh->s_addr);
+	rte_ether_addr_copy(&ifp->hwaddr, &eh->s_addr);
 	ifnet_put(ifp);
 
 	/*
@@ -146,7 +146,7 @@ static int
 l2_input(worker_t *worker, struct rte_mbuf *m, const unsigned if_idx)
 {
 	npf_mbuf_priv_t *minfo = rte_mbuf_to_priv(m);
-	const struct ether_hdr *eh;
+	const struct rte_ether_hdr *eh;
 
 	/*
 	 * Do we have an L2 header?  If not, then nothing to do.
@@ -160,14 +160,14 @@ l2_input(worker_t *worker, struct rte_mbuf *m, const unsigned if_idx)
 	 * mbuf private area for later pre-pending.
 	 */
 
-	eh = rte_pktmbuf_mtod(m, const struct ether_hdr *);
+	eh = rte_pktmbuf_mtod(m, const struct rte_ether_hdr *);
 	minfo->ether_type = eh->ether_type;
 
-	ASSERT(sizeof(struct ether_hdr) == ETHER_HDR_LEN);
-	m->l2_len = ETHER_HDR_LEN;
+	ASSERT(sizeof(struct rte_ether_hdr) == RTE_ETHER_HDR_LEN);
+	m->l2_len = RTE_ETHER_HDR_LEN;
 
 	switch (ntohs(eh->ether_type)) {
-	case ETHER_TYPE_ARP:
+	case RTE_ETHER_TYPE_ARP:
 		return arp_input(worker, m, if_idx);
 	default:
 		break;
@@ -176,7 +176,7 @@ l2_input(worker_t *worker, struct rte_mbuf *m, const unsigned if_idx)
 	/*
 	 * Remove the L2 header as we are preparing for L3 processing.
 	 */
-	rte_pktmbuf_adj(m, sizeof(struct ether_hdr));
+	rte_pktmbuf_adj(m, sizeof(struct rte_ether_hdr));
 	minfo->flags |= MBUF_NPF_NEED_L2;
 	return 0;
 }
@@ -196,9 +196,9 @@ ip_route(npf_router_t *router, struct rte_mbuf *m)
 	 * Determine whether it is IPv4 or IPv6 packet.
 	 */
 	if (RTE_ETH_IS_IPV4_HDR(m->packet_type)) {
-		const struct ipv4_hdr *ip4;
+		const struct rte_ipv4_hdr *ip4;
 
-		ip4 = rte_pktmbuf_mtod(m, const struct ipv4_hdr *);
+		ip4 = rte_pktmbuf_mtod(m, const struct rte_ipv4_hdr *);
 		addr = &ip4->dst_addr;
 		alen = sizeof(ip4->dst_addr);
 		m->ol_flags |= (PKT_TX_IPV4 | PKT_TX_IP_CKSUM);
@@ -210,9 +210,9 @@ ip_route(npf_router_t *router, struct rte_mbuf *m)
 		/* TODO: ip4->time_to_live--; */
 
 	} else if (RTE_ETH_IS_IPV6_HDR(m->packet_type)) {
-		const struct ipv6_hdr *ip6;
+		const struct rte_ipv6_hdr *ip6;
 
-		ip6 = rte_pktmbuf_mtod(m, const struct ipv6_hdr *);
+		ip6 = rte_pktmbuf_mtod(m, const struct rte_ipv6_hdr *);
 		addr = &ip6->dst_addr;
 		alen = sizeof(ip6->dst_addr);
 		m->ol_flags |= (PKT_TX_IPV6 | PKT_TX_IP_CKSUM);

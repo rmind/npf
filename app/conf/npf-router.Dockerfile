@@ -19,7 +19,8 @@ RUN cp /build/npf/app/run.sh /build/bin/
 
 FROM centos:centos8 AS npf
 RUN dnf install -y epel-release dnf-plugins-core
-RUN dnf config-manager --set-enabled PowerTools
+RUN dnf config-manager --set-enabled PowerTools || \
+    yum config-manager --set-enabled powertools || true
 RUN dnf install -y kernel-modules kernel-modules-extra dpdk libibverbs
 RUN dnf install -y man-pages net-tools traceroute
 

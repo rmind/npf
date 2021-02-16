@@ -6,7 +6,8 @@ WORKDIR /build
 
 # Install/enable EPEL and Power Tools repositories.
 RUN dnf install -y epel-release dnf-plugins-core
-RUN dnf config-manager --set-enabled PowerTools
+RUN dnf config-manager --set-enabled PowerTools || \
+    yum config-manager --set-enabled powertools || true
 RUN dnf install -y net-tools man-pages
 
 #

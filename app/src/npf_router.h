@@ -49,7 +49,7 @@ typedef struct ifnet {
 	unsigned		port_id;
 
 	npf_addr_t		ipaddr;
-	struct ether_addr	hwaddr;
+	struct rte_ether_addr	hwaddr;
 
 	void *			arg;
 	LIST_ENTRY(ifnet)	entry;
@@ -121,7 +121,8 @@ int		route_add(route_table_t *, const void *, unsigned, unsigned,
 int		route_lookup(route_table_t *, const void *, unsigned,
 		    route_info_t *);
 
-int		arp_resolve(worker_t *, const route_info_t *, struct ether_addr *);
+int		arp_resolve(worker_t *, const route_info_t *,
+		    struct rte_ether_addr *);
 int		arp_input(worker_t *, struct rte_mbuf *, const unsigned);
 
 /*
