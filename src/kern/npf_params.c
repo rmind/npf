@@ -56,7 +56,7 @@ npf_param_general_register(npf_t *npf)
 		{
 			"ip4.reassembly",
 			&npf->ip4_reassembly,
-			.default_val = 0, // false
+			.default_val = 1, // true
 			.min = 0, .max = 1
 		},
 		{
