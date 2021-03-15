@@ -349,7 +349,7 @@ npfkern_percpu_foreach(percpu_t *pc, percpu_callback_t cb, void *arg)
  */
 
 #define	cprng_fast32()			((uint32_t)random())
-#define	ip_randomid(o,s)		((uint16_t)random())
+#define	ip_randomid()			((uint16_t)random())
 
 /*
  * Hashing.

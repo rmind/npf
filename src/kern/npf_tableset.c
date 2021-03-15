@@ -101,7 +101,7 @@ struct npf_table {
 
 	/*
 	 * Table ID, type and lock.  The ID may change during the
-	 * config reload, it is protected by the npf_config_lock.
+	 * config reload, it is protected by the npf_t::config_lock.
 	 */
 	int			t_type;
 	unsigned		t_id;

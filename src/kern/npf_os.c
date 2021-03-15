@@ -277,6 +277,16 @@ npf_dev_ioctl(dev_t dev, u_long cmd, void *data, int flag, lwp_t *l)
 
 	case IOC_NPF_STATS:
 		return npf_stats_export(npf, data);
+
+	case IOC_NPF_LOAD:
+	case IOC_NPF_SAVE:
+	case IOC_NPF_RULE:
+	case IOC_NPF_CONN_LOOKUP:
+	case IOC_NPF_TABLE_REPLACE:
+		 /* nvlist_ref_t argument, handled below */
+		 break;
+	default:
+		 return EINVAL;
 	}
 
 	error = nvlist_copyin(data, &req, NPF_IOCTL_DATA_LIMIT);
@@ -284,8 +294,9 @@ npf_dev_ioctl(dev_t dev, u_long cmd, void *data, int flag, lwp_t *l)
 		return error;
 	}
 	resp = nvlist_create(0);
-	npfctl_run_op(npf, cmd, req, resp);
-	error = nvlist_copyout(data, resp);
+	if ((error = npfctl_run_op(npf, cmd, req, resp)) == 0) {
+		error = nvlist_copyout(data, resp);
+	}
 	nvlist_destroy(resp);
 	nvlist_destroy(req);
 
@@ -307,8 +318,17 @@ npf_dev_read(dev_t dev, struct uio *uio, int flag)
 bool
 npf_autounload_p(void)
 {
-	npf_t *npf = npf_getkernctx();
-	return !npf_active_p() && npf_default_pass(npf);
+	npf_t *npf;
+	bool pass;
+
+	if (npf_active_p()) {
+		return false;
+	}
+	npf = npf_getkernctx();
+	npf_config_enter(npf);
+	pass = npf_default_pass(npf);
+	npf_config_exit(npf);
+	return pass;
 }
 
 /*
