@@ -49,7 +49,7 @@ endif
 #
 # Dependencies: compiler flags and libraries to link.
 #
-CFLAGS+=	-march=native -I/usr/include/dpdk
+CFLAGS+=	-march=native -I/usr/include/dpdk -DALLOW_EXPERIMENTAL_API
 LDFLAGS+=	-lpthread -ldpdk -lrte_mbuf -lrte_net -lrte_ethdev
 LDFLAGS+=	-lrte_pmd_tap -lrte_pmd_virtio
 LDFLAGS+=	-lthmap -llpm
