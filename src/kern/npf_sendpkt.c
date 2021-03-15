@@ -197,6 +197,9 @@ npf_return_tcp(npf_cache_t *npc)
 		}
 	}
 
+	/* Do not inspect the generated reject packets going out. */
+	(void)npf_mbuf_add_tag(npc->npc_nbuf, m, NPF_NTAG_PASS);
+
 	/* Pass to IP layer. */
 	if (npf_iscached(npc, NPC_IP4)) {
 		return ip_output(m, NULL, NULL, IP_FORWARDING, NULL, NULL);
@@ -214,6 +217,9 @@ static int
 npf_return_icmp(const npf_cache_t *npc)
 {
 	struct mbuf *m = nbuf_head_mbuf(npc->npc_nbuf);
+
+	/* Do not inspect the generated reject packets going out. */
+	(void)nbuf_add_tag(npc->npc_nbuf, NPF_NTAG_PASS);
 
 	if (npf_iscached(npc, NPC_IP4)) {
 		icmp_error(m, ICMP_UNREACH, ICMP_UNREACH_ADMIN_PROHIBIT, 0, 0);
