@@ -41,7 +41,7 @@
 #define	__arraycount(__x)	(sizeof(__x) / sizeof(__x[0]))
 #endif
 
-void	dump_eth_addr(const char *, const struct ether_addr *);
+void	dump_eth_addr(const char *, const struct rte_ether_addr *);
 void	dump_ip4_addr(const char *, int, const void *);
 void	dump_pkt(char, const struct rte_mbuf *);
 
