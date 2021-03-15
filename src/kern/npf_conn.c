@@ -97,7 +97,7 @@
  *
  * Lock order
  *
- *	npf_config_lock ->
+ *	npf_t::config_lock ->
  *		conn_lock ->
  *			npf_conn_t::c_lock
  */

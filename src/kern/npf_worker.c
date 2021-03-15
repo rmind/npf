@@ -271,7 +271,7 @@ npf_worker(void *arg)
 	npf_t *npf;
 
 	mutex_enter(&winfo->lock);
-	while (!winfo->exit) {
+	for (;;) {
 		unsigned wait_time = NPF_GC_MAXWAIT;
 
 		/*

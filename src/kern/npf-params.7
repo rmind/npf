@@ -89,7 +89,7 @@ The worker is self-tuning and will wake up more frequently if there are
 connections to expire; it will wake up less frequently, diverging towards
 the upper bound, if it does not encounter expired connections.
 Default: 50 (in milliseconds).
-.It Li gc.interval_min
+.It Li gc.interval_max
 The upper bound for the sleep time of the G/C worker.
 Default: 5000 (in milliseconds).
 .El
