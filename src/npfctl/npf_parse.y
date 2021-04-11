@@ -175,6 +175,7 @@ yyerror(const char *fmt, ...)
 %token	<str>		IDENTIFIER
 %token	<str>		IPV4ADDR
 %token	<str>		IPV6ADDR
+%token	<str>		SUFFIXEDNUM
 %token	<num>		NUM
 %token	<fpnum>		FPNUM
 %token	<str>		STRING
@@ -475,6 +476,14 @@ proc_param_val
 	: some_name	{ $$ = $1; }
 	| number	{ (void)asprintf(&$$, "%ld", $1); }
 	| FPNUM		{ (void)asprintf(&$$, "%lf", $1); }
+	| SUFFIXEDNUM	{
+		uint64_t numval;
+
+		if (npfctl_parse_snumber($1, 1000, &numval) != 0) {
+			yyerror("invalid numeric value or unit suffix");
+		}
+		(void)asprintf(&$$, "%"PRIu64, numval);
+	}
 	|		{ $$ = NULL; }
 	;
 

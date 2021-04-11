@@ -213,6 +213,11 @@ any			return ANY;
 			return IPV4ADDR;
 		}
 
+{NUMBER}[kmgtKMGT] {
+			yylval.str = estrndup(yytext, yyleng);
+			return SUFFIXEDNUM;
+		}
+
 {NUMBER}	{
 			char *endp, *buf = estrndup(yytext, yyleng);
 			yylval.num = strtoul(buf, &endp, 10);

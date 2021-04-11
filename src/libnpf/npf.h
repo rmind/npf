@@ -99,6 +99,7 @@ int		npf_ruleset_flush(int, const char *);
 
 nl_ext_t *	npf_ext_construct(const char *);
 void		npf_ext_param_u32(nl_ext_t *, const char *, uint32_t);
+void		npf_ext_param_u64(nl_ext_t *, const char *, uint64_t);
 void		npf_ext_param_bool(nl_ext_t *, const char *, bool);
 void		npf_ext_param_string(nl_ext_t *, const char *, const char *);
 

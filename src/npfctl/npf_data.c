@@ -630,6 +630,43 @@ out:
 }
 
 /*
+ * npfctl_parse_snumber: parse a number with a unit suffixed.
+ */
+int
+npfctl_parse_snumber(const char *val, uint64_t bm, uint64_t *numval)
+{
+	const char *unit = val;
+	uint64_t multiplier;
+
+	*numval = atoll(val);
+
+	while (!isalpha((unsigned char)*unit)) {
+		if (*unit == '\0')
+			return 0;
+		unit++;
+	}
+	switch (tolower((unsigned char)*unit)) {
+	case 'k':
+		multiplier = bm;
+		break;
+	case 'm':
+		multiplier = bm * bm;
+		break;
+	case 'g':
+		multiplier = bm * bm * bm;
+		break;
+	case 't':
+		multiplier = bm * bm * bm * bm;
+		break;
+	default:
+		return EINVAL;
+	}
+
+	*numval = *numval * multiplier;
+	return 0;
+}
+
+/*
  * npfctl_npt66_calcadj: calculate the adjustment for NPTv6 as per RFC 6296.
  */
 uint16_t

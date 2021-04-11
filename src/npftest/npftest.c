@@ -1,5 +1,3 @@
-/*	$NetBSD: npftest.c,v 1.23 2019/01/19 21:19:32 rmind Exp $	*/
-
 /*
  * NPF testing framework.
  *
@@ -65,6 +63,7 @@ describe_tests(void)
 		"table\ttable handling\n"
 		"state\tstate handling and processing\n"
 		"gc\tconnection G/C\n"
+		"ext\textensions\n"
 		"rule\trule processing\n"
 		"nat\tNAT rule processing\n");
 	exit(EXIT_SUCCESS);
@@ -312,6 +311,12 @@ main(int argc, char **argv)
 		if (!testname || strcmp("gc", testname) == 0) {
 			ok = rumpns_npf_gc_test(verbose);
 			fail |= result("gc", ok);
+			tname_matched = true;
+		}
+
+		if (!testname || strcmp("ext", testname) == 0) {
+			ok = rumpns_npf_ext_test(verbose);
+			fail |= result("ext", ok);
 			tname_matched = true;
 		}
 	}
