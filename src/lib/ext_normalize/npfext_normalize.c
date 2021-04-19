@@ -35,25 +35,9 @@ __RCSID("$NetBSD$");
 
 #include <npf.h>
 
-int		npfext_normalize_init(void);
-nl_ext_t *	npfext_normalize_construct(const char *);
-int		npfext_normalize_param(nl_ext_t *, const char *, const char *);
+int	npfext_normalize_param(nl_ext_t *, const char *, const char *);
 
-int
-npfext_normalize_init(void)
-{
-	/* Nothing to initialize. */
-	return 0;
-}
-
-nl_ext_t *
-npfext_normalize_construct(const char *name)
-{
-	assert(strcmp(name, "normalize") == 0);
-	return npf_ext_construct(name);
-}
-
-int
+__dso_public int
 npfext_normalize_param(nl_ext_t *ext, const char *param, const char *val)
 {
 	enum ptype {

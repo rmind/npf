@@ -53,14 +53,14 @@ struct npf_extmod {
 static npf_extmod_t *		npf_extmod_list;
 
 static void *
-npf_extmod_sym(void *handle, const char *name, const char *func)
+npf_extmod_sym(void *handle, const char *name, const char *func, bool required)
 {
 	char buf[64];
 	void *sym;
 
 	snprintf(buf, sizeof(buf), "npfext_%s_%s", name, func);
 	sym = dlsym(handle, buf);
-	if (sym == NULL) {
+	if (required && sym == NULL) {
 		errx(EXIT_FAILURE, "dlsym: %s", dlerror());
 	}
 	return sym;
@@ -81,12 +81,12 @@ npf_extmod_load(const char *name)
 
 	ext = ecalloc(1, sizeof(npf_extmod_t));
 	ext->name = estrdup(name);
-	ext->init = npf_extmod_sym(handle, name, "init");
-	ext->cons = npf_extmod_sym(handle, name, "construct");
-	ext->param = npf_extmod_sym(handle, name, "param");
+	ext->init = npf_extmod_sym(handle, name, "init", false);
+	ext->cons = npf_extmod_sym(handle, name, "construct", false);
+	ext->param = npf_extmod_sym(handle, name, "param", true);
 
-	/* Initialise the module. */
-	if (ext->init() != 0) {
+	/* Run the initialization hook for the module, if needed. */
+	if (ext->init && ext->init() != 0) {
 		free(ext);
 		return NULL;
 	}
@@ -102,19 +102,19 @@ npf_extmod_get(const char *name, nl_ext_t **extcall)
 	npf_extmod_t *extmod = npf_extmod_list;
 
 	while (extmod) {
-		if ((strcmp(extmod->name, name) == 0) &&
-		    (*extcall = extmod->cons(name)) != NULL) {
-			return extmod;
+		if (strcmp(extmod->name, name) == 0) {
+			goto found;
 		}
 		extmod = extmod->next;
 	}
 
 	extmod = npf_extmod_load(name);
-	if (extmod && (*extcall = extmod->cons(name)) != NULL) {
-		return extmod;
+found:
+	if (!extmod) {
+		return NULL;
 	}
-
-	return NULL;
+	*extcall = extmod->cons ? extmod->cons(name) : npf_ext_construct(name);
+	return *extcall ? extmod : NULL;
 }
 
 int
