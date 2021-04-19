@@ -30,7 +30,10 @@ Some key features are:
 - Application Level Gateways (e.g. to support traceroute).
 - NPF uses [BPF with just-in-time (JIT) compilation](https://github.com/rmind/bpfjit).
 - Rule procedures and a framework for NPF extensions (plugins).
-- Extensions include: traffic normalization and packet logging.
+- Extensions include:
+  - Rate limiting (traffic policing).
+  - Traffic normalization.
+  - Packet logging.
 - [Data Plane Development Kit](https://dpdk.org/) integration.
 
 For a full set of features and their description, see the NPF documentation
