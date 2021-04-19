@@ -22,7 +22,7 @@ RUN dnf install -y epel-release dnf-plugins-core
 RUN dnf config-manager --set-enabled PowerTools || \
     yum config-manager --set-enabled powertools || true
 RUN dnf install -y kernel-modules kernel-modules-extra dpdk libibverbs
-RUN dnf install -y man-pages net-tools traceroute
+RUN dnf install -y man man-pages net-tools traceroute vim
 
 COPY --from=npf-router-dev /pkg/*.rpm /pkg/
 RUN dnf install -y /pkg/*.x86_64.rpm

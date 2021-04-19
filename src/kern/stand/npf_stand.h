@@ -361,7 +361,11 @@ uint32_t	murmurhash2(const void *, size_t, uint32_t);
  * Time operations.
  */
 
+#if defined(__linux__)
+#define	getnanouptime(ts)	clock_gettime(CLOCK_MONOTONIC_COARSE, (ts))
+#else
 #define	getnanouptime(ts)	clock_gettime(CLOCK_MONOTONIC, (ts))
+#endif
 #undef	mstohz
 #define	mstohz(ms)		(ms)
 

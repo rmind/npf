@@ -17,7 +17,7 @@ system_configure()
 		mkdir -p /mnt/huge && mount -t hugetlbfs nodev /mnt/huge;
 	}
 
-	modprobe sch_multiq
+	modprobe sch_multiq || true
 }
 
 router_configure()

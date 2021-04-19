@@ -71,7 +71,10 @@ services:
       - "/app/run_host.sh"
 
 networks:
+  default:
+    name: npf-router
   testnet:
+    name: npf-router-testnet
     #
     # NOTE: Must the 'macvlan' driver, otherwise Docker interferes
     # at the Ethernet layer.

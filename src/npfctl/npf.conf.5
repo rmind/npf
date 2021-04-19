@@ -1,6 +1,6 @@
 .\"    $NetBSD$
 .\"
-.\" Copyright (c) 2009-2020 The NetBSD Foundation, Inc.
+.\" Copyright (c) 2009-2021 The NetBSD Foundation, Inc.
 .\" All rights reserved.
 .\"
 .\" This material is based upon work partially supported by The
@@ -27,7 +27,7 @@
 .\" ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 .\" POSSIBILITY OF SUCH DAMAGE.
 .\"
-.Dd May 19, 2020
+.Dd April 19, 2021
 .Dt NPF.CONF 5
 .Os
 .Sh NAME
@@ -488,6 +488,13 @@ Modify packets according to the specified normalization options.
 This requires the
 .Pa npf_ext_normalize kernel
 module, which would normally get auto-loaded by NPF.
+.It Cm ratelimit: Ar option1 Ns Op Li \&, Ar option2 ...
+Traffic policing capability, implemented using the Committed Access Rate
+(CAR) algorithm.
+It is a variation of a token bucket algorithm.
+This requires the
+.Pa npf_ext_ratelimit kernel
+module, which would normally get auto-loaded by NPF.
 .El
 .Pp
 The available normalization options are:
@@ -504,11 +511,20 @@ Remove the Don't Fragment (DF) flag from IPv4 packets.
 Randomize the IPv4 ID parameter.
 .El
 .Pp
+The available traffic policing options are:
+.Bl -tag -width "Cm \*qmin-mss\*q Ar value" -offset indent
+.It Cm \*qbitrate\*q Ar value
+Bitrate per second (bps) to enforce for the matching traffic.
+May be suffixed with "k", "m" or "g" (the base multiplier is 1000
+rather than 1024).
+.El
+.Pp
 For example:
 .Bd -literal -offset indent
 procedure "someproc" {
 	log: npflog0
 	normalize: "random-id", "min-ttl" 64, "max-mss" 1432
+	ratelimit: "bitrate" 128k
 }
 .Ed
 .Pp

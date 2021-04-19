@@ -179,6 +179,31 @@ config_listen(const char *sockpath)
 	return sock;
 }
 
+static int
+npf_ext_init(npf_t *npf)
+{
+	/*
+	 * Initialize NPF ALGs and extensions.
+	 */
+	if (npf_alg_icmp_init(npf) != 0) {
+		warnx("npf_alg_icmp_init");
+		return -1;
+	}
+	if (npf_ext_normalize_init(npf) != 0) {
+		warnx("npf_ext_normalize_init");
+		return -1;
+	}
+	if (npf_ext_ratelimit_init(npf) != 0) {
+		warnx("npf_ext_ratelimit_init");
+		return -1;
+	}
+	if (npf_ext_rndblock_init(npf) != 0) {
+		warnx("npf_ext_rndblock_init");
+		return -1;
+	}
+	return 0;
+}
+
 static npf_router_t *
 router_create(void)
 {
@@ -223,7 +248,7 @@ router_create(void)
 	if (!router->npf) {
 		goto err;
 	}
-	if (npf_alg_icmp_init(router->npf) != 0) {
+	if (npf_ext_init(router->npf) != 0) {
 		goto err;
 	}
 	router->config_sock = config_listen(NPF_CONFSOCK_PATH);

@@ -102,6 +102,12 @@ nbuf_dataptr(nbuf_t *nbuf)
 }
 
 size_t
+nbuf_datalen(const nbuf_t *nbuf)
+{
+	return m_length(nbuf->nb_mbuf0);
+}
+
+size_t
 nbuf_offset(const nbuf_t *nbuf)
 {
 	const struct mbuf *m = nbuf->nb_mbuf;

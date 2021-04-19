@@ -647,6 +647,12 @@ npf_ext_param_u32(nl_ext_t *ext, const char *key, uint32_t val)
 }
 
 void
+npf_ext_param_u64(nl_ext_t *ext, const char *key, uint64_t val)
+{
+	nvlist_add_number(ext->ext_dict, key, val);
+}
+
+void
 npf_ext_param_bool(nl_ext_t *ext, const char *key, bool val)
 {
 	nvlist_add_bool(ext->ext_dict, key, val);

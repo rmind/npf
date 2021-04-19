@@ -65,6 +65,7 @@ and DEB (`cd pkg && make deb`) packages.  You can also check the
     docs/               - documentation source
     src/                - root source code directory
         kern/           - the kernel component (npfkern library)
+        lib/            - extension libraries complementing npfctl
         libnpf/         - library to manage the NPF configuration
         npfctl/         - command line user interface to control NPF
         npftest/        - unit tests and a tool to debug NPF

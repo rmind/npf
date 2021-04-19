@@ -100,6 +100,9 @@ int	npf_ext_normalize_fini(npf_t *);
 int	npf_ext_rndblock_init(npf_t *);
 int	npf_ext_rndblock_fini(npf_t *);
 
+int	npf_ext_ratelimit_init(npf_t *);
+int	npf_ext_ratelimit_fini(npf_t *);
+
 /*
  * ALGs.
  */

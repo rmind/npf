@@ -114,6 +114,7 @@ bool		nbuf_flag_p(const nbuf_t *, int);
 void		nbuf_unset_flag(nbuf_t *, int);
 
 void *		nbuf_dataptr(nbuf_t *);
+size_t		nbuf_datalen(const nbuf_t *);
 size_t		nbuf_offset(const nbuf_t *);
 void *		nbuf_advance(nbuf_t *, size_t, size_t);
 

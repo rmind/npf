@@ -52,6 +52,7 @@ OBJS+=		libnpftest/npf_perf_test.o
 OBJS+=		libnpftest/npf_rule_test.o
 OBJS+=		libnpftest/npf_state_test.o
 OBJS+=		libnpftest/npf_table_test.o
+OBJS+=		libnpftest/npf_ext_test.o
 
 OBJS+=		libnpftest/npf_mbuf_subr.o
 OBJS+=		libnpftest/npf_test_subr.o

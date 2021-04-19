@@ -25,6 +25,7 @@
 #define	rumpns_npf_rule_test		npf_rule_test
 #define	rumpns_npf_nat_test		npf_nat_test
 #define	rumpns_npf_gc_test		npf_gc_test
+#define	rumpns_npf_ext_test		npf_ext_test
 #define	rumpns_npf_test_conc		npf_test_conc
 #define	rumpns_npf_test_statetrack	npf_test_statetrack
 #endif
@@ -51,6 +52,7 @@ bool		rumpns_npf_state_test(bool);
 bool		rumpns_npf_rule_test(bool);
 bool		rumpns_npf_nat_test(bool);
 bool		rumpns_npf_gc_test(bool);
+bool		rumpns_npf_ext_test(bool);
 
 int		process_stream(const char *, const char *, ifnet_t *);
 
