@@ -36,25 +36,9 @@ __RCSID("$NetBSD$");
 
 #include <npf.h>
 
-int		npfext_ratelimit_init(void);
-nl_ext_t *	npfext_ratelimit_construct(const char *);
-int		npfext_ratelimit_param(nl_ext_t *, const char *, const char *);
+int	npfext_ratelimit_param(nl_ext_t *, const char *, const char *);
 
-int
-npfext_ratelimit_init(void)
-{
-	/* Nothing to initialisz. */
-	return 0;
-}
-
-nl_ext_t *
-npfext_ratelimit_construct(const char *name)
-{
-	assert(strcmp(name, "ratelimit") == 0);
-	return npf_ext_construct(name);
-}
-
-int
+__dso_public int
 npfext_ratelimit_param(nl_ext_t *ext, const char *param, const char *val)
 {
 	static const char *params[] = {

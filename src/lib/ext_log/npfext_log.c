@@ -45,25 +45,9 @@ __RCSID("$NetBSD$");
 
 #include <npf.h>
 
-int		npfext_log_init(void);
-nl_ext_t *	npfext_log_construct(const char *);
-int		npfext_log_param(nl_ext_t *, const char *, const char *);
+int	npfext_log_param(nl_ext_t *, const char *, const char *);
 
-int
-npfext_log_init(void)
-{
-	/* Nothing to initialise. */
-	return 0;
-}
-
-nl_ext_t *
-npfext_log_construct(const char *name)
-{
-	assert(strcmp(name, "log") == 0);
-	return npf_ext_construct(name);
-}
-
-int
+__dso_public int
 npfext_log_param(nl_ext_t *ext, const char *param, const char *val __unused)
 {
 	unsigned int if_idx;
