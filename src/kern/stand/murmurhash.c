@@ -1,5 +1,3 @@
-/*	$NetBSD: murmurhash.c,v 1.6 2013/10/26 21:06:38 rmind Exp $	*/
-
 /*
  * MurmurHash2 -- from the original code:
  *
