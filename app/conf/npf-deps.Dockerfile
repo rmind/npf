@@ -4,6 +4,10 @@
 FROM centos:centos8 AS npf-builder
 WORKDIR /build
 
+# CentOS 8 is now EOL
+RUN sed -i -e "s|mirrorlist=|#mirrorlist=|g" /etc/yum.repos.d/CentOS-*
+RUN sed -i -e "s|#baseurl=http://mirror.centos.org|baseurl=http://vault.centos.org|g" /etc/yum.repos.d/CentOS-*
+
 # Install/enable EPEL and Power Tools repositories.
 RUN dnf install -y epel-release dnf-plugins-core
 RUN dnf config-manager --set-enabled PowerTools || \

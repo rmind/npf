@@ -343,10 +343,10 @@ main(int argc, char **argv)
 	 * Initialize all workers.
 	 */
 	puts("- Initializing workers");
-	RTE_LCORE_FOREACH_SLAVE(lcore_id) {
+	RTE_LCORE_FOREACH_WORKER(lcore_id) {
 		rte_eal_remote_launch(worker_init, router, lcore_id);
 	}
-	RTE_LCORE_FOREACH_SLAVE(lcore_id) {
+	RTE_LCORE_FOREACH_WORKER(lcore_id) {
 		if (rte_eal_wait_lcore(lcore_id) == -1) {
 			rte_exit(EXIT_FAILURE, "worker_init");
 		}
@@ -356,7 +356,7 @@ main(int argc, char **argv)
 	 * Spin up the worker processing.
 	 */
 	puts("- Starting router");
-	RTE_LCORE_FOREACH_SLAVE(lcore_id) {
+	RTE_LCORE_FOREACH_WORKER(lcore_id) {
 		rte_eal_remote_launch(worker_run, router, lcore_id);
 	}
 
@@ -385,7 +385,7 @@ main(int argc, char **argv)
 	 * Destroy the NPF router resources.
 	 */
 	puts("- Exiting");
-	RTE_LCORE_FOREACH_SLAVE(lcore_id) {
+	RTE_LCORE_FOREACH_WORKER(lcore_id) {
 		rte_eal_remote_launch(worker_fini, router, lcore_id);
 	}
 	rte_eal_mp_wait_lcore();
