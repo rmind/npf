@@ -65,8 +65,10 @@ out:
 static void
 replace_ifnet_table(npf_t *npf, npf_table_t *newt)
 {
-	npf_tableset_t *ts = npf->config->tableset;
+	npf_tableset_t *ts = atomic_load_relaxed(&npf->config)->tableset;
 	npf_table_t *oldt;
+
+	KASSERT(npf_config_locked_p(npf));
 
 	KERNEL_UNLOCK_ONE(NULL);
 
