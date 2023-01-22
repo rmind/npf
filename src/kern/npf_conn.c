@@ -199,8 +199,7 @@ npf_conn_load(npf_t *npf, npf_conndb_t *ndb, bool track)
 		KASSERT(atomic_load_relaxed(&npf->conn_tracking)
 		    == CONN_TRACKING_OFF);
 		odb = atomic_load_relaxed(&npf->conn_db);
-		membar_sync();
-		atomic_store_relaxed(&npf->conn_db, ndb);
+		atomic_store_release(&npf->conn_db, ndb);
 	}
 	if (track) {
 		/* After this point lookups start flying in. */
@@ -470,7 +469,7 @@ npf_conn_establish(npf_cache_t *npc, const unsigned di, bool global)
 	 * the connection later.
 	 */
 	mutex_enter(&con->c_lock);
-	conn_db = atomic_load_relaxed(&npf->conn_db);
+	conn_db = atomic_load_consume(&npf->conn_db);
 	if (!npf_conndb_insert(conn_db, fw, con, NPF_FLOW_FORW)) {
 		error = EISCONN;
 		goto err;
@@ -575,7 +574,7 @@ npf_conn_setnat(const npf_cache_t *npc, npf_conn_t *con,
 	}
 
 	/* Remove the "backwards" key. */
-	conn_db = atomic_load_relaxed(&npf->conn_db);
+	conn_db = atomic_load_consume(&npf->conn_db);
 	bk = npf_conn_getbackkey(con, con->c_alen);
 	ret = npf_conndb_remove(conn_db, bk);
 	KASSERT(ret == con);
@@ -740,7 +739,7 @@ npf_conn_remove(npf_conndb_t *cd, npf_conn_t *con)
 void
 npf_conn_worker(npf_t *npf)
 {
-	npf_conndb_t *conn_db = atomic_load_relaxed(&npf->conn_db);
+	npf_conndb_t *conn_db = atomic_load_consume(&npf->conn_db);
 	npf_conndb_gc(npf, conn_db, false, true);
 }
 
