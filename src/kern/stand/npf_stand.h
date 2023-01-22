@@ -154,6 +154,8 @@ again:
 
 #define	atomic_load_acquire(x)		\
     atomic_load_explicit((x), memory_order_acquire)
+#define	atomic_load_consume(x)		\
+    atomic_load_explicit((x), memory_order_consume)
 #define	atomic_store_release(x, y)	\
     atomic_store_explicit((x), (y), memory_order_release)
 
