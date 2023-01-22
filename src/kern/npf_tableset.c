@@ -136,9 +136,13 @@ npf_tableset_destroy(npf_tableset_t *ts)
 	for (u_int tid = 0; tid < ts->ts_nitems; tid++) {
 		npf_table_t *t = ts->ts_map[tid];
 
-		if (t && atomic_dec_uint_nv(&t->t_refcnt) == 0) {
-			npf_table_destroy(t);
-		}
+		if (t == NULL)
+			continue;
+		membar_release();
+		if (atomic_dec_uint_nv(&t->t_refcnt) > 0)
+			continue;
+		membar_acquire();
+		npf_table_destroy(t);
 	}
 	kmem_free(ts, NPF_TABLESET_SIZE(ts->ts_nitems));
 }
