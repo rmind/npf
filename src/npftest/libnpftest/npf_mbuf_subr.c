@@ -73,12 +73,12 @@ npfkern_m_freem(struct mbuf *m)
 #ifdef _NPF_STANDALONE
 	struct mbuf *n;
 
-	do {
+	while (m) {
 		n = m->m_next;
 		m->m_type = MT_FREE;
 		free(m);
 		m = n;
-	} while (m);
+	};
 #else
 	m_freem(m);
 #endif
