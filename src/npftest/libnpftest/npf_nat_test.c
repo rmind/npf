@@ -235,9 +235,7 @@ npf_nat_test(bool verbose)
 		    t->src, t->dst, t->sport, t->dport);
 		error = npfk_packet_handler(npf, &m, ifp, t->di);
 		ret = checkresult(verbose, i, m, ifp, error);
-		if (m) {
-			m_freem(m);
-		}
+		m_freem(m);
 		CHECK_TRUE(ret);
 	}
 	return true;
