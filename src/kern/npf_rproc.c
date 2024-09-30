@@ -308,9 +308,11 @@ npf_rproc_release(npf_rproc_t *rp)
 {
 	KASSERT(atomic_load_relaxed(&rp->rp_refcnt) > 0);
 
+	membar_release();
 	if (atomic_dec_uint_nv(&rp->rp_refcnt) != 0) {
 		return;
 	}
+	membar_acquire();
 	/* XXXintr */
 	for (unsigned i = 0; i < rp->rp_ext_count; i++) {
 		npf_ext_t *ext = rp->rp_ext[i];

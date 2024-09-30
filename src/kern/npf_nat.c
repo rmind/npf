@@ -257,9 +257,11 @@ npf_natpolicy_release(npf_natpolicy_t *np)
 {
 	KASSERT(atomic_load_relaxed(&np->n_refcnt) > 0);
 
+	membar_release();
 	if (atomic_dec_uint_nv(&np->n_refcnt) != 0) {
 		return;
 	}
+	membar_acquire();
 	KASSERT(LIST_EMPTY(&np->n_nat_list));
 	mutex_destroy(&np->n_lock);
 	kmem_free(np, sizeof(npf_natpolicy_t));
